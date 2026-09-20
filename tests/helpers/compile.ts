@@ -3,6 +3,7 @@
  *
  * Kept separate from `fixtures.ts` so IR-only tests do not pull in the compile layer.
  */
+import { NO_COMPACTION } from "../../src/compile/compaction.js";
 import { CAPABILITIES, type Capability } from "../../src/ir/vocabulary.js";
 import type { TaskIR } from "../../src/ir/schema.js";
 import { parseAgentProfile, type AgentProfile } from "../../src/profile/schema.js";
@@ -83,6 +84,11 @@ export function sectionInputFor(
     capabilityNotes: [],
     advisoryNodeIds: new Set(),
     droppedContext: [],
+    // Emitters driven directly print everything, so a section test measures the
+    // emitter rather than the compaction plan. `planCompaction` has its own
+    // tests in `tests/property/compaction.test.ts`, and the end-to-end effect is
+    // checked by compiling, not by this helper.
+    compaction: NO_COMPACTION,
     taskSlug: "test-task",
     taskId: "t1",
     ...patch,

@@ -60,6 +60,12 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   "FORGE-C100": { code: "FORGE-C100", name: "untraced_span", severity: "error", source: "deterministic" },
   "FORGE-C101": { code: "FORGE-C101", name: "fidelity_overclaim", severity: "error", source: "deterministic" },
   "FORGE-C102": { code: "FORGE-C102", name: "topology_gap", severity: "error", source: "deterministic" },
+  // Compaction (spec.md §10.2, FR-051). `info`, not `warning`: suppression is a
+  // deliberate, guarded rendering decision, not a degradation of the artifact's
+  // content — the line's words are still in the file, which is the condition
+  // the suppression is allowed under. It is recorded because INV-012 admits no
+  // silent removals, including the ones FORGE is confident about.
+  "FORGE-C103": { code: "FORGE-C103", name: "redundant_line_suppressed", severity: "info", source: "deterministic" },
   // Workspace codes (spec.md §10.2, W-series). The turn runtime does not own
   // the diagnostic system — it emits instances of codes catalogued here, so
   // there is one namespace and one factory rather than a second, parallel set

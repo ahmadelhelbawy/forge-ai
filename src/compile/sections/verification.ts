@@ -1,3 +1,4 @@
+import { acceptanceKey } from "../compaction.js";
 import type { SectionEmitter } from "../types.js";
 import { TracedTextBuilder, effectiveOrigin, heading, isDemoted, nodeOrigin, templateOrigin } from "./helpers.js";
 
@@ -24,7 +25,13 @@ const KIND_LABEL: Record<string, string> = {
 export const verificationSection: SectionEmitter = {
   key: "verification",
   emit(input) {
-    const entries = input.effective.verification.filter((v) => !isDemoted(input, v.id));
+    // FR-051: an unobservable manual/review step whose spec and expected are
+    // both already on the page is not printed again. A step the target degraded
+    // is never eligible — removing it would hide the degradation (INV-012),
+    // which is the opposite of what compaction is for.
+    const entries = input.effective.verification.filter(
+      (v) => !isDemoted(input, v.id) && !input.compaction.verification.has(v.id),
+    );
     if (entries.length === 0) return null;
 
     const b = new TracedTextBuilder();
@@ -67,11 +74,16 @@ export const taskChecklistSection: SectionEmitter = {
       b.add("- [ ] ", templateOrigin(input, "checkbox"))
         .add(goal.statement, nodeOrigin(goal.id))
         .gap("\n");
-      for (const criterion of goal.acceptance) {
+      // FR-051: the same suppression as the acceptance section, for the same
+      // reason — the checkbox directly above already says it. The GOAL's own
+      // checkbox is never suppressed: an actionable list is what this section
+      // is for, and removing its items would remove the section in all but name.
+      goal.acceptance.forEach((criterion, index) => {
+        if (input.compaction.acceptance.has(acceptanceKey(goal.id, index))) return;
         b.add("  - [ ] ", templateOrigin(input, "checkbox"))
           .add(criterion, nodeOrigin(goal.id))
           .gap("\n");
-      }
+      });
     }
     return b.build();
   },

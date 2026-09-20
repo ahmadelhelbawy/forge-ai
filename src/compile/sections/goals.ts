@@ -1,3 +1,4 @@
+import { acceptanceKey } from "../compaction.js";
 import type { SectionEmitter } from "../types.js";
 import { TracedTextBuilder, bullet, heading, isDemoted, nodeOrigin, templateOrigin } from "./helpers.js";
 
@@ -30,15 +31,20 @@ export const goalsSection: SectionEmitter = {
 export const acceptanceSection: SectionEmitter = {
   key: "acceptance",
   emit(input) {
+    // FR-051: a criterion that only repeats its own goal is not printed under
+    // it. A goal whose every criterion is suppressed contributes no group at
+    // all, so the heading is not emitted for an empty list either.
+    const kept = (goal: { id: string; acceptance: readonly string[] }): string[] =>
+      goal.acceptance.filter((_, i) => !input.compaction.acceptance.has(acceptanceKey(goal.id, i)));
     const withCriteria = input.effective.ir.goals.filter(
-      (g) => g.acceptance.length > 0 && !isDemoted(input, g.id),
+      (g) => kept(g).length > 0 && !isDemoted(input, g.id),
     );
     if (withCriteria.length === 0) return null;
     const b = new TracedTextBuilder();
     heading(b, input, "Acceptance criteria");
     for (const goal of withCriteria) {
       b.add(`${goal.id}:`, templateOrigin(input, "group_label")).gap("\n");
-      for (const criterion of goal.acceptance) {
+      for (const criterion of kept(goal)) {
         bullet(b, input, criterion, nodeOrigin(goal.id), "  - ");
       }
     }

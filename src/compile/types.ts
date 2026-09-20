@@ -5,6 +5,7 @@
  * shape of what flows between them without importing each other in a cycle.
  */
 import type { Diagnostic } from "../ir/diagnostic.js";
+import type { Compaction } from "./compaction.js";
 import type { TaskIR } from "../ir/schema.js";
 import type { Capability } from "../ir/vocabulary.js";
 import type { AgentProfile } from "../profile/schema.js";
@@ -106,6 +107,9 @@ export interface SectionInput {
   /** Instruction nodes whose trust resolved to `semi_trusted` — rendered as advisory. */
   readonly advisoryNodeIds: ReadonlySet<string>;
   readonly droppedContext: readonly DroppedContext[];
+  /** Lines this compilation may decline to print (FR-051). Never empty-checked
+   *  by emitters — `NO_COMPACTION` suppresses nothing. */
+  readonly compaction: Compaction;
   readonly taskSlug: string;
   readonly taskId: string;
 }

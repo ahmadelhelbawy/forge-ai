@@ -196,6 +196,7 @@ change requiring an update to this document, not a bug fix.
 | **FR-023** | Emit a trace assigning every non-whitespace byte of every artifact to exactly one span with a typed `TraceOrigin` (§12.2). | P1 |
 | **FR-024** | Support path templating in artifact topologies from a closed, validated variable set. | P1 |
 | **FR-050** | Verify, per compilation, that the target's artifact topology declares a destination for every class of content the task contains. A missing destination emits `FORGE-C102` naming the content class, the acceptable destination sections, and the affected nodes. It **refuses compilation** when the class is instruction-bearing or carries nodes the trust model demoted to advisory; otherwise it is recorded as an explicit degradation. | P1 (hardened pre-P1.5) |
+| **FR-051** | Suppress rendered lines that restate content the same artifact already carries, from a **closed whitelist of categories** and never from `constraints` or `stop_conditions`. A line may be suppressed only when its token sequence still occurs contiguously in the artifact that ships, so no presence verdict under §22.8 can change. Every suppression emits `FORGE-C103` citing the node and the withheld text. Size is never a reason to suppress and no section is ever removed. | V2-R |
 
 ### 4.5 Context engine
 
@@ -481,6 +482,7 @@ change requiring an update to this document, not a bug fix.
 | `FORGE-C100` | `untraced_span` | error | deterministic | Non-whitespace artifact bytes without an origin (INV-010) |
 | `FORGE-C101` | `fidelity_overclaim` | error | deterministic | Profile claims fidelity its topology/overrides cannot support (INV-014) |
 | `FORGE-C102` | `topology_gap` | error¹ | deterministic | The target's topology declares no section able to render a class of content the task contains (INV-017, FR-050) |
+| `FORGE-C103` | `redundant_line_suppressed` | info | deterministic | A rendered line restated content the artifact already carried elsewhere and was suppressed; cites the node it came from and the text withheld (INV-012, FR-051) |
 
 **Workspace codes (W-series).** The turn runtime does not own a second diagnostic
 system; it emits instances of codes catalogued here, through the same factory and

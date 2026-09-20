@@ -34,6 +34,7 @@ import { composeArtifact, pathVars } from "./topology.js";
 import { DEFAULT_TOKEN_ESTIMATOR, type TokenEstimator } from "./tokenizer.js";
 import type { DerivedOverlay } from "../strategy/schema.js";
 import { applyOverlay } from "../strategy/apply.js";
+import { NO_COMPACTION, planCompaction } from "./compaction.js";
 import type { Artifact, CompileResult, SectionInput, TopologyGap } from "./types.js";
 import type { Materialization } from "./vocabulary.js";
 
@@ -52,6 +53,16 @@ export interface CompileOptions {
   readonly estimator?: TokenEstimator;
   /** Strategy overlay to apply (P4). Absent means the identity overlay. */
   readonly overlay?: DerivedOverlay | null;
+  /**
+   * Whether redundant lines may be suppressed (FR-051). Defaults to `true`.
+   *
+   * The switch exists for ONE caller: the R5 guard test, which proves no
+   * presence verdict changes by compiling the same IR both ways and comparing.
+   * Nothing in the product passes it, and nothing should — two callers
+   * disagreeing here would mean two different artifacts for the same IR and
+   * profile, which is the byte-identity the CLI and the workspace are held to.
+   */
+  readonly compact?: boolean;
 }
 
 export function compile(
@@ -147,6 +158,12 @@ export function compile(
   // Lower (identity in P1; overlay-aware in P4 — verification comes from legalization).
   const effective = lower(working, legal.verification, applied?.introduced);
 
+  // FR-051. Decided once, before rendering, so every emitter sees the same
+  // decision and the diagnostics are produced in one place rather than
+  // scattered through the section emitters (which stay pure).
+  const compaction = options.compact === false ? NO_COMPACTION : planCompaction(effective);
+  diagnostics.push(...compaction.diagnostics);
+
   // Stage 5 — render.
   const vars = pathVars(options.taskSlug ?? ir.objective.kind, options.taskId ?? "task");
   const sectionInput: Omit<SectionInput, "sectionKey"> = {
@@ -158,6 +175,7 @@ export function compile(
     capabilityNotes: legal.capabilityNotes,
     advisoryNodeIds: advisory,
     droppedContext: budget.dropped,
+    compaction,
     taskSlug: vars.task_slug,
     taskId: vars.task_id,
   };

@@ -56,7 +56,11 @@ export const nonGoalsSection: SectionEmitter = {
 export const deliverablesSection: SectionEmitter = {
   key: "deliverables",
   emit(input) {
-    const deliverables = input.effective.ir.deliverables.filter((d) => !isDemoted(input, d.id));
+    // FR-051: a deliverable that only restates the objective is not printed
+    // again. The objective is a mandatory section, so the words are still there.
+    const deliverables = input.effective.ir.deliverables.filter(
+      (d) => !isDemoted(input, d.id) && !input.compaction.deliverables.has(d.id),
+    );
     if (deliverables.length === 0) return null;
     const b = new TracedTextBuilder();
     heading(b, input, "Deliverables");
