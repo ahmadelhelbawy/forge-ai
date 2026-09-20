@@ -60,12 +60,17 @@ function outcome(convo: Conversation, result: TurnResult): Record<string, unknow
           diagnostics: result.preservation.diagnostics,
         }
       : null,
+    // `evidence` travels with the finding (INV-007). A diagnostic stripped of
+    // it arrives as an assertion the reader cannot check, which is the one
+    // thing the diagnostic system exists not to be — and the chat surface
+    // renders it, so dropping it here would silently cap what the UI can show.
     diagnostics: result.diagnostics.map((d) => ({
       code: d.code,
       name: d.name,
       severity: d.severity,
       source: d.source,
       message: d.message,
+      evidence: d.evidence,
     })),
   };
 }

@@ -157,6 +157,12 @@ function revise(before: string | null, asked: string): string {
  * It streams in small pieces because that is the shape the streaming route
  * has to survive — an envelope split across chunk boundaries.
  */
+/**
+ * Asking the stub for an unreadable response. Only the stub reads it; a real
+ * provider never sees it treated as anything but part of the user's message.
+ */
+export const STUB_UNREADABLE_SENTINEL = "[[forge:stub-unreadable]]";
+
 export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
   const answer = (request: { user: string }): CompletionResult => {
     if (process.env["FORGE_CHAT_STUB"] === "error") {
@@ -168,6 +174,19 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
       return { text: JSON.stringify({ action, versions: [] }), model: "stub", latencyMs: 0 };
     }
     const asked = request.user.slice(-80);
+    // A degraded turn has to be reachable offline, or the only place
+    // FORGE-W003 can be seen is a live provider misbehaving — which is not
+    // something a test can arrange. The sentinel makes the stub answer with
+    // prose instead of an envelope: non-empty, useful to read, and impossible
+    // to turn into a version. That is the exact shape `pipeline.ts` degrades
+    // on, so R4 exercises the real path rather than a mock of it.
+    if (request.user.includes(STUB_UNREADABLE_SENTINEL)) {
+      return {
+        text: "Here is my answer in plain prose, with no envelope around it.",
+        model: "stub",
+        latencyMs: 0,
+      };
+    }
     return {
       text: JSON.stringify({ reply: `Stub reply to: ${asked}`, prompt: revise(before, asked) }),
       model: "stub",

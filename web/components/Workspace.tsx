@@ -11,6 +11,7 @@ import {
   api,
   type ConversationDetail,
   type ConversationSummary,
+  type DiagnosticWire,
   type ModelOption,
   type PinnedRequirement,
   type PreservationReport,
@@ -35,6 +36,12 @@ export function Workspace(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [stageLabel, setStageLabel] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  /**
+   * The last finished turn's diagnostics (INV-012). Turn-scoped: cleared when
+   * the next turn starts and when another conversation is opened, because a
+   * finding about one turn is not a standing property of the conversation.
+   */
+  const [diagnostics, setDiagnostics] = useState<DiagnosticWire[]>([]);
   const [streamingReply, setStreamingReply] = useState("");
   const [streamingPrompt, setStreamingPrompt] = useState("");
   const [canRetry, setCanRetry] = useState(false);
@@ -164,6 +171,8 @@ export function Workspace(): React.JSX.Element {
   const select = useCallback(async (id: string) => {
     setActiveId(id);
     setError(null);
+    // Turn-scoped, so they do not follow the user into another conversation.
+    setDiagnostics([]);
     try {
       const convo = await api.getConversation(id);
       setDetail(convo);
@@ -257,6 +266,7 @@ export function Workspace(): React.JSX.Element {
       setStreamingReply("");
       setStreamingPrompt("");
       setStartedAt(Date.now());
+      setDiagnostics([]);
       // A regenerate re-runs a message already on screen; a send shows the new
       // one immediately, so the first turn of a conversation is never a blank
       // screen with a request in flight.
@@ -286,7 +296,10 @@ export function Workspace(): React.JSX.Element {
         // the message and wrote nothing, and the reload above shows exactly
         // that. Retry stays offered because the message is still there.
         setCanRetry(true);
-        void outcome;
+        // INV-012: the pipeline has been producing these all along and the
+        // routes have been serialising them; until V2-R this line was
+        // `void outcome`, which is where every FORGE-W001–W004 went.
+        setDiagnostics(outcome.diagnostics ?? []);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setCanRetry(true);
@@ -547,6 +560,7 @@ export function Workspace(): React.JSX.Element {
               pendingUserMessage={pendingUserMessage}
               stageLabel={stageLabel}
               startedAt={startedAt}
+              diagnostics={diagnostics}
               onSend={send}
               onAttach={attach}
               onStop={stop}

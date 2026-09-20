@@ -3,8 +3,10 @@
 import { Paperclip, RotateCcw, SendHorizonal, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import type { AttachmentMeta, ChatMessage } from "@/lib/api";
+import type { AttachmentMeta, ChatMessage, DiagnosticWire } from "@/lib/api";
 import { Markdown } from "@/lib/markdown";
+
+import { DiagnosticList } from "./DiagnosticList";
 
 interface Props {
   messages: ChatMessage[];
@@ -26,6 +28,16 @@ interface Props {
   stageLabel: string | null;
   /** When the running turn started, for the elapsed clock. */
   startedAt: number | null;
+  /**
+   * The finished turn's diagnostics (INV-012), shown beneath the reply.
+   *
+   * Turn-scoped, not conversation-scoped, and honestly so: these findings are
+   * about what happened during one turn and are not persisted on the
+   * conversation record, so they clear when the next turn starts or another
+   * conversation is opened. Persisting them is a storage change, which is not
+   * in V2-R's scope; showing them to the user who caused them is.
+   */
+  diagnostics: DiagnosticWire[];
   onSend: (text: string) => void;
   onAttach: (files: File[]) => void;
   onStop: () => void;
@@ -51,6 +63,7 @@ export function ChatPanel({
   pendingUserMessage,
   stageLabel,
   startedAt,
+  diagnostics,
   onSend,
   onAttach,
   onStop,
@@ -163,6 +176,7 @@ export function ChatPanel({
                 </div>
               </div>
             ) : null}
+            {!sending ? <DiagnosticList diagnostics={diagnostics} /> : null}
             {sending ? (
               <div
                 data-testid="turn-status"

@@ -1175,3 +1175,98 @@ describe.skipIf(!WEB_E2E)("candidates over HTTP (V2-E)", () => {
     expect(detail.body["candidatePromotions"]).toEqual([]);
   });
 });
+
+/**
+ * R4 (V2-R): a turn's diagnostics must reach the user, not just the event log.
+ *
+ * The audit found the whole chain already built — `pipeline.ts` produces the
+ * findings, both message routes serialise them, `web/lib/api.ts` types them —
+ * and then `Workspace.tsx` discarding the result with `void outcome`. Nothing
+ * containing the word "diagnostic" existed in `ChatPanel.tsx`. So FORGE-W001
+ * through W004 were computed, delivered, and thrown away at the last step.
+ *
+ * These tests hold the HTTP half of the contract: the finding is on the wire,
+ * it carries its evidence, and it says the version was not written. The
+ * rendering half is a browser check — this file cannot see a screen.
+ */
+describe.skipIf(!WEB_E2E)("turn diagnostics reach the client (V2-R, R4)", () => {
+  /** Mirrors `STUB_UNREADABLE_SENTINEL` in `web/lib/turn/deps.ts`. */
+  const UNREADABLE = "[[forge:stub-unreadable]]";
+
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  it("delivers FORGE-W003 on a degraded turn, with its evidence", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: `Write a review prompt. ${UNREADABLE}` }),
+    });
+
+    const diagnostics = turn.body["diagnostics"] as Array<Record<string, unknown>>;
+    expect(Array.isArray(diagnostics)).toBe(true);
+    const w003 = diagnostics.find((d) => d["code"] === "FORGE-W003");
+    expect(w003, `no FORGE-W003 in ${JSON.stringify(diagnostics)}`).toBeDefined();
+    expect(w003!["severity"]).toBe("warning");
+    expect(w003!["source"]).toBe("deterministic");
+    expect(String(w003!["message"])).toContain("envelope");
+
+    // INV-007: a finding without evidence is not a finding, and a finding
+    // whose evidence is stripped on the way to the screen is no better.
+    const evidence = w003!["evidence"] as unknown[];
+    expect(Array.isArray(evidence)).toBe(true);
+    expect(evidence.length).toBeGreaterThan(0);
+  });
+
+  it("degrades to chat rather than writing a version from a response it could not read", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: `Write a review prompt. ${UNREADABLE}` }),
+    });
+    expect(turn.body["promptChanged"]).toBe(false);
+    const detail = await api(BASE, `/api/conversations/${id}`);
+    expect(detail.body["promptVersions"]).toEqual([]);
+    // The prose is still delivered — the degradation costs the version, not the answer.
+    expect(String(turn.body["reply"]).length).toBeGreaterThan(0);
+  });
+
+  it("carries the same diagnostics over the streaming route", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const response = await fetch(`${BASE}/api/conversations/${id}/messages/stream`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: `Write a review prompt. ${UNREADABLE}` }),
+    });
+    const body = await response.text();
+    const result = body
+      .split("\n")
+      .filter((line) => line.startsWith("data: "))
+      .map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>)
+      .find((frame) => frame["type"] === "result");
+
+    expect(result, "the stream ended without a result frame").toBeDefined();
+    const diagnostics = result!["diagnostics"] as Array<Record<string, unknown>>;
+    expect(diagnostics.map((d) => d["code"])).toContain("FORGE-W003");
+    // Both routes must agree: a user who happens to be on the streaming path
+    // does not get a quieter product.
+    expect(result!["promptChanged"]).toBe(false);
+  });
+
+  it("emits no diagnostics on an ordinary healthy turn", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Write a code review prompt." }),
+    });
+    // The surface must stay quiet when nothing degraded, or users learn to
+    // ignore it and the whole exercise is self-defeating.
+    expect(turn.body["diagnostics"]).toEqual([]);
+    expect(turn.body["promptChanged"]).toBe(true);
+  });
+});
