@@ -24,6 +24,7 @@ import {
   renderIntentPrompt,
   renderRefinePrompt,
 } from "../../src/intent/extract.js";
+import { detectDemotedRequirements } from "../../src/intent/demotion.js";
 import { collectSignals, renderSignalsSection, signalsSegment } from "../../src/intent/signals.js";
 import { WorkspaceGuard } from "../../src/context/workspace.js";
 import { SMALL_REPO } from "../helpers/context.js";
@@ -321,5 +322,98 @@ describe("repo signals (signals.ts)", () => {
     const section = renderSignalsSection(signals);
     expect(section).toContain("s2");
     expect(section).toContain("ground scope globs");
+  });
+});
+
+/**
+ * R2 (V2-R): the boundary's two halves of the demotion defect.
+ *
+ * Layer A is the prompt rule — FORGE's instruction to the model. Layer B is the
+ * deterministic detector, which is what happens when the model ignores it. The
+ * rule cannot be tested by asserting the model obeys (that is the thesis
+ * corpus's job, AC-025), so what is asserted here is what FORGE controls: that
+ * the instruction is in the prompt, and that a draft which demotes a stated
+ * requirement is *caught* rather than passed through silently.
+ *
+ * The detector is deliberately NOT a post-validator. Post-validators in this
+ * boundary fail the call and spend repair budget; W008 is advisory, and
+ * refusing an extraction over a word-overlap heuristic would trade a warning
+ * for a hard failure on a check whose false-positive rate is unmeasured.
+ */
+describe("intent.extract does not invite demotion (V2-R, FORGE-W008)", () => {
+  const DEMOTING_TEXT =
+    "Convert the auth module from callbacks to async/await. All existing tests must keep passing.";
+
+  /** A draft that files the user's stated requirement as a guess about it. */
+  const demotingDraft = (): DraftIR => ({
+    ...validDraft(),
+    objective: {
+      statement: "Convert the auth module to async/await",
+      kind: "refactor",
+      success_definition: "The auth module uses async/await internally",
+      derived_from: "s1",
+    },
+    goals: [
+      {
+        id: "g1",
+        statement: "Convert the auth module from callbacks to async/await",
+        priority: "must",
+        acceptance: ["The module's internals use async/await"],
+        derived_from: "s1",
+      },
+    ],
+    constraints: [],
+    verification: [],
+    assumptions: [
+      { id: "a1", statement: "All existing tests must keep passing", confidence: "medium", derived_from: "s1" },
+    ],
+  });
+
+  it("instructs the model not to demote a stated obligation", () => {
+    const prompt = renderIntentPrompt(TEXT);
+    expect(prompt).toContain("DO NOT DEMOTE WHAT THE INPUT STATES");
+    // The rule must name the nodes an obligation may legally land in, or it is
+    // a prohibition with no alternative — which is how rule 2 became a dumping
+    // ground in the first place.
+    expect(prompt).toContain("assumptions");
+    expect(prompt).toMatch(/goal, a constraint, a non-goal/);
+  });
+
+  it("versions the boundary with the prompt, so cassette keys cannot go stale (FR-048)", () => {
+    // The rule changed the prompt text; FR-048 requires the version to move with
+    // it, and the committed cassettes to be regenerated against the new key.
+    expect(INTENT_EXTRACT_VERSION).not.toBe("1");
+  });
+
+  it("detects the demotion in an extracted IR without failing the extraction", async () => {
+    const provider = stubProvider([JSON.stringify(demotingDraft())]);
+    const result = await extractIntent(DEMOTING_TEXT, { provider });
+
+    // Advisory, not fatal: the extraction succeeded and spent no repair budget.
+    expect(result.repairs).toBe(0);
+    expect(provider.calls).toBe(1);
+
+    const found = detectDemotedRequirements(DEMOTING_TEXT, result.ir);
+    expect(found.map((d) => d.code)).toEqual(["FORGE-W008"]);
+    expect(found[0]!.evidence).toContainEqual({ kind: "node", node_id: "a1" });
+  });
+
+  it("says nothing when the same text is extracted into a requirement-bearing node", async () => {
+    const obedient: DraftIR = {
+      ...demotingDraft(),
+      constraints: [
+        {
+          id: "c1",
+          kind: "compatibility",
+          hardness: "hard",
+          statement: "All existing tests must keep passing",
+          derived_from: "s1",
+        },
+      ],
+      assumptions: [],
+    };
+    const provider = stubProvider([JSON.stringify(obedient)]);
+    const result = await extractIntent(DEMOTING_TEXT, { provider });
+    expect(detectDemotedRequirements(DEMOTING_TEXT, result.ir)).toEqual([]);
   });
 });

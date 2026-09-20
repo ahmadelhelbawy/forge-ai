@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "key": "sha256:f9e34a6c28a65b8c04147411bea5db2a5a37d9f3b5747bf79effba193d29728c",
+  "key": "sha256:9a428e62e987d68ed72f2ad6a5ff6630801bc2934998b6944119b66268642127",
   "boundaryId": "intent.extract",
-  "boundaryVersion": "1",
+  "boundaryVersion": "2",
   "model": "hand-authored-fixture",
   "responseText": "{\"objective\":{\"statement\":\"Fix the flaky login test\",\"kind\":\"debug\",\"success_definition\":\"The login test passes consistently\",\"derived_from\":\"s1\"},\"goals\":[{\"id\":\"g1\",\"statement\":\"Fix the flaky login test\",\"priority\":\"must\",\"acceptance\":[\"The test passes consistently\"],\"derived_from\":\"s1\"}],\"constraints\":[],\"non_goals\":[],\"scope\":{\"include\":[\"src/auth/**\"],\"exclude\":[],\"blast_radius\":\"module\",\"derived_from\":\"s1\"},\"required_capabilities\":[],\"assumptions\":[],\"open_questions\":[{\"id\":\"q1\",\"question\":\"Which login test is flaky, and where does it live?\",\"options\":[],\"default_assumption_ref\":null,\"blocking\":true,\"derived_from\":\"s1\"}],\"verification\":[{\"id\":\"v1\",\"kind\":\"test\",\"spec\":\"Run the login test repeatedly\",\"expected\":\"consecutive passes\",\"satisfies\":[\"g1\"],\"derived_from\":\"s1\"}],\"deliverables\":[{\"id\":\"d1\",\"kind\":\"code_change\",\"description\":\"Fixed login test\",\"derived_from\":\"s1\"}],\"risk\":{\"level\":\"low\",\"factors\":[]}}",
-  "recordedAt": "2026-09-10T16:55:50.439Z"
+  "recordedAt": "2026-09-20T18:20:59.060Z"
 }

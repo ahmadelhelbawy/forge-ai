@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "key": "sha256:1e5fb386bd2c30aa16344b43fae02704d2e5e55bfa8d31632ed449849f55d469",
+  "key": "sha256:8e8f10a566120f91533463a5bfbbdf74377f72e12c4ed78629cd0f8b8978d436",
   "boundaryId": "intent.extract",
-  "boundaryVersion": "1",
+  "boundaryVersion": "2",
   "model": "hand-authored-fixture",
   "responseText": "{\"objective\":{\"statement\":\"Fix the flaky login redirect test\",\"kind\":\"debug\",\"success_definition\":\"The login redirect test passes three times in a row\",\"derived_from\":\"s1\"},\"goals\":[{\"id\":\"g1\",\"statement\":\"Fix the flaky login redirect test in src/auth/login.test.ts\",\"priority\":\"must\",\"acceptance\":[\"The test passes three consecutive runs\"],\"derived_from\":\"s1\"}],\"constraints\":[{\"id\":\"c1\",\"kind\":\"architectural\",\"hardness\":\"hard\",\"statement\":\"Do not change the AuthProvider interface in src/auth/provider.ts\",\"derived_from\":\"s1\"}],\"non_goals\":[],\"scope\":{\"include\":[\"src/auth/login.test.ts\",\"src/auth/provider.ts\"],\"exclude\":[],\"blast_radius\":\"module\",\"derived_from\":\"s1\"},\"required_capabilities\":[\"fs_read\",\"run_tests\"],\"assumptions\":[{\"id\":\"a1\",\"statement\":\"The flake is in the test or its immediate setup, not in production auth logic\",\"confidence\":\"medium\",\"derived_from\":\"s1\"}],\"open_questions\":[],\"verification\":[{\"id\":\"v1\",\"kind\":\"test\",\"spec\":\"Run src/auth/login.test.ts three times\",\"expected\":\"three consecutive passes\",\"satisfies\":[\"g1\"],\"derived_from\":\"s1\"}],\"deliverables\":[{\"id\":\"d1\",\"kind\":\"code_change\",\"description\":\"Fixed login redirect test\",\"derived_from\":\"s1\"}],\"risk\":{\"level\":\"low\",\"factors\":[]}}",
-  "recordedAt": "2026-09-10T16:55:50.435Z"
+  "recordedAt": "2026-09-20T18:20:59.057Z"
 }

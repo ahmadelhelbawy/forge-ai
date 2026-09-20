@@ -36,11 +36,14 @@ import type { ModelBoundary } from "../model/boundaries.js";
 
 export const INTENT_EXTRACT_ID = "intent.extract";
 /**
- * Stays "1": the base prompt and schema handling are byte-identical to P1.5,
- * so committed cassette keys remain valid. Refine renders an EXTENDED prompt
- * whose key differs by content; repair-budget growth changes no key.
+ * "2" as of V2-R step 5: `prompt.md` gained rule 3, forbidding the demotion of
+ * a stated requirement into an assumption. FR-048 ties the version to the
+ * prompt text, so this bump is not bookkeeping — the key covers the rendered
+ * prompt, and every committed cassette had to be regenerated with
+ * `tsx scripts/gen-task-cassettes.ts`. Refine renders an EXTENDED prompt whose
+ * key differs by content; repair-budget growth changes no key.
  */
-export const INTENT_EXTRACT_VERSION = "1";
+export const INTENT_EXTRACT_VERSION = "2";
 /** FR-003: at most two repairs; a third failure is a hard error. */
 export const INTENT_EXTRACT_MAX_REPAIRS = 2;
 

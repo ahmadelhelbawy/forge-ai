@@ -34,6 +34,7 @@ import {
   routeQuestions,
   type QuestionResolution,
 } from "../intent/clarify.js";
+import { detectDemotedRequirements } from "../intent/demotion.js";
 import { collectSignals, type RepoSignals } from "../intent/signals.js";
 import { hasErrors, type Diagnostic } from "../ir/diagnostic.js";
 import { semanticHash } from "../ir/projection.js";
@@ -405,6 +406,20 @@ async function runTask(text: string, opts: TaskOptions): Promise<never> {
   const result = compile(ir, profile, { taskSlug: opts.taskSlug });
   const hash = semanticHash(ir);
 
+  /**
+   * FORGE-W008 (V2-R). Demotion can only be detected where the user's original
+   * text is still in hand, which the compiler never is — by compile time there
+   * is an IR and nothing else. So it is checked here, against the FINAL IR, and
+   * merged into the compiler's findings for one list with one sort order.
+   *
+   * Advisory: it adds no error, so it changes no exit code outside `--strict`,
+   * which is the whole reason the code is `warning` (spec.md §10.2).
+   */
+  const diagnostics: readonly Diagnostic[] = [
+    ...result.diagnostics,
+    ...detectDemotedRequirements(text, ir),
+  ];
+
   if (opts.json) {
     process.stdout.write(
       `${JSON.stringify(
@@ -412,7 +427,7 @@ async function runTask(text: string, opts: TaskOptions): Promise<never> {
           semantic_hash: hash,
           ir,
           artifacts: result.artifacts.map((a) => ({ path: a.path, content_hash: a.content_hash })),
-          diagnostics: result.diagnostics,
+          diagnostics,
           model_call: record,
           refine_call: refineRecord,
           clarification,
@@ -431,7 +446,7 @@ async function runTask(text: string, opts: TaskOptions): Promise<never> {
         if (!opts.out) process.stdout.write(artifact.content);
       }
     }
-    printDiagnostics(result.diagnostics);
+    printDiagnostics(diagnostics);
   }
 
   if (opts.out && !result.refused) {
@@ -444,6 +459,6 @@ async function runTask(text: string, opts: TaskOptions): Promise<never> {
   }
 
   if (result.refused) process.exit(EXIT.refused);
-  const failed = opts.strict ? result.diagnostics.length > 0 : hasErrors(result.diagnostics);
+  const failed = opts.strict ? diagnostics.length > 0 : hasErrors(diagnostics);
   process.exit(failed ? EXIT.diagnostics : EXIT.ok);
 }
