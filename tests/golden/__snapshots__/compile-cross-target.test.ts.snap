@@ -62,7 +62,7 @@ Read these before changing anything. They are pointers, not contents — search 
 
 ## Assumptions
 
-These were assumed, not stated. Correct any that are wrong before proceeding:
+FORGE is proceeding on these. Correct any that are wrong before starting:
 - [a1] "Nothing" means zero results after filters are applied, not a failed request (confidence: medium)
 
 
@@ -183,7 +183,7 @@ This target cannot read the repository, so the following must be attached before
 
 ## Assumptions
 
-These were assumed, not stated. Correct any that are wrong before proceeding:
+FORGE is proceeding on these. Correct any that are wrong before starting:
 - [a1] "Nothing" means zero results after filters are applied, not a failed request (confidence: medium)
 
 
@@ -308,7 +308,7 @@ Read these before changing anything. They are pointers, not contents — search 
 
 ## Assumptions
 
-These were assumed, not stated. Correct any that are wrong before proceeding:
+FORGE is proceeding on these. Correct any that are wrong before starting:
 - [a1] "Nothing" means zero results after filters are applied, not a failed request (confidence: medium)
 
 

@@ -87,7 +87,26 @@ export const assumptionsSection: SectionEmitter = {
     if (assumptions.length === 0) return null;
     const b = new TracedTextBuilder();
     heading(b, input, "Assumptions");
-    b.add("These were assumed, not stated. Correct any that are wrong before proceeding:",
+    // States what an assumption IS, not what the user failed to say.
+    //
+    // This line used to read "These were assumed, not stated." That is a claim
+    // about the user's own input, and the renderer has no way to check it: every
+    // assumption carries a `source_ref`, and when extraction derives one from the
+    // task text that ref is `user_input`. So the IR recorded "this came from what
+    // the human typed" while the artifact asserted the opposite.
+    //
+    // It was not hypothetical. Given a request containing, verbatim, "all
+    // existing tests must keep passing", extraction filed that requirement as a
+    // medium-confidence assumption and this line told the agent it had never been
+    // stated and should be corrected if wrong — inverting a requirement the user
+    // had spelled out.
+    //
+    // `INV-016` reserves provenance statements to FORGE precisely so they can be
+    // trusted, which makes a false one FORGE's defect rather than the model's.
+    // The honest framing is forward-looking: these are what FORGE will act on
+    // unless told otherwise. Detecting the demotion itself is a separate job,
+    // done deterministically by `FORGE-W008` at the extraction boundary.
+    b.add("FORGE is proceeding on these. Correct any that are wrong before starting:",
       templateOrigin(input, "intro")).gap("\n");
     for (const a of assumptions) {
       b.add(`- [${a.id}] `, templateOrigin(input, "bullet_marker"))
