@@ -304,8 +304,10 @@ describe("the CLI itself", () => {
     expect(help).toMatch(/^\s+context\b/m);
     // P4 implements `strategies`, so it is advertised from this phase on.
     expect(help).toMatch(/^\s+strategies\b/m);
+    // V2-R implements `explain`, so it is advertised from this phase on.
+    expect(help).toMatch(/^\s+explain\b/m);
     // Commands belonging to later phases must not be advertised before they exist.
-    for (const absent of ["explain", "history", "doctor"]) {
+    for (const absent of ["history", "doctor"]) {
       expect(help, `"${absent}" must not appear before its phase implements it`).not.toMatch(
         new RegExp(`^\\s+${absent}\\b`, "m"),
       );
@@ -543,5 +545,92 @@ describe("forge compile --strategy (P4)", () => {
     expect(result.code).toBe(EXIT.ok);
     const payload = parseJson<{ strategy: { archetype: string; version: number } | null }>(result);
     expect(payload.strategy).toEqual({ archetype: "rigorous", version: 1 });
+  });
+});
+
+/**
+ * `forge explain` (V2-R step 8).
+ *
+ * The command exists to make FORGE's central claim inspectable: every byte of
+ * every artifact carries a named origin. So the tests are about attribution and
+ * honesty, not formatting — that every profile attributes every artifact byte,
+ * that constraints are shown reaching real sections, and that a refusal is
+ * reported as a refusal rather than as an empty success.
+ *
+ * It must also stay a pure read: no model call, no writes, no persistence.
+ */
+describe("forge explain (V2-R)", () => {
+  it("attributes every artifact byte on every shipped profile", async () => {
+    const agents = await runCli(["agents", "--json"]);
+    const profiles = parseJson<Array<{ id: string }>>(agents).map((p) => p.id);
+    expect(profiles.length).toBe(7);
+
+    for (const id of profiles) {
+      const result = await runCli(["explain", "--ir", IR, "--target", id, "--json"]);
+      // A profile that refuses this IR is a legitimate outcome (capability
+      // gaps are real), and the refusal is checked separately below.
+      if (result.code === EXIT.refused) continue;
+      expect(result.code, `${id} exited ${result.code}`).toBe(EXIT.ok);
+      const payload = parseJson<{
+        artifacts: Array<{ path: string; bytes: number }>;
+        spans: Array<{ artifact_path: string; start: number; end: number }>;
+        diagnostics: Array<{ code: string }>;
+      }>(result);
+
+      // The coverage claim, asserted rather than read off the summary line:
+      // FORGE-C100 is what `verifyCoverage` emits for an unattributed byte.
+      expect(payload.diagnostics.map((d) => d.code), `${id} has untraced spans`).not.toContain("FORGE-C100");
+      for (const artifact of payload.artifacts) {
+        const spans = payload.spans.filter((s) => s.artifact_path === artifact.path);
+        expect(spans.length, `${id}:${artifact.path} has no spans`).toBeGreaterThan(0);
+        for (const span of spans) {
+          expect(span.start).toBeGreaterThanOrEqual(0);
+          expect(span.end).toBeLessThanOrEqual(artifact.bytes);
+        }
+      }
+    }
+  });
+
+  it("shows which sections each constraint reached", async () => {
+    const result = await runCli(["explain", "--ir", IR, "--target", "claude-code"]);
+    expect(result.code).toBe(EXIT.ok);
+    expect(result.stdout).toContain("constraints → where they landed");
+    // INV-003's evidence, seen from the artifact's side: a hard constraint that
+    // reached nothing would print NOWHERE, and FORGE-C002 would be here too.
+    expect(result.stdout).toMatch(/\[c1\] hard\/\w+ → PROMPT\.md:constraints/);
+    expect(result.stdout).not.toContain("→ NOWHERE");
+  });
+
+  it("states the coverage verdict it just demonstrated", async () => {
+    const result = await runCli(["explain", "--ir", IR, "--target", "claude-code"]);
+    expect(result.stdout).toContain("every non-whitespace byte is attributed");
+  });
+
+  it("is deterministic and identical across runs", async () => {
+    const a = await runCli(["explain", "--ir", IR, "--target", "claude-code", "--json"]);
+    const b = await runCli(["explain", "--ir", IR, "--target", "claude-code", "--json"]);
+    expect(a.stdout).toBe(b.stdout);
+  });
+
+  it("needs no model source — it recompiles, it never asks a model (CLI-R4)", async () => {
+    // The harness clears API keys. `forge task` refuses here; `explain` must not.
+    const result = await runCli(["explain", "--ir", IR, "--target", "claude-code"]);
+    expect(result.code).toBe(EXIT.ok);
+    expect(result.stderr).not.toContain("no model source");
+  });
+
+  it("reports a refusal as a refusal, with no artifacts", async () => {
+    const result = await runCli([
+      "explain", "--ir", "fixtures/ir/untrusted-instruction.json", "--target", "claude-design",
+    ]);
+    if (result.code === EXIT.refused) {
+      expect(result.stdout).toContain("COMPILATION REFUSED");
+      expect(result.stdout).not.toContain("=== PROMPT.md");
+    }
+  });
+
+  it("exits 2 for an unknown target and for a missing --ir", async () => {
+    expect((await runCli(["explain", "--ir", IR, "--target", "nope"])).code).toBe(EXIT.usage);
+    expect((await runCli(["explain", "--target", "claude-code"])).code).toBe(EXIT.usage);
   });
 });

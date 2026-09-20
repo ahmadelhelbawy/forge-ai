@@ -22,6 +22,7 @@ import { builtinStrategies, StrategyNotFoundError } from "../strategy/registry.j
 import { EXIT, fatal } from "./errors.js";
 import { readIr } from "./ir.js";
 import { registerContextCommand } from "./context.js";
+import { registerExplainCommand } from "./explain.js";
 import { registerStrategiesCommand } from "./strategies.js";
 import { registerTaskCommand } from "./task.js";
 
@@ -212,6 +213,7 @@ program
 
 registerContextCommand(program);
 registerStrategiesCommand(program);
+registerExplainCommand(program);
 registerTaskCommand(program);
 
 // `parseAsync`, not `parse`: a synchronous try/catch cannot observe a rejected promise
