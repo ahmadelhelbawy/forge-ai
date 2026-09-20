@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# The whole point of this pipeline is that it proves the deterministic core works
+# with NO credentials. No secrets are made available to any job here, deliberately
+# (NFR-007). The live-provider smoke is opt-in and never runs in CI.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: core (no key, no network)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # web/ imports the core through forge/dist/*, so this must precede the suite.
+      - name: Build core
+        run: pnpm --filter forge build
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Schema is generated, not hand-edited
+        run: pnpm schema:check
+
+      - name: Test suite
+        run: pnpm test
+
+      # package.json promises `import "forge"` resolves. It did not, for a while.
+      - name: Package entrypoint resolves
+        run: node -e "import('forge').then(m => { if (typeof m.compile !== 'function') { throw new Error('forge root export is broken'); } console.log('import \"forge\" OK'); })"
+
+  frozen-benchmark:
+    name: frozen benchmark is untouched
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # evals/p16 is a pre-registered, hash-pinned experiment. A post-freeze edit
+      # invalidates the recorded run, so the freeze is checked rather than trusted.
+      - name: Verify evals/p16 manifest
+        run: sha256sum -c evals/p16/MANIFEST.sha256
+
+  product:
+    name: product HTTP suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Builds the core and the web app, starts stub-backed servers, runs the
+      # suite over real HTTP. Still no credentials.
+      - name: HTTP product suite
+        run: ./web/scripts/e2e.sh
