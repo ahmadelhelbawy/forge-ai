@@ -494,6 +494,8 @@ with the same evidence requirement (INV-007).
 | `FORGE-W004` | `read_only_write_blocked` | error | deterministic | A read-only action came back carrying a prompt; the write was blocked (WS-R2, WS-R3) |
 | `FORGE-W005` | `pinned_requirement_dropped` | error | deterministic | A requirement the user pinned into the ledger is absent from a prompt version by the presence rule of §22.8; cites the pinned text and the version that dropped it (WS-R24, WS-R25) |
 | `FORGE-W006` | `semantic_drift` | warning | judged | A statement in one version's Task IR vanished or changed meaning in another's, and no pinned entry covers it; cites both versions' statements (WS-R26) |
+| `FORGE-W007` | `candidate_duplicate_rejected` | warning | deterministic | A generated alternative's prose is token-identical to another candidate or to the base it was derived from; the alternative is rejected rather than offered as a choice that is not one (WS-R8, ST-R5) |
+| `FORGE-W008` | `stated_requirement_demoted` | warning | deterministic | A requirement expressed in the user's own input reaches the artifact only as an assumption or an open question, never as a goal, constraint, non-goal or deliverable; cites the user's wording and the node that carries it (INV-016) |
 
 ¹ `FORGE-C102` is `error` — refusing compilation — when the unrenderable class is
 instruction-bearing or carries nodes demoted to advisory by the trust model. It is

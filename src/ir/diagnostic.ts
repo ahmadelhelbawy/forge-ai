@@ -25,7 +25,8 @@ export type DiagnosticSource = (typeof DIAGNOSTIC_SOURCES)[number];
  * `code` is typed as `string` here rather than `DiagnosticCode`: the code union is
  * derived from the registry's keys, so referencing it in the constraint the registry
  * is checked against would be circular. `as const` still gives each entry its literal
- * type, and a test asserts key and `code` agree.
+ * type, and `tests/contract/diagnostic-catalogue.test.ts` asserts key and `code`
+ * agree — a claim this comment made for some time before the test existed.
  */
 export interface DiagnosticDefinition {
   readonly code: string;
@@ -73,10 +74,16 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   // (WS-R28), and so W006 can never be mistaken for a statement W005 makes.
   "FORGE-W005": { code: "FORGE-W005", name: "pinned_requirement_dropped", severity: "error", source: "deterministic" },
   "FORGE-W006": { code: "FORGE-W006", name: "semantic_drift", severity: "warning", source: "judged" },
-  // Candidates (spec.md §22.2, §9). A candidate dropped because it only
+  // Candidates (spec.md §10.2, §22.2). A candidate dropped because it only
   // reworded another is still a drop, and INV-012 admits no silent ones —
   // the user asked for N alternatives and must be told why they got fewer.
   "FORGE-W007": { code: "FORGE-W007", name: "candidate_duplicate_rejected", severity: "warning", source: "deterministic" },
+  // Requirement classification (spec.md §10.2, INV-016). Warning rather than
+  // error on purpose: `--strict` promotes warnings to failures, so an error here
+  // would make previously-succeeding runs exit non-zero, and the one genuine
+  // FORGE loss in the P1.6 gate was over-blocking. Promote once the
+  // false-positive rate has been measured rather than assumed.
+  "FORGE-W008": { code: "FORGE-W008", name: "stated_requirement_demoted", severity: "warning", source: "deterministic" },
 } as const satisfies Record<string, DiagnosticDefinition>);
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_REGISTRY;
