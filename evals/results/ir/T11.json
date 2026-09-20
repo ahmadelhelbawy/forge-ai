@@ -1,0 +1,171 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Add request logging to every endpoint in src/api/ for audit purposes, such that the logging adds zero measurable latency and never logs request bodies, which contain PII.",
+    "kind": "feature",
+    "success_definition": "Every endpoint in src/api/ produces audit request logs; the logging adds zero measurable latency to request handling; and no request body content ever appears in the logs.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Add request logging to every endpoint in src/api/ for audit purposes.",
+      "priority": "must",
+      "acceptance": [
+        "A request log entry is produced for every request handled by every endpoint under src/api/.",
+        "The log entries serve the stated audit purpose."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Ensure the request logging adds zero measurable latency.",
+      "priority": "must",
+      "acceptance": [
+        "No measurable latency difference in endpoint request handling is attributable to the logging."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Ensure request bodies are never logged, because they contain PII.",
+      "priority": "must",
+      "acceptance": [
+        "No request body content appears in any log output, for any endpoint or request type."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "performance",
+      "hardness": "hard",
+      "statement": "The logging must add zero measurable latency to request handling.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "security",
+      "hardness": "hard",
+      "statement": "Request bodies must never be logged, because they contain PII.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Logging must cover every endpoint in src/api/.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "src/api/"
+    ],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "\"Every endpoint in src/api/\" means all request handlers defined under the src/api/ directory tree.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "\"Zero measurable latency\" will be validated by comparing endpoint latency with and without the logging enabled.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "Audit log entries will contain non-body request metadata (e.g., method, path, status code, timestamp), since the task does not specify log content beyond excluding bodies.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What fields should each audit log entry contain, given that request bodies are excluded?",
+      "options": [
+        "Non-body metadata only: method, path, status code, timestamp",
+        "Metadata plus request/response headers",
+        "A specific audit schema defined elsewhere"
+      ],
+      "default_assumption_ref": "a3",
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "How should \"zero measurable latency\" be measured and verified?",
+      "options": [
+        "Benchmark endpoints with and without logging and compare",
+        "Manual review of the logging implementation for non-blocking behavior",
+        "An existing performance test suite"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "manual",
+      "spec": "Exercise each endpoint under src/api/ and confirm that a request log entry is produced for every request.",
+      "expected": "Every endpoint emits an audit request log entry for each request it handles.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "manual",
+      "spec": "Compare endpoint request-handling latency with the logging enabled versus disabled (or absent).",
+      "expected": "No measurable latency difference is attributable to the logging.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v3",
+      "kind": "review",
+      "spec": "Review the logging implementation and inspect emitted log output to confirm that no request body content is logged for any endpoint or request type.",
+      "expected": "No request body content appears in any log output.",
+      "satisfies": [
+        "g3"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Request logging added to every endpoint in src/api/, implemented so that it adds zero measurable latency and never logs request bodies.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "The zero-measurable-latency requirement is stringent and constrains how logging can be implemented.",
+      "Request bodies contain PII, so any accidental body logging creates a security/compliance incident.",
+      "The change touches every endpoint in src/api/, so a defect would have broad impact across the API surface."
+    ]
+  }
+}

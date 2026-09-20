@@ -1,0 +1,76 @@
+# AC-017 / NFR-004 — the executable form of "adding an agent is data, not code".
+#
+# This profile is loaded by tests/contract/extensibility.test.ts from a directory the
+# compiler has never heard of. It names a target that does not exist, uses a section
+# ordering no shipped profile uses, and a multi-file topology with a templated path.
+# If it compiles with zero TypeScript changes, the extensibility claim is true.
+id: synthetic-agent
+display_name: Synthetic Agent
+version: "1.0"
+verified_against: "2026-09-07"
+family: synthetic-test-target
+fidelity: native_topology
+
+retrieval:
+  autonomous_search: weak
+  tools: [imaginary_index]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: absent }
+  run_tests: { level: absent }
+  git_history: { level: conditional, note: "only shallow history is available" }
+  git_write: { level: absent }
+  network: { level: absent }
+  package_install: { level: absent }
+  mcp: { level: absent }
+  subagents: { level: absent }
+  planning_mode: { level: absent }
+  multi_turn: { level: supported }
+  vision: { level: absent }
+  long_context: { level: supported }
+
+autonomy:
+  default: low
+  configurable: false
+  permission_model: none
+
+budget:
+  max_context_tokens: 64000
+  artifact_share: 0.15
+
+output:
+  artifacts:
+    # Deliberately unlike every shipped profile: reversed ordering, a templated
+    # directory, and sections split across files in a combination nothing else uses.
+    #
+    # It is nevertheless COMPLETE. Until the P1.4 hardening pass it omitted `scope`,
+    # `non_goals`, `verification`, `acceptance` and `advisory`, so the reference example
+    # of "adding a target is data, not code" silently deleted five classes of the
+    # author's own content. FORGE-C102 now refuses that, and this fixture demonstrates
+    # the supported shape: unusual, but lossless.
+    - path: "synthetic/{task_slug}/brief.md"
+      sections:
+        - deliverables
+        - objective
+        - constraints
+        - goals
+        - acceptance
+        - non_goals
+        - scope
+    - path: "synthetic/{task_slug}/notes.md"
+      sections:
+        - capability_notes
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - advisory
+        - untrusted_appendix
+  path_vars: [task_slug]
+
+limits:
+  known_gaps: ["Exists only to prove the extension contract."]
+  known_failure_modes: []

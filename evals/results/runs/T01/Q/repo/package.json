@@ -1,0 +1,9 @@
+{
+  "name": "thesis-fixture",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/",
+    "start": "node src/api/server.js"
+  }
+}

@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: #0a0c10;
+  color: #e6e9f0;
+  font-feature-settings: "cv11", "ss01";
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a475c transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #3a475c;
+  border-radius: 4px;
+}
+
+.prose-forge pre {
+  background: #10141b;
+  border: 1px solid #273142;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.prose-forge code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.prose-forge p {
+  margin: 0 0 10px 0;
+  line-height: 1.65;
+}
+
+.prose-forge ul {
+  margin: 0 0 10px 0;
+  padding-left: 20px;
+  list-style: disc;
+  line-height: 1.65;
+}

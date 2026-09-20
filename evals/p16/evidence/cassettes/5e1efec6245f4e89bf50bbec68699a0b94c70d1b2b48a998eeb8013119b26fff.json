@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "key": "sha256:5e1efec6245f4e89bf50bbec68699a0b94c70d1b2b48a998eeb8013119b26fff",
+  "boundaryId": "intent.extract",
+  "boundaryVersion": "1",
+  "model": "kimi-k3",
+  "responseText": "{\"objective\":{\"statement\":\"Redesign the empty dashboard state in web/empty-state.js so new users know what to do next.\",\"kind\":\"design\",\"success_definition\":\"The empty dashboard state in web/empty-state.js clearly tells new users what to do next, the role=status accessibility contract is preserved so the existing a11y test passes, web/tokens.json remains byte-identical, and no new dependencies are added.\",\"derived_from\":\"s1\"},\"goals\":[{\"id\":\"g1\",\"statement\":\"Redesign the empty dashboard state in web/empty-state.js so that new users know what to do next.\",\"priority\":\"must\",\"acceptance\":[\"A new user viewing the empty dashboard state can identify what to do next.\"],\"derived_from\":\"s1\"},{\"id\":\"g2\",\"statement\":\"Preserve the role=status accessibility contract in the empty state.\",\"priority\":\"must\",\"acceptance\":[\"The existing a11y test passes.\"],\"derived_from\":\"s1\"},{\"id\":\"g3\",\"statement\":\"Leave web/tokens.json byte-identical and add no new dependencies.\",\"priority\":\"must\",\"acceptance\":[\"web/tokens.json is byte-identical before and after the change.\",\"No new dependencies are introduced.\"],\"derived_from\":\"s1\"}],\"constraints\":[{\"id\":\"c1\",\"kind\":\"scope\",\"hardness\":\"hard\",\"statement\":\"web/tokens.json is frozen and must stay byte-identical.\",\"derived_from\":\"s1\"},{\"id\":\"c2\",\"kind\":\"architectural\",\"hardness\":\"hard\",\"statement\":\"No new dependencies may be added.\",\"derived_from\":\"s1\"},{\"id\":\"c3\",\"kind\":\"behavioral",
+  "recordedAt": "2026-09-13T14:19:01.400Z"
+}

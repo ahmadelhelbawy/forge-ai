@@ -1,0 +1,83 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Add pagination to the results list",
+    "kind": "feature",
+    "success_definition": "The results list pages through large result sets without loading everything",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Paginate the results list",
+      "priority": "must",
+      "acceptance": ["The list requests one page at a time"],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [],
+  "non_goals": [],
+  "scope": {
+    "include": ["src/results/**"],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": ["fs_read", "fs_write"],
+  "context_refs": [
+    {
+      "id": "ctx1",
+      "uri": "forge://repo/src/results/list.ts",
+      "role": "definition",
+      "trust": "semi_trusted",
+      "justifies": ["g1"],
+      "content_hash": null
+    },
+    {
+      "id": "ctx2",
+      "uri": "forge://repo/README.md",
+      "role": "background",
+      "trust": "semi_trusted",
+      "justifies": [],
+      "content_hash": null
+    },
+    {
+      "id": "ctx3",
+      "uri": "forge://repo/docs/changelog.md",
+      "role": "background",
+      "trust": "semi_trusted",
+      "justifies": [],
+      "content_hash": null
+    },
+    {
+      "id": "ctx4",
+      "uri": "forge://repo/src/unrelated/legacy.ts",
+      "role": "background",
+      "trust": "semi_trusted",
+      "justifies": ["g9"],
+      "content_hash": null
+    }
+  ],
+  "assumptions": [],
+  "open_questions": [],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "pnpm test src/results",
+      "expected": "exit 0",
+      "satisfies": ["g1"],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Paginated results list",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": { "level": "low", "factors": [] }
+}

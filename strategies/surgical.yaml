@@ -1,0 +1,45 @@
+# surgical — minimal, tightly-bounded change (FR-031).
+id: surgical
+version: 1
+description: >-
+  Fix the defect with the smallest change that holds: few files, no new
+  dependencies, every ambiguity asked. For bugs with a known blast radius.
+overlay_template:
+  added_constraints:
+    - kind: scope
+      hardness: hard
+      statement: "Change the minimum number of lines that fixes the defect"
+    - kind: process
+      hardness: hard
+      statement: "Do not introduce new dependencies or files"
+  added_verification: []
+  autonomy:
+    decision_authority: low
+    ask_threshold: any_ambiguity
+  change_budget:
+    max_files: 3
+  verification_intensity: standard
+  context_policy: minimal
+  exploration:
+    challenge_architecture: false
+    require_alternatives: 0
+parameters:
+  max_files:
+    type: int
+    min: 1
+    max: 5
+    derive: from_blast_radius
+  budget_tokens:
+    type: int
+    min: 2000
+    max: 12000
+    derive: from_scope_size
+fit_rules:
+  - when: { risk_level: [medium, high, critical] }
+    weight: 2
+  - when: { hard_constraint_kinds: [architectural] }
+    weight: 3
+  - when: { blast_radius: [file, module] }
+    weight: 2
+  - when: { objective_kind: [debug, refactor] }
+    weight: 1

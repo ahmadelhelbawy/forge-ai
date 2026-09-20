@@ -1,0 +1,179 @@
+{
+  "mapping": "P=forge Q=raw (seed 20261201, uniform 8/8)",
+  "tasks": {
+    "P16-T1": {
+      "forge": {
+        "goals": "3/3",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 3,
+        "m6": 3
+      },
+      "raw": {
+        "goals": "refusal-stand-down",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1,
+        "m1": 0,
+        "m6": 0
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "raw-win (M1 tie-break)"
+    },
+    "P16-T2": {
+      "forge": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 2
+      },
+      "raw": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 2
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    },
+    "P16-T3": {
+      "forge": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 2,
+        "m6": 3
+      },
+      "raw": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 2,
+        "m6": 3
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    },
+    "P16-T4": {
+      "forge": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 2,
+        "m6": 2
+      },
+      "raw": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 2,
+        "m6": 2
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    },
+    "P16-T5": {
+      "forge": "ARM FAILED (extraction, no package)",
+      "raw": {
+        "goals": "2/3",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1,
+        "m1": 2,
+        "m6": 3
+      },
+      "F_forge": null,
+      "F_raw": 0,
+      "verdict": "raw-win (mechanical; non-substantive \u2014 forge arm absent)"
+    },
+    "P16-T6": {
+      "forge": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 2
+      },
+      "raw": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 2
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    },
+    "P16-T7": {
+      "forge": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 3
+      },
+      "raw": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 3
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    },
+    "P16-T8": {
+      "forge": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 3
+      },
+      "raw": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0,
+        "m1": 1,
+        "m6": 3
+      },
+      "F_forge": 0,
+      "F_raw": 0,
+      "verdict": "tie"
+    }
+  },
+  "wins": {
+    "forge": 0,
+    "raw": 2,
+    "ties": 6
+  },
+  "fault_losses": 0,
+  "extraction_floor": {
+    "missed_constraints": 3,
+    "total": 24,
+    "pct": 12.5,
+    "triggered": false
+  },
+  "verdict": "FAIL"
+}

@@ -1,0 +1,67 @@
+id: openai-codex
+display_name: Codex
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: openai-agentic
+# native_topology until section overrides land in P6 (INV-014).
+fidelity: native_topology
+
+retrieval:
+  autonomous_search: strong
+  tools: [grep, read, shell]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: supported }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: supported }
+  network: { level: conditional, note: "sandbox network access is often disabled" }
+  package_install: { level: conditional, note: "depends on sandbox network access" }
+  mcp: { level: supported }
+  subagents: { level: absent }
+  planning_mode: { level: conditional }
+  multi_turn: { level: supported }
+  vision: { level: conditional }
+  long_context: { level: supported }
+
+autonomy:
+  default: high
+  configurable: true
+  permission_model: sandbox-policy
+
+budget:
+  max_context_tokens: 192000
+  artifact_share: 0.08
+
+output:
+  artifacts:
+    - path: "AGENTS.md"
+      sections:
+        - project_conventions
+        - capability_notes
+    - path: "TASK.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - stop_conditions
+        - deliverables
+        - advisory
+        - untrusted_appendix
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "Idiomatic stop-condition phrasing awaits section overrides (P6)."
+  known_failure_modes:
+    - "continues past an ambiguity rather than asking"

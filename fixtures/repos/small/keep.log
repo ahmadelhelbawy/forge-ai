@@ -1,0 +1,1 @@
+kept by negation: the parent .gitignore ignores *.log but re-includes this file

@@ -1,0 +1,73 @@
+id: kiro
+display_name: Kiro
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: spec-driven-ide
+fidelity: native_topology
+
+retrieval:
+  # Weak rather than strong: it works from steering files and an open workspace rather
+  # than searching agentically, so references are summarised rather than left as bare
+  # pointers.
+  autonomous_search: weak
+  tools: [workspace_index, steering_files]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: conditional, note: "command execution depends on workspace trust" }
+  run_tests: { level: conditional, note: "runs only when a task explicitly invokes them" }
+  git_history: { level: conditional }
+  git_write: { level: conditional }
+  network: { level: conditional }
+  package_install: { level: conditional }
+  mcp: { level: conditional }
+  subagents: { level: absent }
+  planning_mode: { level: supported }
+  multi_turn: { level: supported }
+  vision: { level: absent }
+  long_context: { level: supported }
+
+autonomy:
+  default: medium
+  configurable: true
+  permission_model: workspace-trust
+
+budget:
+  max_context_tokens: 128000
+  artifact_share: 0.1
+
+output:
+  # The three-file spec topology, entirely from data. This is the case that proves
+  # multi-file targets need no renderer code (AP-R1, AC-017).
+  artifacts:
+    - path: ".kiro/specs/{task_slug}/requirements.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - advisory
+    - path: ".kiro/specs/{task_slug}/design.md"
+      sections:
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - capability_notes
+        - untrusted_appendix
+    - path: ".kiro/specs/{task_slug}/tasks.md"
+      sections:
+        - task_checklist
+        - verification
+        - stop_conditions
+        - deliverables
+  path_vars: [task_slug]
+
+limits:
+  known_gaps:
+    - "Acceptance criteria are not rephrased into EARS form; that is a content transformation the generic emitters do not perform."
+  known_failure_modes:
+    - "treats the spec files as the source of truth once written, so a stale spec silently misleads"

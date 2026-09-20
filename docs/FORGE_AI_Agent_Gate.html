@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FORGE — AI Agent Architecture Gate</title>
+<style>
+  :root{
+    --bg:#070b12;
+    --panel:#0d1420;
+    --panel2:#111b2a;
+    --line:#24344b;
+    --text:#eef4ff;
+    --muted:#9fb0c7;
+    --accent:#8bb7ff;
+    --accent2:#a8f0d0;
+    --warn:#ffd479;
+    --danger:#ff8d8d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#02050a;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  body{padding:20px}
+  .page{
+    width:1120px;
+    min-height:790px;
+    margin:0 auto 22px;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(90,130,255,.08), transparent 25%),
+      radial-gradient(circle at 88% 18%, rgba(80,230,190,.05), transparent 18%),
+      var(--bg);
+    border:1px solid #172338;
+    border-radius:18px;
+    box-shadow:0 24px 70px rgba(0,0,0,.35);
+    padding:34px 38px;
+    position:relative;
+    overflow:hidden;
+  }
+  .stars:before,.stars:after{
+    content:"";
+    position:absolute;inset:0;pointer-events:none;opacity:.14;
+    background-image:
+      radial-gradient(#fff 0.7px, transparent 0.9px),
+      radial-gradient(#9bc1ff 0.6px, transparent 0.8px);
+    background-size:44px 44px, 71px 71px;
+    background-position:0 0, 21px 13px;
+  }
+  .stars:after{opacity:.06;transform:scale(1.25)}
+  .content{position:relative;z-index:1}
+  h1{font-size:34px;line-height:1.05;margin:0 0 8px;letter-spacing:-.02em}
+  h2{font-size:18px;margin:0 0 12px;color:#dce8ff}
+  h3{font-size:14px;text-transform:uppercase;letter-spacing:.09em;color:var(--accent);margin:0 0 10px}
+  p{margin:0;color:var(--muted);line-height:1.52;font-size:14px}
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent2);font-weight:700;margin-bottom:12px}
+  .subtitle{font-size:15px;color:#bdcbe0;max-width:870px}
+  .rule{height:1px;background:linear-gradient(90deg,var(--accent),transparent);margin:22px 0}
+  .grid2{display:grid;grid-template-columns:1.08fr .92fr;gap:18px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{
+    background:linear-gradient(180deg,rgba(18,28,44,.94),rgba(11,18,29,.94));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px 17px;
+  }
+  .card strong{color:#fff}
+  .mini{font-size:12px;color:#8294ad}
+  .stack{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{
+    border:1px solid #2a3e5b;
+    background:#0b1421;
+    color:#cfe0fa;
+    padding:6px 9px;
+    border-radius:999px;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .pill.green{border-color:#235a4c;color:#b8f2dc}
+  .pill.gold{border-color:#62522a;color:#ffe6a2}
+  .pill.red{border-color:#65333b;color:#ffb6bd}
+  ul{margin:6px 0 0 18px;padding:0}
+  li{font-size:13px;line-height:1.45;color:#b8c7da;margin:5px 0}
+  .quote{
+    font-size:19px;line-height:1.4;color:#edf4ff;
+    border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin:0;
+  }
+  .authority{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+  .authority div{background:#0b1320;border:1px solid #22324a;border-radius:10px;padding:10px;text-align:center}
+  .authority b{display:block;font-size:12px;color:#fff}
+  .authority span{font-size:10px;color:#7f91aa}
+  .gate{
+    background:linear-gradient(90deg,rgba(91,139,255,.12),rgba(78,224,185,.07));
+    border:1px solid #2c4568;border-radius:14px;padding:15px 16px
+  }
+  .check{display:grid;grid-template-columns:1fr 1fr;gap:7px 18px;margin-top:8px}
+  .check div{font-size:12.5px;color:#c1cde0}
+  .check div:before{content:"✓";color:var(--accent2);font-weight:800;margin-right:8px}
+  .footer{
+    position:absolute;left:38px;right:38px;bottom:18px;
+    display:flex;justify-content:space-between;color:#62748d;font-size:10px;
+  }
+  .label{font-size:10px;text-transform:uppercase;letter-spacing:.11em;color:#72849e}
+  .bigmetric{font-size:26px;font-weight:750;color:#fff;letter-spacing:-.02em}
+  .diagram-title{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+  .arch-note{max-width:430px;text-align:right;font-size:11px;color:#8090a7}
+  svg{width:100%;height:650px;display:block}
+  .legend{position:absolute;right:38px;bottom:20px;display:flex;gap:12px;font-size:10px;color:#7f91a8}
+  .legend span:before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+  .l-core:before{background:#6fa8ff}.l-oss:before{background:#61d7b3}.l-data:before{background:#e5ba66}.l-later:before{background:#8f7ac9}
+  @media print{
+    body{padding:0;background:#fff}
+    .page{margin:0;border:none;border-radius:0;box-shadow:none;page-break-after:always;width:100%;min-height:100vh}
+    .page:last-child{page-break-after:auto}
+  }
+</style>
+</head>
+<body>
+
+<section class="page stars">
+  <div class="content">
+    <div class="kicker">FORGE — Architecture & Specification Gate</div>
+    <h1>AI Prompt Specialist + Intent & Context Compiler</h1>
+    <p class="subtitle">
+      A reusable reference for understanding, observing, extending and building AI agents.
+      FORGE is not “an LLM with a textbox.” The model is the reasoning engine; FORGE is the system around it:
+      state, context, compiler logic, target knowledge, provenance, evaluation, memory and UX.
+    </p>
+
+    <div class="rule"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Product Contract</h3>
+        <p class="quote">Human intent → structured understanding → justified context → target-aware prompt artifact → iterative refinement.</p>
+        <ul>
+          <li>Accept a one-line task, a messy idea dump, or a long professional specification.</li>
+          <li>Create, improve, critique, revise, compare, merge and restore prompts conversationally.</li>
+          <li>Adapt output to the selected target: Claude Code, Codex/GPT, OpenCode, Kiro, Generic, future agents.</li>
+          <li>Prompt length is task-dependent. Optimize for effectiveness, fidelity, structure, clarity and token efficiency.</li>
+          <li>Execution of downstream coding agents is outside FORGE; FORGE prepares excellent instructions/context for them.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Non-Negotiable Core</h3>
+        <div class="stack">
+          <span class="pill green">Task IR</span>
+          <span class="pill green">Deterministic Compiler</span>
+          <span class="pill green">Target Profiles</span>
+          <span class="pill green">Provenance</span>
+          <span class="pill green">Trust Boundaries</span>
+          <span class="pill green">Context Discipline</span>
+          <span class="pill green">Strategies</span>
+          <span class="pill green">Diagnostics</span>
+        </div>
+        <ul>
+          <li>LLMs may reason and generate, but deterministic invariants remain code-owned.</li>
+          <li>Provenance is assigned by FORGE, never trusted because a model claims it.</li>
+          <li>Repository/external context never silently becomes authoritative user instruction.</li>
+          <li>Semantic artifacts remain separate from volatile run metadata.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="grid3">
+      <div class="card">
+        <div class="label">Agent Runtime</div>
+        <div class="bigmetric">LangGraph.js</div>
+        <p>Stateful conversational workflow, interrupts, human-in-the-loop, tool routing and resumable agent state.</p>
+      </div>
+      <div class="card">
+        <div class="label">Model / Streaming</div>
+        <div class="bigmetric">Vercel AI SDK</div>
+        <p>Providers, streaming, structured outputs, model routing and modern browser chat transport.</p>
+      </div>
+      <div class="card">
+        <div class="label">Knowledge / RAG</div>
+        <div class="bigmetric">Selective</div>
+        <p>LangChain loaders/retrievers only where justified; lexical/structured retrieval first, vector search later if evidence demands it.</p>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Reference Technology Stack</h3>
+        <div class="stack">
+          <span class="pill">TypeScript</span>
+          <span class="pill">Node 22</span>
+          <span class="pill">Next.js</span>
+          <span class="pill">React</span>
+          <span class="pill">Tailwind</span>
+          <span class="pill">shadcn / Radix</span>
+          <span class="pill">AI Elements</span>
+          <span class="pill">CodeMirror / Monaco</span>
+          <span class="pill">SQLite</span>
+          <span class="pill">Promptfoo</span>
+          <span class="pill">Langfuse</span>
+          <span class="pill gold">DSPy / GEPA later</span>
+        </div>
+        <p style="margin-top:10px" class="mini">
+          Rule: use OSS to solve generic infrastructure; keep FORGE-specific intelligence—IR, compiler, provenance, trust, target adaptation—owned by FORGE.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Authority Chain</h3>
+        <p class="mini">Every agent working on FORGE must respect this order.</p>
+        <div class="authority">
+          <div><b>intent.md</b><span>WHY</span></div>
+          <div><b>spec.md</b><span>WHAT</span></div>
+          <div><b>architecture.md</b><span>HOW</span></div>
+          <div><b>plan.md</b><span>ORDER</span></div>
+          <div><b>CLAUDE.md</b><span>WORKFLOW</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:14px"></div>
+
+    <div class="gate">
+      <h3>Agent / AI Tool Build Gate</h3>
+      <p class="mini">Before building any new AI agent, answer these. If the answers are vague, architecture is not ready.</p>
+      <div class="check">
+        <div>What is deterministic and what belongs to the LLM?</div>
+        <div>What is the agent state and who owns it?</div>
+        <div>What tools can the agent call, and with what permissions?</div>
+        <div>What context is authoritative, semi-trusted or untrusted?</div>
+        <div>How are prompts/artifacts versioned and restored?</div>
+        <div>How do we retrieve context without dumping everything?</div>
+        <div>How is behavior evaluated beyond mocked tests?</div>
+        <div>What is the smallest real user acceptance test?</div>
+        <div>What happens when the model/provider changes?</div>
+        <div>What technology can be omitted to keep the system shippable?</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>FORGE Gate • Page 1 / 2</span>
+    <span>Principle: the strongest architecture we can realistically ship.</span>
+  </div>
+</section>
+
+<section class="page stars">
+  <div class="content">
+    <div class="diagram-title">
+      <div>
+        <div class="kicker">FORGE Reference Architecture</div>
+        <h1 style="font-size:29px">V2 — Full System Diagram</h1>
+      </div>
+      <div class="arch-note">
+        Core rule: frameworks orchestrate FORGE; they do not replace its IR, compiler, provenance, trust model or target intelligence.
+      </div>
+    </div>
+
+    <svg viewBox="0 0 1040 650" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="FORGE full architecture diagram">
+      <defs>
+        <linearGradient id="gCore" x1="0" x2="1"><stop stop-color="#1c365d"/><stop offset="1" stop-color="#17314a"/></linearGradient>
+        <linearGradient id="gOSS" x1="0" x2="1"><stop stop-color="#113c36"/><stop offset="1" stop-color="#183c4c"/></linearGradient>
+        <linearGradient id="gData" x1="0" x2="1"><stop stop-color="#4d3b17"/><stop offset="1" stop-color="#2f3320"/></linearGradient>
+        <linearGradient id="gLater" x1="0" x2="1"><stop stop-color="#31275b"/><stop offset="1" stop-color="#24253e"/></linearGradient>
+        <filter id="shadow"><feDropShadow dx="0" dy="6" stdDeviation="8" flood-opacity=".28"/></filter>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#6f87aa"/>
+        </marker>
+        <style>
+          .box{stroke-width:1.2;rx:12;filter:url(#shadow)}
+          .t1{font:700 15px Inter,Arial;fill:#f3f7ff}
+          .t2{font:500 11px Inter,Arial;fill:#abc0da}
+          .tiny{font:500 9.5px Inter,Arial;fill:#8ea1ba}
+          .ln{stroke:#6f87aa;stroke-width:1.3;fill:none;marker-end:url(#arrow)}
+          .dash{stroke-dasharray:6 5}
+        </style>
+      </defs>
+
+      <!-- USER / UI -->
+      <rect x="310" y="10" width="420" height="66" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="520" y="35" text-anchor="middle" class="t1">FORGE Workspace — Next.js / React</text>
+      <text x="520" y="55" text-anchor="middle" class="t2">Chat • Prompt Studio • Candidates • Diff/Versions • Settings • Attachments</text>
+
+      <path d="M520 76 L520 105" class="ln"/>
+
+      <!-- AI SDK / events -->
+      <rect x="335" y="105" width="370" height="54" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="520" y="128" text-anchor="middle" class="t1">Vercel AI SDK / AI SDK UI</text>
+      <text x="520" y="146" text-anchor="middle" class="t2">providers • streaming • tools • structured events • cancellation/retry</text>
+
+      <path d="M520 159 L520 188" class="ln"/>
+
+      <!-- LangGraph runtime -->
+      <rect x="220" y="188" width="600" height="118" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="520" y="213" text-anchor="middle" class="t1">LANGGRAPH.JS — Stateful Conversational Runtime</text>
+
+      <rect x="238" y="229" width="128" height="58" fill="#0d1d27" stroke="#36546b" rx="8"/>
+      <text x="302" y="250" text-anchor="middle" class="t2">Interpret Action</text>
+      <text x="302" y="268" text-anchor="middle" class="tiny">CREATE / REVISE /</text>
+      <text x="302" y="281" text-anchor="middle" class="tiny">DISCUSS / MERGE</text>
+
+      <rect x="382" y="229" width="128" height="58" fill="#0d1d27" stroke="#36546b" rx="8"/>
+      <text x="446" y="250" text-anchor="middle" class="t2">Prompt Analysis</text>
+      <text x="446" y="268" text-anchor="middle" class="tiny">requirements • gaps</text>
+      <text x="446" y="281" text-anchor="middle" class="tiny">ambiguity • critique</text>
+
+      <rect x="526" y="229" width="128" height="58" fill="#0d1d27" stroke="#36546b" rx="8"/>
+      <text x="590" y="250" text-anchor="middle" class="t2">Generate / Revise</text>
+      <text x="590" y="268" text-anchor="middle" class="tiny">single / candidates</text>
+      <text x="590" y="281" text-anchor="middle" class="tiny">human-in-the-loop</text>
+
+      <rect x="670" y="229" width="128" height="58" fill="#0d1d27" stroke="#36546b" rx="8"/>
+      <text x="734" y="250" text-anchor="middle" class="t2">Verify / Persist</text>
+      <text x="734" y="268" text-anchor="middle" class="tiny">coverage • diagnostics</text>
+      <text x="734" y="281" text-anchor="middle" class="tiny">version • wait</text>
+
+      <path d="M520 306 L520 340" class="ln"/>
+
+      <!-- FORGE CORE -->
+      <rect x="150" y="340" width="740" height="158" fill="url(#gCore)" stroke="#6fa8ff" class="box"/>
+      <text x="520" y="365" text-anchor="middle" class="t1">FORGE CORE — Differentiated Intelligence</text>
+
+      <rect x="170" y="384" width="132" height="86" fill="#10233b" stroke="#385f94" rx="8"/>
+      <text x="236" y="405" text-anchor="middle" class="t2">Task IR</text>
+      <text x="236" y="422" text-anchor="middle" class="tiny">goals • constraints</text>
+      <text x="236" y="436" text-anchor="middle" class="tiny">scope • assumptions</text>
+      <text x="236" y="450" text-anchor="middle" class="tiny">verification • non-goals</text>
+
+      <rect x="316" y="384" width="132" height="86" fill="#10233b" stroke="#385f94" rx="8"/>
+      <text x="382" y="405" text-anchor="middle" class="t2">Context Engine</text>
+      <text x="382" y="422" text-anchor="middle" class="tiny">justified retrieval</text>
+      <text x="382" y="436" text-anchor="middle" class="tiny">WorkspaceGuard</text>
+      <text x="382" y="450" text-anchor="middle" class="tiny">trust + provenance</text>
+
+      <rect x="462" y="384" width="132" height="86" fill="#10233b" stroke="#385f94" rx="8"/>
+      <text x="528" y="405" text-anchor="middle" class="t2">Strategy</text>
+      <text x="528" y="422" text-anchor="middle" class="tiny">bounded overlays</text>
+      <text x="528" y="436" text-anchor="middle" class="tiny">candidate modes</text>
+      <text x="528" y="450" text-anchor="middle" class="tiny">deterministic fit</text>
+
+      <rect x="608" y="384" width="132" height="86" fill="#10233b" stroke="#385f94" rx="8"/>
+      <text x="674" y="405" text-anchor="middle" class="t2">Compiler</text>
+      <text x="674" y="422" text-anchor="middle" class="tiny">legalize • budget</text>
+      <text x="674" y="436" text-anchor="middle" class="tiny">render • trace</text>
+      <text x="674" y="450" text-anchor="middle" class="tiny">target-native output</text>
+
+      <rect x="754" y="384" width="116" height="86" fill="#10233b" stroke="#385f94" rx="8"/>
+      <text x="812" y="405" text-anchor="middle" class="t2">Diagnostics</text>
+      <text x="812" y="422" text-anchor="middle" class="tiny">coverage • safety</text>
+      <text x="812" y="436" text-anchor="middle" class="tiny">trace origin</text>
+      <text x="812" y="450" text-anchor="middle" class="tiny">no fake score</text>
+
+      <!-- left knowledge -->
+      <rect x="20" y="188" width="172" height="118" fill="url(#gData)" stroke="#d4a950" class="box"/>
+      <text x="106" y="212" text-anchor="middle" class="t1">Target Intelligence</text>
+      <text x="106" y="234" text-anchor="middle" class="t2">Claude Code • Codex</text>
+      <text x="106" y="251" text-anchor="middle" class="t2">OpenCode • Kiro • GPT</text>
+      <text x="106" y="272" text-anchor="middle" class="tiny">profiles + curated docs</text>
+      <text x="106" y="287" text-anchor="middle" class="tiny">versioned / updateable</text>
+      <path d="M192 247 L220 247" class="ln"/>
+
+      <rect x="20" y="340" width="106" height="158" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="73" y="365" text-anchor="middle" class="t1">Retrieval</text>
+      <text x="73" y="389" text-anchor="middle" class="tiny">LangChain.js</text>
+      <text x="73" y="407" text-anchor="middle" class="tiny">loaders</text>
+      <text x="73" y="423" text-anchor="middle" class="tiny">splitters</text>
+      <text x="73" y="439" text-anchor="middle" class="tiny">retrievers</text>
+      <text x="73" y="455" text-anchor="middle" class="tiny">reranking</text>
+      <text x="73" y="477" text-anchor="middle" class="tiny">vector only</text>
+      <text x="73" y="490" text-anchor="middle" class="tiny">when justified</text>
+      <path d="M126 419 L150 419" class="ln"/>
+
+      <!-- right model layer -->
+      <rect x="914" y="188" width="106" height="310" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="967" y="215" text-anchor="middle" class="t1">Models</text>
+      <text x="967" y="240" text-anchor="middle" class="tiny">Claude</text>
+      <text x="967" y="258" text-anchor="middle" class="tiny">GPT</text>
+      <text x="967" y="276" text-anchor="middle" class="tiny">Gemini</text>
+      <text x="967" y="294" text-anchor="middle" class="tiny">Kimi</text>
+      <text x="967" y="312" text-anchor="middle" class="tiny">Qwen</text>
+      <text x="967" y="330" text-anchor="middle" class="tiny">Grok</text>
+      <text x="967" y="348" text-anchor="middle" class="tiny">local/future</text>
+      <line x1="931" x2="1003" y1="370" y2="370" stroke="#36546b"/>
+      <text x="967" y="392" text-anchor="middle" class="tiny">LLM = engine</text>
+      <text x="967" y="410" text-anchor="middle" class="tiny">not architecture</text>
+      <path d="M914 343 L820 343" class="ln"/>
+
+      <!-- persistence -->
+      <rect x="150" y="527" width="250" height="93" fill="url(#gData)" stroke="#d4a950" class="box"/>
+      <text x="275" y="551" text-anchor="middle" class="t1">State / Persistence</text>
+      <text x="275" y="571" text-anchor="middle" class="t2">SQLite + semantic object store</text>
+      <text x="275" y="590" text-anchor="middle" class="tiny">conversations • messages • prompt versions</text>
+      <text x="275" y="605" text-anchor="middle" class="tiny">candidates • attachments • runs • settings</text>
+      <path d="M320 498 L320 527" class="ln"/>
+
+      <!-- evaluation -->
+      <rect x="420" y="527" width="230" height="93" fill="url(#gOSS)" stroke="#4bbd9b" class="box"/>
+      <text x="535" y="551" text-anchor="middle" class="t1">Evaluation / Observability</text>
+      <text x="535" y="571" text-anchor="middle" class="t2">Promptfoo + optional Langfuse</text>
+      <text x="535" y="590" text-anchor="middle" class="tiny">regression • traces • latency • cost</text>
+      <text x="535" y="605" text-anchor="middle" class="tiny">browser E2E • live provider smoke • human acceptance</text>
+      <path d="M535 498 L535 527" class="ln"/>
+
+      <!-- later optimize -->
+      <rect x="670" y="527" width="220" height="93" fill="url(#gLater)" stroke="#8f7ac9" class="box"/>
+      <text x="780" y="551" text-anchor="middle" class="t1">Optimize Mode — Later</text>
+      <text x="780" y="571" text-anchor="middle" class="t2">DSPy / GEPA (offline / explicit)</text>
+      <text x="780" y="590" text-anchor="middle" class="tiny">dataset + metric → evolve candidates → evaluate</text>
+      <text x="780" y="605" text-anchor="middle" class="tiny">never required for normal chat</text>
+      <path d="M730 498 L730 527" class="ln dash"/>
+
+      <!-- core internal arrows -->
+      <path d="M302 427 L316 427" class="ln"/>
+      <path d="M448 427 L462 427" class="ln"/>
+      <path d="M594 427 L608 427" class="ln"/>
+      <path d="M740 427 L754 427" class="ln"/>
+    </svg>
+  </div>
+
+  <div class="legend">
+    <span class="l-core">FORGE-owned core</span>
+    <span class="l-oss">OSS/framework</span>
+    <span class="l-data">state/knowledge</span>
+    <span class="l-later">later/optional</span>
+  </div>
+  <div class="footer">
+    <span>FORGE Gate • Page 2 / 2</span>
+    <span>Build rule: preserve core intelligence; integrate commodity infrastructure.</span>
+  </div>
+</section>
+
+</body>
+</html>

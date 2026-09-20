@@ -1,0 +1,1 @@
+scratch notes; the parent .forgeignore excludes this directory

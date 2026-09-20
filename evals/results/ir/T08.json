@@ -1,0 +1,144 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Evaluate whether to replace the hand-rolled rate limiter in src/middleware/rateLimit.ts with a token-bucket library, comparing at most three candidates on throughput, memory, and API fit, and deliver a written recommendation.",
+    "kind": "analysis",
+    "success_definition": "A written recommendation is delivered that states whether to replace the hand-rolled rate limiter in src/middleware/rateLimit.ts with a token-bucket library, supported by a comparison of at most three candidates on throughput, memory, and API fit, with no code produced.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Determine whether the hand-rolled rate limiter in src/middleware/rateLimit.ts should be replaced with a token-bucket library.",
+      "priority": "must",
+      "acceptance": [
+        "The analysis explicitly concludes whether or not to replace the hand-rolled rate limiter in src/middleware/rateLimit.ts with a token-bucket library."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Compare at most three token-bucket library candidates on throughput, memory, and API fit.",
+      "priority": "must",
+      "acceptance": [
+        "No more than three candidates are compared.",
+        "The comparison addresses throughput, memory, and API fit for each candidate."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Deliver the outcome as a written recommendation, not code.",
+      "priority": "must",
+      "acceptance": [
+        "The deliverable is a written recommendation.",
+        "No code is produced as part of the deliverable."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "At most three token-bucket library candidates may be compared.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "process",
+      "hardness": "hard",
+      "statement": "The deliverable must be a written recommendation, not code.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Writing, modifying, or shipping code; the task explicitly calls for a written recommendation, not code.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "src/middleware/rateLimit.ts (the existing hand-rolled rate limiter under evaluation)",
+      "Comparison of at most three token-bucket library candidates on throughput, memory, and API fit"
+    ],
+    "exclude": [
+      "Code changes or implementation work"
+    ],
+    "blast_radius": "file",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The task does not name specific token-bucket libraries; the evaluator will select at most three reasonable candidates to compare.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "\"API fit\" is interpreted as fit with the existing usage of the hand-rolled rate limiter in src/middleware/rateLimit.ts.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Which specific token-bucket libraries should be considered as candidates for the comparison?",
+      "options": [
+        "The evaluator selects up to three widely used token-bucket libraries",
+        "The requester provides a specific list of candidates"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "review",
+      "spec": "Review the deliverable to confirm it is a written recommendation that states whether to replace the hand-rolled rate limiter in src/middleware/rateLimit.ts with a token-bucket library, and that it contains no code.",
+      "expected": "A written recommendation exists, reaches a clear replace-or-keep conclusion, and includes no code.",
+      "satisfies": [
+        "g1",
+        "g3"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Review the recommendation to confirm it compares at most three token-bucket library candidates and assesses each on throughput, memory, and API fit.",
+      "expected": "No more than three candidates are compared, and each is assessed on throughput, memory, and API fit.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "doc",
+      "description": "A written recommendation on whether to replace the hand-rolled rate limiter in src/middleware/rateLimit.ts with a token-bucket library, based on a comparison of at most three candidates on throughput, memory, and API fit.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "low",
+    "factors": [
+      "The task is analysis-only; it explicitly excludes code changes, so nothing in the running system is modified.",
+      "The evaluation is anchored to a single named file, src/middleware/rateLimit.ts, limiting blast radius."
+    ]
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Fix a credential leak in the staging API: the full database URL, including the password, is logged on every connection retry. Redact secrets in logs, ensure no diagnostic prints a secret, and add a regression test guarding against secrets reaching log output.",
+    "kind": "debug",
+    "success_definition": "Secrets (at minimum the database URL and its password) no longer appear in staging API logs or any diagnostic output, and a regression test exists that fails if a secret ever reaches log output.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Stop the staging API from logging the full database URL (including password) on connection retries by redacting secrets in logs.",
+      "priority": "must",
+      "acceptance": [
+        "Log output on a connection retry contains no database URL or password.",
+        "No diagnostic output prints a secret."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Add a regression test that fails if a secret ever reaches log output.",
+      "priority": "must",
+      "acceptance": [
+        "A test exists that passes when no secret reaches log output and fails when a secret does."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "security",
+      "hardness": "hard",
+      "statement": "Never print a secret in any diagnostic output.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "The staging API logging path that emits the database URL on connection retry.",
+      "Secret redaction in log output.",
+      "A regression test guarding against secrets in log output."
+    ],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The secrets to be redacted include at minimum the database URL and its password component, as stated in the task.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The repository has an existing test setup to which the regression test can be added.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Does 'any diagnostic' cover output channels beyond logs (e.g., error messages, traces, health or debug endpoints), and should redaction cover secrets other than the database URL/password?",
+      "options": [
+        "Redact only the database URL/password in logs as literally stated.",
+        "Apply redaction to all diagnostic surfaces and all known secret values."
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "manual",
+      "spec": "Trigger a database connection retry in the staging API and inspect the resulting logs for the database URL or password.",
+      "expected": "Log output contains no database URL and no password.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "test",
+      "spec": "Run the repository's test suite including the new regression test.",
+      "expected": "The suite passes; the new regression test fails if a secret is made to reach log output.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Redaction of secrets (database URL including password) in staging API log/diagnostic output.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "test",
+      "description": "A regression test that fails if a secret ever reaches log output.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "high",
+    "factors": [
+      "An active credential leak is currently exposing database passwords in staging logs.",
+      "Changes to the logging path affect a security-sensitive surface used by all diagnostics.",
+      "Stale logs already containing the credential may persist outside this fix."
+    ]
+  }
+}

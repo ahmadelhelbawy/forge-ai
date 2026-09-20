@@ -1,0 +1,65 @@
+==> V2-E acceptance: server on 3621, provider "opencode", model "kimi-k3"
+    data dir: <run data directory>
+  ok   provider id resolves against the registry — requested "opencode", known: anthropic, openai, google, xai, opencode-go, openrouter
+     ("opencode" resolved to "opencode-go")
+  ok   provider saved — status 200
+  ok   no credential in the settings response (WS-R16)
+  ok   provider connection test passes — OpenCode Go connected — Kimi K3 (kimi-k3) over chat-completions in 2118ms.
+  ok   conversation created
+     conversation 976171bc-6a42-4bd2-b1ab-b3aa9f0b04c7
+==> creating the base prompt with a real turn
+  ok   the base turn completed
+  ok   it wrote a prompt version — v1
+==> pinning a requirement
+  ok   FORGE proposes a pin candidate from the real prompt
+     pinning: "**Read the full diff before judging.** Read every changed file completely, including the unchanged c"
+  ok   a requirement can be pinned — status 201
+==> generating 3 alternatives from the §9 archetypes (the outstanding gate)
+  ok   candidate generation succeeded — 63s; status 201; {"fromVersion":1,"candidates":[{"id":"bc82f16a-4a22-4b26-83d7-16cc38c508a9","label":"autonomous","text":"You are an autonomous Python pull request reviewer. You own the review end to end: you gather the context, run the verification, decide the verdict, and deliver the finished review without handin
+  ok   ALL THREE requested candidates completed (the outstanding V2-E gate) — 3/3 candidates; diagnostics: none
+==> concurrency evidence
+     candidate-phase wall: 63.1s
+     per-call latencies:   33.0s, 43.1s, 30.8s
+     sequential would be:  106.9s   slowest single: 43.1s
+  ok   the candidate calls genuinely overlapped (wall < sequential sum) — wall 63.1s vs sequential 106.9s
+  ok   the phase took about as long as its slowest single call — wall 63.1s vs slowest 43.1s
+==> candidate contract
+  ok   each alternative names the archetype it came from (ST-R7) — autonomous/archetype, exploratory/archetype, rigorous/archetype
+  ok   each alternative carries the deciding rule (ST-R6)
+  ok   the overlays are pairwise distinct (§11.5) — []
+  ok   a real model returned materially different prompts, not rewordings (FORGE-W007)
+  ok   generating wrote no prompt version (WS-R8)
+  ok   the current prompt is untouched by generation (WS-R8) — v1 → v1
+  ok   every candidate carries Layer 1's verdict, labelled (WS-R28)
+  ok   the pinned requirement survives verbatim in every candidate (WS-R24) — autonomous:present, exploratory:present, rigorous:present
+  ok   no candidate Layer 1 finding names a version (the 2026-09-19 fix) — []
+  ok   generation cost one call per alternative and nothing else (WS-R13) — {"extraction":1,"generation":3,"total":4}
+  ok   the ledger is byte-identical after generating (WS-R27)
+==> comparing two live alternatives
+  ok   the comparison succeeded — {"a":{"ref":"bc82f16a-4a22-4b26-83d7-16cc38c508a9","kind":"candidate","label":"autonomous","text":"You are an autonomous Python pull request reviewer. You own the review end to end: you gather the con
+  ok   it shows content unique to each side — {"shared":2,"uniqueToA":10,"uniqueToB":15}
+  ok   it is deterministic, not judged (WS-R28)
+==> promoting one alternative, then merging two
+  ok   promotion succeeded — status 201 {"version":{"v":2,"text":"You are an autonomous Python pull request reviewer. You own the review end to end: you gather the context, run the verification, decide the verdict, and deliver the finished 
+  ok   promotion wrote exactly one new version (WS-R7) — 1 → 2
+  ok   promotion left every earlier version byte-identical (WS-R17)
+  ok   the choice was recorded (ST-R6) — [{"v":2,"promotion":"select","candidateIds":["bc82f16a-4a22-4b26-83d7-16cc38c508a9"],"at":"2026-09-20T09:55:42.811Z"}]
+  ok   merge succeeded — status 201 {"version":{"v":3,"text":"You are an exploratory Python pull request reviewer. You survey the terrain before you judge: understand what the PR does, what it could have done instead, and what that choice means — then deliver a verdict: APPROVE, REQUEST CHANGES, or COMMENT.\n\n## Phase 1 — Read (befor
+  ok   the merge dropped nothing either alternative said (deterministic union) — 0 missing block(s)
+  ok   the merge kept the pinned requirement
+  ok   the merge action is MERGE — MERGE
+  ok   the merge reports its per-source contributions — [{"sourceId":"cca37862-a7f8-4854-b243-555557ecc385","label":"exploratory","blocks":17,"unique":15,"shared":2},{"sourceId":"b9b8b769-b306-4175-8117-70ae4a0ad261","label":"rigorous","blocks":11,"unique":9,"shared":2}]
+  ok   the ledger is still byte-identical after promote+merge (WS-R27)
+==> provider/model metadata truthfulness
+  ok   the conversation reports the provider actually used — opencode-go
+  ok   the conversation reports the model actually used — kimi-k3
+  ok   every candidate call record names the real provider and model, none replayed — 3 records
+  ok   no credential on any surface (WS-R16)
+==> restarting the server on the same data directory
+  ok   candidates, promotions, versions and ledger survive a REAL restart unchanged (WS-R17) — 3 candidates, 2 promotions, v3
+  ok   every candidate's provenance survived the restart (ST-R7)
+==> rebuilding the derivable index from the append-only log (AC-032)
+  ..    index.sqlite not found at the expected path; skipped
+
+V2-E LIVE ACCEPTANCE: PASS
+(data directory kept for inspection: <run data directory>)

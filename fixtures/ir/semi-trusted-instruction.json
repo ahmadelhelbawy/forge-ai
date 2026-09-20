@@ -1,0 +1,67 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Add a rate limiter to the public API surface",
+    "kind": "feature",
+    "success_definition": "Requests beyond the configured rate are rejected",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Reject requests exceeding the configured rate",
+      "priority": "must",
+      "acceptance": ["Excess requests receive a rate-limit response"],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "stylistic",
+      "hardness": "soft",
+      "statement": "Use the middleware registration pattern documented in the contributor guide",
+      "source_ref": "ctx1"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": ["src/api/**"],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": ["fs_read", "fs_write", "run_tests"],
+  "context_refs": [
+    {
+      "id": "ctx1",
+      "uri": "forge://repo/docs/contributing.md",
+      "role": "constraint_source",
+      "trust": "semi_trusted",
+      "justifies": ["c1"],
+      "content_hash": null
+    }
+  ],
+  "assumptions": [],
+  "open_questions": [],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "pnpm test src/api/rate-limit",
+      "expected": "exit 0",
+      "satisfies": ["g1"],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Rate limiting middleware",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": { "level": "low", "factors": [] }
+}

@@ -1,0 +1,56 @@
+node_modules/
+dist/
+.forge/
+*.tsbuildinfo
+.DS_Store
+data/
+demo-output/
+web/.next/
+web/out/
+
+# ── Credentials ───────────────────────────────────────────────────────────
+# Broad on purpose: `.env` alone did not match `web/.env.local`, which a
+# `git add -A` would therefore have committed.
+.env
+.env.*
+*.env.local
+
+# Live-provider smoke credentials. Never committed.
+.env.smoke.local
+
+# ...but the checked-in TEMPLATE is not a credential.
+!*.env.example
+!**/.env.example
+
+# The secret-detection corpus is SYNTHETIC and the security tests need it on
+# disk (SC-R5, AC-014). Re-included explicitly so the rules above cannot
+# silently drop it from a fresh clone.
+!fixtures/**/.env
+
+# ── Caches and tool scratch ───────────────────────────────────────────────
+.vitest/
+coverage/
+*.log
+
+# Checked-in acceptance evidence is not a transient log.
+!evals/**/*.log
+
+# NOTE on the fixture workspaces: `fixtures/repos/small/` has its OWN
+# .gitignore (`node_modules/`, `*.log`) and that file IS the test input for
+# the ignore-rule matrix (SC-R5, AC-014, tests/security/pathjail.test.ts).
+# A nested .gitignore outranks this one, so `debug.log` and `node_modules/
+# stub/index.js` cannot be re-included by a negation here -- they are tracked
+# via `git add -f` and stay tracked once committed. If they are ever dropped,
+# a fresh clone fails with `readText("debug.log")` reporting "missing"
+# instead of "ignored".
+
+# Agent session-continuation state. Runtime junk, never source.
+.omo/
+
+# Browser-automation scratch. The V2-E acceptance screenshots that plan.md
+# cites as evidence are kept; the console/page dumps around them are not.
+.playwright-mcp/*
+!.playwright-mcp/v2e-*.png
+
+# Acceptance-run data directories (the harness defaults to a temp dir).
+.v2e-acceptance-data/

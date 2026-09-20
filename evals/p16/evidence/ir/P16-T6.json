@@ -1,0 +1,160 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Convert the callback-based file watcher in tools/watch.js to async iteration.",
+    "kind": "refactor",
+    "success_definition": "tools/watch.js uses async iteration instead of callbacks, runs on Node 22 with no compatibility shims, CLI flags and exit codes remain byte-identical to the current behavior, and no watcher library is added.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Convert the callback-based file watcher in tools/watch.js to async iteration.",
+      "priority": "must",
+      "acceptance": [
+        "tools/watch.js no longer uses callback-based file watching",
+        "File events are consumed via async iteration in tools/watch.js"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Keep CLI flags and exit codes byte-identical to the current behavior.",
+      "priority": "must",
+      "acceptance": [
+        "All existing CLI flags are accepted exactly as before the change",
+        "Exit codes are identical to the pre-change behavior for all exit paths"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Target Node 22 only, without compatibility shims.",
+      "priority": "must",
+      "acceptance": [
+        "The converted watcher runs on Node 22",
+        "No compatibility shims are present in the changed code"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "Node 22 only; no compatibility shims may be added.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "behavioral",
+      "hardness": "hard",
+      "statement": "CLI flags and exit codes must stay byte-identical to the current behavior.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not add a watcher library.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Supporting Node versions other than 22.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "tools/watch.js"
+    ],
+    "exclude": [],
+    "blast_radius": "file",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The current tools/watch.js implementation is callback-based as stated, and its watching behavior can be expressed with async iteration using Node 22 built-in facilities.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "\"Byte-identical\" applies to the CLI flag interface and exit codes as stated; the task does not specify requirements for other observable behavior such as stdout/stderr text.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Is there an existing test suite or golden-output fixture for verifying byte-identical CLI flags and exit codes, or should verification be a manual before/after comparison?",
+      "options": [
+        "Existing tests or fixtures cover CLI flags and exit codes",
+        "Verify by manual before/after comparison of CLI behavior"
+      ],
+      "default_assumption_ref": null,
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "review",
+      "spec": "Review the changed tools/watch.js and confirm that file events are consumed via async iteration and that no callback-based watching remains.",
+      "expected": "tools/watch.js uses async iteration for file events with no callback-based watcher remaining.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "manual",
+      "spec": "Run the CLI with each supported flag and exercise each exit path before and after the change, comparing flags accepted and exit codes.",
+      "expected": "CLI flags and exit codes are byte-identical before and after the change.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "Run the converted watcher on Node 22 and inspect the change for compatibility shims and for any added watcher library dependency.",
+      "expected": "Watcher runs on Node 22 with no compatibility shims and no watcher library added.",
+      "satisfies": [
+        "g3"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "tools/watch.js rewritten to use async iteration instead of callback-based file watching.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Byte-identical CLI flags and exit codes requirement makes subtle behavioral regressions (e.g., in error or signal exit paths) unacceptable.",
+      "Converting from callbacks to async iteration can alter event ordering, backpressure, or error-propagation behavior if not done carefully."
+    ]
+  }
+}

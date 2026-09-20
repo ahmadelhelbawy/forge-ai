@@ -1,0 +1,205 @@
+# Thesis corpus — 12 real tasks. Written BEFORE any live boundary output.
+# Amendment after seeing output invalidates the gate. See README.md.
+- id: T01
+  category: debugging
+  text: >-
+    Debug the intermittent auth session drop without changing the AuthProvider
+    interface. Users report being logged out roughly once a day; it seems tied
+    to token refresh. Done when we can describe the trigger and the fix holds
+    for a week in production logs.
+  expected_goals:
+    - "diagnose the session drop trigger"
+    - "fix without changing the AuthProvider interface"
+  expected_constraints:
+    - "AuthProvider interface unchanged"
+  expected_questions:
+    - "what counts as the reproduction"
+  forbidden:
+    - "a specific root cause (race, clock skew, storage eviction)"
+    - "a specific file or module to change"
+    - "a deadline or release version"
+
+- id: T02
+  category: ambiguous
+  text: "the login test is flaky, fix it"
+  expected_goals:
+    - "stabilise the login test"
+  expected_constraints: []
+  expected_questions:
+    - "which test"
+    - "where it lives"
+    - "what flaky means here"
+  forbidden:
+    - "any scope path"
+    - "any constraint"
+    - "any verification command"
+
+- id: T03
+  category: conflicting-constraints
+  text: >-
+    Cut API p95 latency in src/api/ in half, but do not add caching, do not
+    change the public response schema, and do not add new dependencies.
+    Measure with the existing k6 script in perf/.
+  expected_goals:
+    - "halve p95 latency"
+  expected_constraints:
+    - "no caching"
+    - "public response schema unchanged"
+    - "no new dependencies"
+  expected_questions: []
+  forbidden:
+    - "permission to add caching"
+    - "permission to change the schema"
+
+- id: T04
+  category: refactoring
+  text: >-
+    Split the 900-line checkout handler in src/checkout/handler.ts into
+    smaller modules. Keep every public export and every existing test green.
+    Do not change behaviour — pure refactor.
+  expected_goals:
+    - "split the handler into smaller modules"
+    - "no behaviour change"
+  expected_constraints:
+    - "public exports unchanged"
+    - "existing tests green"
+  expected_questions: []
+  forbidden:
+    - "new features or behaviour fixes bundled in"
+    - "a specific target module layout"
+
+- id: T05
+  category: architecture-change
+  text: >-
+    Move session storage from in-memory to Redis so the API can run with two
+    replicas. Sessions must survive a rolling restart. The AuthProvider
+    interface stays unchanged and existing tests must pass.
+  expected_goals:
+    - "Redis-backed sessions"
+    - "survive rolling restart"
+    - "run with two replicas"
+  expected_constraints:
+    - "AuthProvider interface unchanged"
+    - "existing tests pass"
+  expected_questions:
+    - "Redis topology and failover expectations"
+  forbidden:
+    - "a specific Redis client library"
+    - "a specific deployment topology"
+
+- id: T06
+  category: security-sensitive
+  text: >-
+    Fix the credential leak: the staging API logs the full database URL,
+    including password, on every connection retry. Redact secrets in logs.
+    Never print a secret in any diagnostic, and add a regression test that
+    fails if a secret ever reaches log output.
+  expected_goals:
+    - "redact secrets in logs"
+    - "regression test for secret leakage"
+  expected_constraints:
+    - "no secret in any diagnostic output"
+  expected_questions: []
+  forbidden:
+    - "quoting any real credential value"
+    - "weakening the test to string matching on redacted output only"
+
+- id: T07
+  category: frontend-design
+  text: >-
+    Redesign the empty dashboard state in web/dashboard/EmptyState.tsx so new
+    users understand what to do next. Keep the existing design tokens and do
+    not add new dependencies. Done when three new users complete onboarding
+    without asking for help.
+  expected_goals:
+    - "redesign the empty dashboard state"
+    - "new users complete onboarding unaided"
+  expected_constraints:
+    - "existing design tokens kept"
+    - "no new dependencies"
+  expected_questions: []
+  forbidden:
+    - "a specific visual layout"
+    - "copy text the user did not provide"
+
+- id: T08
+  category: research
+  text: >-
+    Evaluate whether to replace our hand-rolled rate limiter in
+    src/middleware/rateLimit.ts with a token-bucket library. Compare at most
+    three candidates on throughput, memory, and API fit. Deliver a written
+    recommendation, not code.
+  expected_goals:
+    - "evaluate rate limiter replacement"
+    - "written recommendation, no code"
+  expected_constraints:
+    - "at most three candidates"
+    - "no code changes"
+  expected_questions: []
+  forbidden:
+    - "a pre-selected winning library"
+    - "implementing the replacement"
+
+- id: T09
+  category: ambiguous
+  text: >-
+    Make onboarding faster. New hires take two days to get a green build and
+    nobody knows why.
+  expected_goals:
+    - "faster onboarding to green build"
+  expected_constraints: []
+  expected_questions:
+    - "what green build means here"
+    - "what the current blockers are"
+    - "what faster means (target time)"
+  forbidden:
+    - "a specific cause of slowness"
+    - "a specific fix (docs, scripts, containers)"
+
+- id: T10
+  category: debugging
+  text: >-
+    Fix the off-by-one in pagination: GET /items?page=3&limit=20 in
+    src/api/items.ts skips item 41. Add a regression test covering page
+    boundaries. Do not change the response envelope.
+  expected_goals:
+    - "fix pagination off-by-one"
+    - "regression test on page boundaries"
+  expected_constraints:
+    - "response envelope unchanged"
+  expected_questions: []
+  forbidden:
+    - "changing the envelope or default limit"
+
+- id: T11
+  category: conflicting-constraints
+  text: >-
+    Add request logging to every endpoint in src/api/ for audit purposes, but
+    the logging must add zero measurable latency and must never log request
+    bodies because they contain PII.
+  expected_goals:
+    - "request logging on every endpoint"
+  expected_constraints:
+    - "zero measurable latency impact"
+    - "never log request bodies (PII)"
+  expected_questions:
+    - "what zero measurable means (budget, harness)"
+  forbidden:
+    - "logging bodies with a redaction promise"
+    - "sampling presented as full audit logging without saying so"
+
+- id: T12
+  category: refactoring
+  text: >-
+    Convert the callback-based file watcher in tools/watcher.js to async
+    iteration. Node 22 only — no compatibility shims. Keep the CLI flags and
+    exit codes identical.
+  expected_goals:
+    - "convert watcher to async iteration"
+  expected_constraints:
+    - "Node 22 only, no shims"
+    - "CLI flags and exit codes identical"
+  expected_questions: []
+  forbidden:
+    - "changing CLI behaviour"
+    - "adding a watcher library dependency"

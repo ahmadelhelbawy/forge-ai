@@ -1,0 +1,48 @@
+# rigorous — correctness over speed: tests, full verification, explicit contracts.
+id: rigorous
+version: 1
+description: >-
+  Prove the change correct: a regression test per changed behavior, full
+  suite verification, explicit contracts over inference. For risky or
+  load-bearing changes.
+overlay_template:
+  added_constraints:
+    - kind: process
+      hardness: hard
+      statement: "Add a regression test for every changed behavior"
+    - kind: process
+      hardness: hard
+      statement: "Verify with the full test suite before finishing"
+    - kind: behavioral
+      hardness: soft
+      statement: "Prefer explicit contracts over inferred behavior"
+  added_verification:
+    - kind: review
+      spec: "Review the complete diff for scope discipline"
+      expected: "no out-of-scope change"
+      satisfies: ["*"]
+  autonomy:
+    decision_authority: medium
+    ask_threshold: blocking_only
+  change_budget:
+    max_files: 8
+  verification_intensity: thorough
+  context_policy: standard
+  exploration:
+    challenge_architecture: false
+    require_alternatives: 0
+parameters:
+  review_passes:
+    type: int
+    min: 1
+    max: 3
+    derive: from_risk
+fit_rules:
+  - when: { risk_level: [high, critical] }
+    weight: 2
+  - when: { verification_kinds: [command, test] }
+    weight: 2
+  - when: { blast_radius: [package, repo] }
+    weight: 2
+  - when: { objective_kind: [feature, migration] }
+    weight: 1

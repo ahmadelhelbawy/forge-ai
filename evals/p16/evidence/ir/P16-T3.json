@@ -1,0 +1,166 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Fix the credential leak where connecting with a bad database URL logs the full URL including the password, by redacting secrets in log output and adding a regression test proving no secret reaches the logs.",
+    "kind": "debug",
+    "success_definition": "Connecting with a bad database URL no longer logs the password; a regression test proves no secret reaches the logs; the log line format is unchanged so existing consumers keep parsing; no new dependencies are introduced; no request bodies are logged anywhere.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Redact secrets in log output so that the password in a bad database URL (and secrets generally) never appear in logs.",
+      "priority": "must",
+      "acceptance": [
+        "Connecting with a bad database URL produces a log line with the password redacted",
+        "No secret value appears in log output"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Add a regression test proving no secret reaches the logs.",
+      "priority": "must",
+      "acceptance": [
+        "A test exists that asserts logged output contains no secret",
+        "The test fails if a secret is written to the logs"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Keep the log line format unchanged so existing consumers keep parsing.",
+      "priority": "must",
+      "acceptance": [
+        "The log line format is identical to before apart from the redaction of the secret",
+        "Existing log consumers can still parse the log lines"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "No new dependencies may be added.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "security",
+      "hardness": "hard",
+      "statement": "Do not log request bodies anywhere.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "Database connection error logging path where the full URL including the password is currently logged",
+      "Redaction of secrets in log output",
+      "Regression test proving no secret reaches the logs"
+    ],
+    "exclude": [
+      "Adding new dependencies",
+      "Changing the log line format",
+      "Logging request bodies"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The exact files/modules to modify are not named in the task; the change is assumed to be confined to the database connection error logging path and its tests.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "\"Secrets\" means at minimum the password in the database URL; whether other secret types elsewhere in log output must also be redacted is unspecified.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "An existing test suite/framework exists to which the regression test can be added, consistent with the no-new-dependencies constraint.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Which files contain the logging call that emits the database URL, and where should the regression test live?",
+      "options": [],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "Should redaction cover only the database URL password, or all secrets in any log output?",
+      "options": [
+        "Only the database URL password",
+        "All secrets in all log output"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "Run the new regression test that connects with a bad database URL and inspects captured log output.",
+      "expected": "The test passes with redaction in place and fails if any secret reaches the logs.",
+      "satisfies": [
+        "g1",
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "manual",
+      "spec": "Connect with a bad database URL and compare the emitted log line against the previous format.",
+      "expected": "The password is redacted and the log line format is otherwise unchanged and still parseable by existing consumers.",
+      "satisfies": [
+        "g1",
+        "g3"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Redaction of secrets in log output so a bad database URL's password is never logged.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "test",
+      "description": "Regression test proving no secret reaches the logs.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Credential leak is a live security issue; incomplete redaction leaves secrets exposed in logs",
+      "Changing the log line format could break existing log consumers",
+      "Redaction logic must not itself introduce new logging of secrets"
+    ]
+  }
+}

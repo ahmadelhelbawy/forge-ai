@@ -1,0 +1,165 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Redesign the empty dashboard state in web/empty-state.js so new users know what to do next.",
+    "kind": "design",
+    "success_definition": "The empty dashboard state in web/empty-state.js clearly tells new users what to do next, the role=status accessibility contract is preserved so the existing a11y test passes, web/tokens.json remains byte-identical, and no new dependencies are added.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Redesign the empty dashboard state in web/empty-state.js so that new users know what to do next.",
+      "priority": "must",
+      "acceptance": [
+        "A new user viewing the empty dashboard state can identify what to do next."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Preserve the role=status accessibility contract in the empty state.",
+      "priority": "must",
+      "acceptance": [
+        "The existing a11y test passes."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Leave web/tokens.json byte-identical and add no new dependencies.",
+      "priority": "must",
+      "acceptance": [
+        "web/tokens.json is byte-identical before and after the change.",
+        "No new dependencies are introduced."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "web/tokens.json is frozen and must stay byte-identical.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "No new dependencies may be added.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "behavioral",
+      "hardness": "hard",
+      "statement": "The role=status accessibility contract must be kept so the existing a11y test passes.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Modifying web/tokens.json in any way.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n2",
+      "statement": "Adding new dependencies to the project.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "web/empty-state.js"
+    ],
+    "exclude": [
+      "web/tokens.json"
+    ],
+    "blast_radius": "file",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The existing a11y test can be run locally to verify the role=status contract is preserved.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The specific visual and copy design of the new empty state is left to the implementer, as long as it makes clear to new users what to do next.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What specific content and design should the redesigned empty state present to new users (e.g., call-to-action copy, links, illustrations)?",
+      "options": [
+        "Implementer chooses a reasonable design that makes the next action clear",
+        "Requester provides specific copy and design direction"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "Run the existing a11y test that covers the empty dashboard state.",
+      "expected": "The a11y test passes, confirming the role=status contract is preserved.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "command",
+      "spec": "Compare a checksum (e.g., sha256) of web/tokens.json before and after the change.",
+      "expected": "The checksums are identical.",
+      "satisfies": [
+        "g3"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "View the redesigned empty dashboard state as a new user would and confirm it clearly communicates what to do next.",
+      "expected": "A new user can identify the next action to take from the empty state.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Modified web/empty-state.js implementing the redesigned empty dashboard state.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "low",
+    "factors": [
+      "Redesign could inadvertently break the role=status accessibility contract and fail the existing a11y test.",
+      "Accidental modification of the frozen web/tokens.json file."
+    ]
+  }
+}

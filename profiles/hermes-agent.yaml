@@ -1,0 +1,66 @@
+id: hermes-agent
+display_name: Hermes Agent
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: model-agnostic-harness
+# `native_topology`, matching spec.md AP-R8. Arity is not fidelity (AP-R6): AGENTS.md at
+# the repository root IS this target's native convention. Revision 2's ">= 2 artifacts"
+# rule forced an under-claim of `compatibility`; see the P1 report and the P1.4 pass.
+fidelity: native_topology
+
+retrieval:
+  autonomous_search: strong
+  tools: [grep, read, shell, browser]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: supported }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: conditional }
+  network: { level: supported }
+  package_install: { level: conditional }
+  mcp: { level: conditional }
+  subagents: { level: absent }
+  planning_mode: { level: absent }
+  multi_turn: { level: supported }
+  vision: { level: supported }
+  long_context: { level: supported }
+
+autonomy:
+  default: high
+  configurable: true
+  permission_model: sandbox-policy
+
+budget:
+  max_context_tokens: 128000
+  artifact_share: 0.1
+
+output:
+  artifacts:
+    - path: "AGENTS.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - stop_conditions
+        - deliverables
+        - capability_notes
+        - advisory
+        - untrusted_appendix
+        - project_conventions
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "SKILL.md emission is deferred, so reusable procedural knowledge is not produced."
+  known_failure_modes: []

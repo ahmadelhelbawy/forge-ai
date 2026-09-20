@@ -1,0 +1,572 @@
+/**
+ * The FORGE-owned turn pipeline (WS-R10, AD-17).
+ *
+ * One turn = resolve the action, then act on it. Nothing writes a prompt
+ * version except this file, and this file writes one only for the four actions
+ * WS-R2 permits — checked here again even though `conversation.generate`
+ * already post-validates it, because a boundary failure must not be the only
+ * thing between a question and a spurious version (WS-R3).
+ *
+ * The pipeline is an async generator over `TurnEvent`. That is the shape
+ * V2-B's SSE stream needs, and it is the same event list the conversation
+ * persists — one mechanism, not two. There is no graph runtime: the
+ * append-only log is the checkpointer (AD-17).
+ *
+ * Transport is a single `complete` seam supplied by the caller, so this module
+ * is exercised with a stand-in model and no network.
+ */
+import { randomUUID } from "node:crypto";
+
+import {
+  DEFAULT_ACTION,
+  writesVersion,
+  type ConversationAction,
+} from "forge/dist/conversation/actions.js";
+import {
+  CONVERSATION_CLASSIFY_ID,
+  CONVERSATION_CLASSIFY_MAX_TOKENS,
+  CONVERSATION_CLASSIFY_VERSION,
+  ClassifyInputSchema,
+  conversationClassifyBoundary,
+  parseClassifyOutput,
+  renderClassifyPrompt,
+  type ClassifyOutput,
+  type ConversationStateSummary,
+} from "forge/dist/conversation/classify.js";
+import {
+  CONVERSATION_GENERATE_ID,
+  CONVERSATION_GENERATE_VERSION,
+  conversationGenerateBoundary,
+  createEnvelopeStreamReader,
+  parseEnvelope,
+} from "forge/dist/conversation/generate.js";
+import type { LedgerCheckResult } from "forge/dist/critic/deterministic/ledger.js";
+import { diagnostic, measureEvidence, type Diagnostic } from "forge/dist/ir/diagnostic.js";
+import { sha256Hex, type ModelCallRecord } from "forge/dist/model/provider.js";
+
+import {
+  addPromptVersion,
+  appendTurnEvent,
+  checkLedger,
+  currentPrompt,
+  ledgerState,
+  recordModelCall,
+  resolvePendingClarification,
+  type Conversation,
+  type PromptVersion,
+} from "../store";
+import type { TurnDelta, TurnEvent, TurnEventBody, TurnStreamItem } from "./events";
+
+/** WS-R13: one classification plus one generation. Declared, not implied. */
+export const TURN_CALL_BUDGET = 2;
+
+/**
+ * What the classifier sees of a long message.
+ *
+ * A paste can be 200k characters; the boundary's input schema caps at 20k.
+ * Choosing which action a message asks for is a job for its opening, not its
+ * entirety, and spending a 200k-token classification call to decide between
+ * ten labels would break the budget WS-R13 declares. The head is deliberate
+ * and bounded, not an accident of a schema limit.
+ */
+export const CLASSIFY_MESSAGE_LIMIT = 20_000;
+
+export const CHAT_MAX_TOKENS = 4000;
+export const CHAT_TEMPERATURE = 0.7;
+
+export interface CompletionRequest {
+  readonly system: string;
+  readonly user: string;
+  readonly maxTokens: number;
+  readonly temperature: number;
+}
+
+export interface CompletionResult {
+  readonly text: string;
+  readonly model: string;
+  readonly latencyMs: number;
+}
+
+export interface TurnDeps {
+  /** Recorded on every call record (WS-R14). */
+  readonly providerId: string;
+  /** The workspace's system + user prompt for the resolved action. */
+  renderGeneration(action: ConversationAction, message: string): { system: string; user: string };
+  complete(request: CompletionRequest): Promise<CompletionResult>;
+  /**
+   * The same call, streamed (WS-R10).
+   *
+   * A generator rather than a callback, so the chunks arrive on the pipeline's
+   * own control flow: the pipeline yields each delta the moment it reads one,
+   * checks for cancellation between chunks, and closes the transport by
+   * returning from the generator. A callback could do none of those three.
+   *
+   * Optional, because not every provider or protocol streams and a turn that
+   * cannot stream must still work. The pipeline falls back to `complete` and
+   * records which happened in `TurnResult.streamed`.
+   */
+  streamComplete?(
+    request: CompletionRequest,
+    signal?: AbortSignal,
+  ): AsyncGenerator<string, CompletionResult>;
+}
+
+export interface TurnOptions {
+  readonly turnId?: string;
+  readonly signal?: AbortSignal;
+  /**
+   * Re-run the message already at the end of the conversation (V2-B retry).
+   *
+   * The message is not appended again and the assistant answer it produced is
+   * dropped, so a regenerated turn reads as one exchange rather than two. The
+   * prompt history is untouched by that drop: versions are immutable and are
+   * never removed (WS-R7), so a regenerated REVISE adds a version exactly as
+   * the first attempt did.
+   */
+  readonly regenerate?: boolean;
+}
+
+export interface TurnResult {
+  readonly turnId: string;
+  readonly action: ConversationAction;
+  readonly reply: string;
+  readonly version: PromptVersion | null;
+  /** True when WS-R4 applied: classification failed and DISCUSS was assumed. */
+  readonly degraded: boolean;
+  /** True when WS-R5 applied: the state could not express the action. */
+  readonly refused: boolean;
+  readonly cancelled: boolean;
+  readonly failed: boolean;
+  /** True when the generation call arrived as tokens rather than in one piece. */
+  readonly streamed: boolean;
+  /** True when this turn re-ran the previous message (WS-R13 retry). */
+  readonly regenerated: boolean;
+  /** The thrown error, preserved so the caller can build a real diagnostic. */
+  readonly error?: unknown;
+  /**
+   * Layer 1's verdict on the version this turn wrote (WS-R25, WS-R29).
+   *
+   * Null when the turn wrote no version or the ledger is empty — which is not
+   * the same as "nothing was dropped", and is why this is nullable rather than
+   * an empty result. Kept separate from `diagnostics` so a caller can never
+   * render a deterministic verdict and a judged one as one list (WS-R28).
+   */
+  readonly preservation: LedgerCheckResult | null;
+  readonly diagnostics: readonly Diagnostic[];
+  readonly events: readonly TurnEvent[];
+}
+
+/**
+ * The ledger was changed while a model call was in flight (WS-R27.4, AC-042).
+ *
+ * Nothing in this pipeline writes to the ledger, so this cannot be reached by
+ * ordinary use — it is a tripwire, and it throws rather than warning because a
+ * ledger a model path can edit is not a guarantee at all. A hard error beats a
+ * plausible wrong answer.
+ */
+export class LedgerTamperedError extends Error {
+  constructor() {
+    super(
+      "The requirement ledger changed during a turn. Only a user action may add, edit, " +
+        "remove or unpin an entry (WS-R27.4); the turn was refused.",
+    );
+    this.name = "LedgerTamperedError";
+  }
+}
+
+/**
+ * What each stage says to the user.
+ *
+ * Written in the user's terms, not FORGE's: "Adapting for target" is
+ * something they chose in the header, and "Verifying result" is the WS-R3
+ * check they benefit from. None of them is a spinner, and none of them can
+ * carry model output (WS-R11).
+ */
+const STAGE_LABELS = {
+  classifying: "Understanding request…",
+  reading_prompt: "Analyzing current prompt…",
+  adapting: "Adapting for target…",
+  generating: "Generating prompt…",
+  verifying: "Verifying result…",
+  saving: "Saving…",
+} as const;
+
+/** A read-only action produces an answer, not a prompt. Say the true thing. */
+const DISCUSSION_GENERATING_LABEL = "Writing your answer…";
+
+/** Thrown to unwind the turn when the caller aborted (WS-R12). */
+class TurnCancelled extends Error {}
+
+export function conversationState(convo: Conversation): ConversationStateSummary {
+  return {
+    hasCurrentPrompt: currentPrompt(convo) !== null,
+    versions: convo.promptVersions.map((p) => p.v).sort((a, b) => a - b),
+    candidateCount: convo.candidates.length,
+    hasPendingClarification: convo.pendingClarification !== null,
+  };
+}
+
+function callRecord(
+  boundaryId: string,
+  boundaryVersion: string,
+  providerId: string,
+  result: CompletionResult,
+  prompt: string,
+): ModelCallRecord {
+  return {
+    boundaryId,
+    boundaryVersion,
+    provider: providerId,
+    model: result.model,
+    promptHash: sha256Hex(prompt),
+    outputHash: sha256Hex(result.text),
+    repairs: 0,
+    latencyMs: result.latencyMs,
+    replayed: false,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Run one turn, emitting every event as it happens.
+ *
+ * The user's message is appended first and is never taken back: a failed or
+ * cancelled turn loses the turn, not the message (WS-R12).
+ */
+export async function* runTurn(
+  convo: Conversation,
+  message: string,
+  deps: TurnDeps,
+  options: TurnOptions = {},
+): AsyncGenerator<TurnStreamItem, TurnResult> {
+  const turnId = options.turnId ?? randomUUID();
+  const regenerated = options.regenerate === true;
+  const diagnostics: Diagnostic[] = [];
+  const emitted: TurnEvent[] = [];
+  /**
+   * WS-R27.4 / AC-042. Taken before anything model-shaped happens and checked
+   * again after every model call and before the turn ends.
+   */
+  const ledgerAtStart = ledgerState(convo);
+
+  const push = (body: TurnEventBody): TurnEvent => {
+    const event = appendTurnEvent(convo, { turnId, ...body });
+    emitted.push(event);
+    return event;
+  };
+
+  const checkCancelled = (): void => {
+    if (options.signal?.aborted) throw new TurnCancelled();
+  };
+
+  const checkLedgerIntact = (): void => {
+    if (ledgerState(convo) !== ledgerAtStart) throw new LedgerTamperedError();
+  };
+
+  const note = (finding: Diagnostic): void => {
+    diagnostics.push(finding);
+    push({ kind: "diagnostic", diagnostic: finding });
+  };
+
+  const result = (over: Partial<TurnResult>): TurnResult => ({
+    turnId,
+    action: DEFAULT_ACTION,
+    reply: "",
+    version: null,
+    degraded: false,
+    refused: false,
+    cancelled: false,
+    failed: false,
+    streamed: false,
+    regenerated,
+    preservation: null,
+    diagnostics,
+    events: emitted,
+    ...over,
+  });
+
+  if (regenerated) {
+    // Drop only the answer being replaced. The user's message stays where it
+    // was, so the retry reads as one exchange; versions are never removed.
+    while (convo.messages.at(-1)?.role === "assistant") convo.messages.pop();
+    yield push({ kind: "turn_started", message, regenerated: true });
+  } else {
+    convo.messages.push({ role: "user", content: message, at: new Date().toISOString() });
+    yield push({ kind: "turn_started", message });
+    yield push({ kind: "message_appended", role: "user" });
+  }
+
+  try {
+    checkCancelled();
+
+    // ── Resolve the action ────────────────────────────────────────────────
+    yield push({ kind: "stage", stage: "classifying", label: STAGE_LABELS.classifying });
+    const state = conversationState(convo);
+
+    let action: ConversationAction = DEFAULT_ACTION;
+    let cited: readonly number[] = [];
+    let degraded = false;
+    let unsupported: readonly string[] = [];
+    let classifyResponse: CompletionResult | null = null;
+    try {
+      const classifyInput = ClassifyInputSchema.parse({
+        message: message.slice(0, CLASSIFY_MESSAGE_LIMIT),
+        state,
+      });
+      const classifyPrompt = renderClassifyPrompt(classifyInput);
+      const response = await deps.complete({
+        system: "You are FORGE's conversation-action classifier.",
+        user: classifyPrompt,
+        maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
+        temperature: 0,
+      });
+      classifyResponse = response;
+      recordModelCall(
+        convo,
+        callRecord(CONVERSATION_CLASSIFY_ID, CONVERSATION_CLASSIFY_VERSION, deps.providerId, response, classifyPrompt),
+      );
+      checkCancelled();
+      checkLedgerIntact();
+      const output: ClassifyOutput = parseClassifyOutput(response.text);
+      action = output.action;
+      cited = output.versions;
+      // The boundary's own post-validators, run where the answer arrives.
+      unsupported = conversationClassifyBoundary.postValidators.flatMap((validate) =>
+        validate(classifyInput, output),
+      );
+    } catch (error) {
+      if (error instanceof TurnCancelled) throw error;
+      // WS-R4: the least destructive action, never "let the model decide".
+      degraded = true;
+      action = DEFAULT_ACTION;
+      cited = [];
+      unsupported = [];
+      note(
+        diagnostic(
+          "FORGE-W001",
+          `Action classification failed (${error instanceof Error ? error.message : String(error)}); the turn was treated as DISCUSS and no prompt version was written.`,
+          [measureEvidence("classification_failures", 1, "calls")],
+        ),
+      );
+    }
+    if (classifyResponse) {
+      yield push({
+        kind: "model_call",
+        boundaryId: CONVERSATION_CLASSIFY_ID,
+        model: classifyResponse.model,
+        latencyMs: classifyResponse.latencyMs,
+      });
+    }
+    yield push({ kind: "action_resolved", action, degraded });
+
+    // ── Refuse what the state cannot express (WS-R5) ──────────────────────
+    if (unsupported.length > 0) {
+      const reason = unsupported.join(" ");
+      note(
+        diagnostic("FORGE-W002", `${action} was refused: ${reason}`, [
+          measureEvidence("addressable_artifacts", state.versions.length + state.candidateCount, "artifacts"),
+        ]),
+      );
+      yield push({ kind: "action_refused", action, reason });
+      const reply = `I can't ${action.toLowerCase()} here. ${reason}`;
+      convo.messages.push({ role: "assistant", content: reply, at: new Date().toISOString() });
+      yield push({ kind: "message_appended", role: "assistant" });
+      yield push({ kind: "turn_completed", action, versionCreated: false });
+      return result({ action, reply, refused: true, degraded });
+    }
+
+    // ── RESTORE is deterministic: move the pointer, spend no model call ────
+    if (action === "RESTORE") {
+      const target = cited[0] as number;
+      convo.currentV = target;
+      yield push({ kind: "current_version_moved", v: target });
+      const reply = `Restored version ${target}. It is the current prompt again; nothing was rewritten.`;
+      convo.messages.push({ role: "assistant", content: reply, at: new Date().toISOString() });
+      yield push({ kind: "message_appended", role: "assistant" });
+      yield push({ kind: "turn_completed", action, versionCreated: false });
+      return result({ action, reply, degraded });
+    }
+
+    if (action === "CLARIFY") {
+      const resolved = resolvePendingClarification(convo, message, turnId);
+      if (resolved) yield push({ kind: "clarification_resolved", question: resolved.question });
+    }
+
+    // ── Read the prompt being worked on, and the target being adapted to ──
+    checkCancelled();
+    yield push({ kind: "stage", stage: "reading_prompt", label: STAGE_LABELS.reading_prompt });
+    if (convo.target && convo.target !== "generic") {
+      yield push({ kind: "stage", stage: "adapting", label: STAGE_LABELS.adapting });
+    }
+
+    // ── Generate ──────────────────────────────────────────────────────────
+    checkCancelled();
+    yield push({
+      kind: "stage",
+      stage: "generating",
+      label: writesVersion(action) ? STAGE_LABELS.generating : DISCUSSION_GENERATING_LABEL,
+    });
+    const rendered = deps.renderGeneration(action, message);
+    const request: CompletionRequest = {
+      system: rendered.system,
+      user: rendered.user,
+      maxTokens: CHAT_MAX_TOKENS,
+      temperature: CHAT_TEMPERATURE,
+    };
+
+    // Streaming is presentation. The deltas below are what the user sees; the
+    // envelope is still read from the accumulated text after the call, so the
+    // artifact never depends on how the network chopped the answer (WS-R10).
+    let response: CompletionResult;
+    let streamed = false;
+    if (deps.streamComplete) {
+      const reader = createEnvelopeStreamReader();
+      const stream = deps.streamComplete(request, options.signal);
+      try {
+        let next = await stream.next();
+        while (!next.done) {
+          for (const delta of reader.push(next.value)) {
+            const item: TurnDelta = {
+              kind: delta.field === "reply" ? "reply_delta" : "prompt_delta",
+              turnId,
+              text: delta.text,
+            };
+            yield item;
+          }
+          // Between chunks is where a cancel can be honoured promptly. The
+          // partial text is simply dropped: nothing has been written yet.
+          checkCancelled();
+          next = await stream.next();
+        }
+        response = next.value;
+      } finally {
+        // Closes the transport whether the turn finished, failed or was
+        // cancelled, so an abandoned stream leaves no open request behind.
+        await stream.return(undefined as never).catch(() => undefined);
+      }
+      streamed = true;
+    } else {
+      response = await deps.complete(request);
+    }
+    recordModelCall(
+      convo,
+      callRecord(
+        CONVERSATION_GENERATE_ID,
+        CONVERSATION_GENERATE_VERSION,
+        deps.providerId,
+        response,
+        `${action}\n${rendered.system}\n${rendered.user}`,
+      ),
+    );
+    yield push({
+      kind: "model_call",
+      boundaryId: CONVERSATION_GENERATE_ID,
+      model: response.model,
+      latencyMs: response.latencyMs,
+    });
+    checkCancelled();
+    checkLedgerIntact();
+
+    // An empty completion is a failure, not an answer. Recording it as a
+    // blank assistant message told the user nothing and looked like success;
+    // failing the turn keeps their message, writes nothing, and puts the
+    // reason on screen (WS-R12, INV-012). Unreadable but NON-empty text is a
+    // different case and still degrades to chat below (FORGE-W003).
+    if (response.text.trim().length === 0) {
+      throw new Error(
+        `The model (${response.model}) returned an empty response, so nothing was written. ` +
+          "Check the model ID and the provider account, then retry.",
+      );
+    }
+
+    yield push({ kind: "stage", stage: "verifying", label: STAGE_LABELS.verifying });
+    const envelope = parseEnvelope(response.text);
+    let reply: string;
+    let proposed: string | null;
+    if (envelope === null) {
+      // INV-012: degradation is never silent. The prose is still useful; a
+      // response FORGE could not read can never become a version.
+      reply = response.text.trim();
+      proposed = null;
+      note(
+        diagnostic(
+          "FORGE-W003",
+          "The response was not a readable FORGE envelope, so it was kept as chat and no prompt version was written.",
+          [measureEvidence("unreadable_responses", 1, "responses")],
+        ),
+      );
+    } else {
+      reply = envelope.reply;
+      proposed = envelope.prompt;
+      const problems = conversationGenerateBoundary.postValidators.flatMap((validate) =>
+        validate({ action, system: rendered.system, user: rendered.user }, envelope),
+      );
+      if (problems.length > 0) {
+        // WS-R3: the label is unverifiable; the effect is not. Blocking the
+        // write is the enforcement, and it is loud (INV-012).
+        proposed = null;
+        note(
+          diagnostic("FORGE-W004", `A prompt write was blocked: ${problems.join(" ")}`, [
+            measureEvidence("blocked_version_writes", 1, "writes"),
+          ]),
+        );
+      }
+    }
+
+    // ── Apply (WS-R2) ─────────────────────────────────────────────────────
+    yield push({ kind: "stage", stage: "saving", label: STAGE_LABELS.saving });
+    let version: PromptVersion | null = null;
+    const before = currentPrompt(convo);
+    if (proposed !== null && proposed !== before && writesVersion(action)) {
+      version = addPromptVersion(convo, proposed, "model", { action, turnId });
+      yield push({ kind: "version_created", v: version.v, action });
+    }
+
+    // ── Layer 1: the requirement ledger (WS-R25, WS-R29) ──────────────────
+    //
+    // Deterministic, model-free, and run on every version that has a
+    // non-empty ledger. The version is NOT withdrawn when a pinned
+    // requirement is missing: versions are immutable and never removed
+    // (WS-R7), and hiding the revision would hide the evidence. What FORGE
+    // owes the user here is to say so, loudly, as an error (INV-012).
+    let preservation: LedgerCheckResult | null = null;
+    if (version !== null && convo.ledger.length > 0) {
+      preservation = checkLedger(convo, version.v);
+      yield push({
+        kind: "preservation_checked",
+        v: version.v,
+        pinned: preservation.findings.length,
+        missing: preservation.diagnostics.length,
+      });
+      for (const finding of preservation.diagnostics) note(finding);
+    }
+    checkLedgerIntact();
+
+    convo.messages.push({ role: "assistant", content: reply, at: new Date().toISOString() });
+    yield push({ kind: "message_appended", role: "assistant" });
+    yield push({ kind: "turn_completed", action, versionCreated: version !== null });
+    return result({ action, reply, version, degraded, streamed, preservation });
+  } catch (error) {
+    // WS-R12: a cancelled turn and a failed turn end in the same place. The
+    // user's message stays; no assistant message and no version are written.
+    if (error instanceof TurnCancelled) {
+      yield push({ kind: "turn_cancelled" });
+      return result({ cancelled: true });
+    }
+    yield push({ kind: "turn_failed", reason: error instanceof Error ? error.message : String(error) });
+    return result({ failed: true, error });
+  }
+}
+
+/** Drain the pipeline. V2-B streams the same events instead of collecting them. */
+export async function executeTurn(
+  convo: Conversation,
+  message: string,
+  deps: TurnDeps,
+  options: TurnOptions = {},
+): Promise<TurnResult> {
+  const iterator = runTurn(convo, message, deps, options);
+  let next = await iterator.next();
+  while (!next.done) next = await iterator.next();
+  return next.value;
+}

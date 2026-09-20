@@ -1,0 +1,142 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Fix the off-by-one pagination bug in src/api/items.ts where GET /items?page=3&limit=20 skips item 41, and add a regression test covering page boundaries, without changing the response envelope.",
+    "kind": "debug",
+    "success_definition": "GET /items?page=3&limit=20 no longer skips item 41, a regression test covering page boundaries exists and passes, and the response envelope is unchanged.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Fix the off-by-one in pagination in src/api/items.ts so that GET /items?page=3&limit=20 does not skip item 41.",
+      "priority": "must",
+      "acceptance": [
+        "GET /items?page=3&limit=20 includes item 41 in its response",
+        "The response envelope is unchanged"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Add a regression test covering page boundaries.",
+      "priority": "must",
+      "acceptance": [
+        "A regression test exists that covers pagination page boundaries, including the page=3&limit=20 case that previously skipped item 41"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "Do not change the response envelope.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Changing the response envelope.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "src/api/items.ts",
+      "regression test for pagination page boundaries (test file location not specified in the task)"
+    ],
+    "exclude": [
+      "response envelope"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "Pages are 1-indexed: with limit=20, page 3 is expected to begin at item 41, and the off-by-one causes item 41 to be skipped.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The regression test will be added within the project's existing test setup; the test framework and file location follow existing project conventions since the task does not specify them.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "A runnable test suite exists so the new regression test can be executed and observed passing.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Where should the regression test live (existing test file vs. new test file)?",
+      "options": [
+        "Add to an existing test file covering items/pagination",
+        "Create a new test file following project conventions"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "Run the project's test suite with the new pagination regression test included.",
+      "expected": "All tests pass, including the boundary regression test; the page=3&limit=20 case returns item 41.",
+      "satisfies": [
+        "g1",
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Compare the response shape of GET /items before and after the change.",
+      "expected": "The response envelope is unchanged.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Corrected pagination logic in src/api/items.ts eliminating the off-by-one that skips item 41 for page=3&limit=20.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "test",
+      "description": "Regression test covering pagination page boundaries, including the page=3&limit=20 case.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "low",
+    "factors": [
+      "Fix is localized to pagination logic in a single named file",
+      "The task explicitly requires a regression test, reducing regression risk",
+      "Correcting the off-by-one changes which items are returned on page boundaries, altering observable API behavior"
+    ]
+  }
+}

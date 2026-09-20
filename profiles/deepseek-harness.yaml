@@ -1,0 +1,63 @@
+id: deepseek-harness
+display_name: DeepSeek Harness
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: plugin-runtime
+fidelity: compatibility
+
+retrieval:
+  autonomous_search: strong
+  tools: [read, shell]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: supported }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: conditional }
+  network: { level: conditional }
+  package_install: { level: conditional }
+  mcp: { level: conditional }
+  subagents: { level: conditional }
+  planning_mode: { level: absent }
+  multi_turn: { level: supported }
+  vision: { level: absent }
+  long_context: { level: supported }
+
+autonomy:
+  default: high
+  configurable: true
+  permission_model: plugin-policy
+
+budget:
+  max_context_tokens: 128000
+  artifact_share: 0.1
+
+output:
+  artifacts:
+    - path: "AGENTS.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - stop_conditions
+        - deliverables
+        - capability_notes
+        - advisory
+        - untrusted_appendix
+        - project_conventions
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "A single portable artifact; no runtime-specific plugin wiring is emitted."
+  known_failure_modes: []

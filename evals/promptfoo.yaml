@@ -1,0 +1,67 @@
+# Boundary regression config (P3, plan.md "evals/promptfoo.yaml").
+#
+# Manual use only: `promptfoo eval --config evals/promptfoo.yaml` requires an
+# API key and NEVER runs in CI (TS-R5). The full 32-task corpus runs through
+# tests/property/eval-corpus.test.ts behind FORGE_LIVE_EVAL=1 instead — same
+# set-containment semantics, no extra tooling. This file keeps a small,
+# fast no-invention regression slice for pre-release boundary checks.
+#
+# Assertion semantics mirror the corpus: expected_* phrases are
+# case-insensitive substrings of some node of that kind; forbidden phrases
+# must appear in no goal/constraint/verification statement.
+description: FORGE intent.extract no-invention regression (manual, needs key)
+
+providers:
+  - id: openai-compatible
+    config:
+      apiBaseUrl: ${FORGE_BASE_URL:-https://api.openai.com/v1}
+      apiKeyEnvar: FORGE_API_KEY
+      model: ${FORGE_MODEL:-gpt-4o-mini}
+      temperature: 0
+      max_tokens: 4000
+
+prompts:
+  - file://../../src/intent/prompt.md
+
+defaultTest:
+  options:
+    provider: openai-compatible
+
+tests:
+  - description: vague task invents nothing (corpus T02 shape)
+    vars:
+      TASK_TEXT: "the login test is flaky, fix it"
+    assert:
+      - type: javascript
+        value: |
+          const draft = JSON.parse(output);
+          const stmts = [...draft.goals, ...draft.constraints].map(n => n.statement).join(' | ');
+          if (/src\/|test\.ts|spec\.ts/i.test(stmts)) throw new Error('invented scope path: ' + stmts);
+          if (draft.constraints.length > 0) throw new Error('invented constraints');
+          if (!draft.open_questions.some(q => q.blocking)) throw new Error('expected a blocking question');
+
+  - description: stated constraints survive verbatim (corpus T03 shape)
+    vars:
+      TASK_TEXT: "Cut API p95 latency in src/api/ in half, but do not add caching and do not change the public response schema."
+    assert:
+      - type: javascript
+        value: |
+          const draft = JSON.parse(output);
+          const stmts = draft.constraints.map(n => n.statement.toLowerCase()).join(' | ');
+          for (const need of ['caching', 'response schema']) {
+            if (!stmts.includes(need)) throw new Error('dropped stated constraint: ' + need);
+          }
+          if (!draft.goals.some(g => g.statement.toLowerCase().includes('latency'))) throw new Error('dropped goal');
+
+  - description: every attributable node cites the issued segment
+    vars:
+      TASK_TEXT: "Fix the flaky login redirect test without changing the AuthProvider interface."
+    assert:
+      - type: javascript
+        value: |
+          const draft = JSON.parse(output);
+          const nodes = [...draft.goals, ...draft.constraints, ...draft.assumptions, ...draft.open_questions, ...draft.verification, ...draft.deliverables, draft.objective, draft.scope];
+          for (const n of nodes) {
+            if (n.derived_from !== 's1') throw new Error('bad citation on ' + (n.id || 'objective/scope'));
+            if ('source_ref' in n) throw new Error('model stated provenance (INV-016)');
+          }

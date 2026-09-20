@@ -1,0 +1,363 @@
+# P3 evaluation corpus extension (TS-R6) — tasks T13–T32.
+#
+# Together with the FROZEN thesis file tasks.yaml (T01–T12, do not amend),
+# this brings the corpus to 32 tasks across the 8 categories of spec.md
+# §17.4 (≥30 required). Each entry records: input text, repository fixture,
+# expected goals/constraints as SET-CONTAINMENT phrases (never string
+# equality), expected open questions, expected pipeline diagnostics, and
+# forbidden outputs (content that must NOT be invented).
+#
+# expectation semantics (see tests/property/eval-corpus.test.ts):
+# - every expected_* phrase must appear (case-insensitive substring) in some
+#   node of that kind; extra nodes are fine
+# - every forbidden phrase must appear in NO goal/constraint/verification
+# - expected_diagnostics names codes the full pipeline should emit
+- id: T13
+  category: debugging
+  text: >-
+    The session cookie is sometimes dropped on Safari after the deploy
+    preview Authenticates fine on Chrome. Done when Safari keeps the session
+    across refresh.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "safari keeps the session"
+  expected_constraints: []
+  expected_questions:
+    - "safari version"
+    - "reproduction"
+  expected_diagnostics: []
+  forbidden:
+    - "a specific root cause"
+    - "any scope path"
+    - "any verification command"
+
+- id: T14
+  category: debugging
+  text: >-
+    Fix the race between token refresh and the logout timer in
+    src/auth/session.ts. The fix must not change the AuthProvider interface,
+    and the existing session tests in src/auth/ must keep passing.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "fix the race"
+  expected_constraints:
+    - "AuthProvider interface unchanged"
+    - "session tests keep passing"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "a deadline"
+
+- id: T15
+  category: architecture-change
+  text: >-
+    Split the auth module into a pure token core plus a transport adapter,
+    keeping every existing import path working through re-exports. No
+    behavior change; the session test suite is the gate.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "split the auth module"
+    - "import paths keep working"
+  expected_constraints:
+    - "no behavior change"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "a new framework"
+    - "a deadline"
+
+- id: T16
+  category: architecture-change
+  text: >-
+    Move session storage behind a SessionStore interface so a Redis backend
+    can be added later. Do it without changing any caller, and without
+    adding the Redis dependency in this change.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "session storage behind an interface"
+  expected_constraints:
+    - "callers unchanged"
+    - "no redis dependency"
+  expected_questions:
+    - "interface shape"
+  expected_diagnostics: []
+  forbidden:
+    - "redis client code"
+    - "a specific file to change"
+
+- id: T17
+  category: architecture-change
+  text: >-
+    Make every auth failure return a typed AuthError instead of null, and
+    update all callers. Callers outside src/auth/ are out of scope for this
+    task.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "typed auth errors"
+    - "update callers"
+  expected_constraints:
+    - "outside src/auth is out of scope"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "changing the AuthProvider interface"
+
+- id: T18
+  category: frontend-design
+  text: >-
+    Redesign the login page to match the new brand: dark background, larger
+    password field, visible caps-lock warning. Keep the existing form
+    validation behavior exactly.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "redesign the login page"
+  expected_constraints:
+    - "validation behavior unchanged"
+  expected_questions:
+    - "brand tokens"
+    - "which page"
+  expected_diagnostics: []
+  forbidden:
+    - "a specific css framework"
+    - "changing validation rules"
+
+- id: T19
+  category: frontend-design
+  text: >-
+    Add an empty-state illustration and copy to the sessions list for users
+    with no active sessions. Do not touch the list rendering itself.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "empty state for the sessions list"
+  expected_constraints:
+    - "list rendering untouched"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "a specific illustration asset"
+
+- id: T20
+  category: frontend-design
+  text: >-
+    The settings form needs better affordances, whatever that takes. Make it
+    feel faster too.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "settings form"
+  expected_constraints: []
+  expected_questions:
+    - "affordances"
+    - "what faster means"
+    - "which form"
+  expected_diagnostics: []
+  forbidden:
+    - "any scope path"
+    - "any constraint"
+    - "a specific component"
+
+- id: T21
+  category: refactoring
+  text: >-
+    Rename `user` to `accountId` across the session module only. Update the
+    session tests. Do not touch the auth provider.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "rename user to accountId"
+  expected_constraints:
+    - "session module only"
+    - "auth provider untouched"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "renaming outside the session module"
+
+- id: T22
+  category: refactoring
+  text: >-
+    Extract the retry logic duplicated in the three API clients into one
+    shared helper with the same backoff behavior. No behavior change.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "shared retry helper"
+  expected_constraints:
+    - "same backoff behavior"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "a new retry library"
+
+- id: T23
+  category: research
+  text: >-
+    Compare the current session storage against signed-cookie sessions for a
+    10k-user deployment: what breaks, what gets simpler, what gets harder.
+    Deliver a writeup, no code changes.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "compare session storage options"
+  expected_constraints:
+    - "no code changes"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "implementing either option"
+
+- id: T24
+  category: research
+  text: >-
+    Survey how the repo currently handles token expiry: which modules touch
+    expiry, what the failure modes are. Read-only; change nothing.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "survey token expiry handling"
+  expected_constraints:
+    - "read-only"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "any code change"
+    - "a fix"
+
+- id: T25
+  category: research
+  text: >-
+    Something is slow somewhere in auth. Look into it and tell me what to do.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "auth performance"
+  expected_constraints: []
+  expected_questions:
+    - "what slow means"
+    - "how measured"
+  expected_diagnostics: []
+  forbidden:
+    - "a specific bottleneck"
+    - "a specific fix"
+    - "any scope path"
+
+- id: T26
+  category: security-sensitive
+  text: >-
+    Rotate the signing secret without invalidating active sessions: support
+    two secrets during a transition window, then drop the old one. Never log
+    either secret.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "rotate the signing secret"
+    - "keep active sessions valid"
+  expected_constraints:
+    - "never log secrets"
+  expected_questions:
+    - "transition window length"
+  expected_diagnostics: []
+  forbidden:
+    - "a real secret value"
+    - "logging secrets"
+
+- id: T27
+  category: security-sensitive
+  text: >-
+    The password-reset token is guessable; replace it with a
+    cryptographically random token with a 15-minute expiry. Invalidate the
+    old token format. Do not change the reset email copy.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "random reset token"
+    - "15-minute expiry"
+  expected_constraints:
+    - "reset email copy unchanged"
+  expected_questions: []
+  expected_diagnostics: []
+  forbidden:
+    - "a real token value"
+    - "md5 or sha1"
+
+- id: T28
+  category: security-sensitive
+  text: >-
+    Make the thing secure. You know, the auth stuff.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "auth security"
+  expected_constraints: []
+  expected_questions:
+    - "which threat"
+    - "which part of auth"
+  expected_diagnostics: []
+  forbidden:
+    - "a specific vulnerability"
+    - "a specific fix"
+    - "disabling any check"
+
+- id: T29
+  category: ambiguous
+  text: >-
+    Clean up the session code.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "session code"
+  expected_constraints: []
+  expected_questions:
+    - "what clean up means"
+    - "which files"
+  expected_diagnostics: []
+  forbidden:
+    - "any scope path"
+    - "deleting code"
+    - "a rewrite"
+
+- id: T30
+  category: ambiguous
+  text: >-
+    The refresh flow should handle the new provider, but keep everything
+    working. Ask me about anything unclear.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "refresh flow"
+    - "new provider"
+  expected_constraints:
+    - "keep everything working"
+  expected_questions:
+    - "which provider"
+    - "what handle means"
+  expected_diagnostics:
+    - "FORGE-C080"
+  forbidden:
+    - "a specific provider"
+    - "removing the old flow"
+
+- id: T31
+  category: conflicting-constraints
+  text: >-
+    Add request logging to every auth path for audit, but never log tokens,
+    user identifiers, or anything that could identify a user. Keep the
+    existing log volume roughly flat.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "request logging for audit"
+  expected_constraints:
+    - "never log tokens"
+    - "never log user identifiers"
+  expected_questions:
+    - "what flat means"
+  expected_diagnostics: []
+  forbidden:
+    - "logging tokens"
+    - "a specific log framework"
+
+- id: T32
+  category: conflicting-constraints
+  text: >-
+    Support both the old and new session format during migration, but the
+    code must not contain any format-detection branching. The migration
+    guide in docs/ decides the rollout order.
+  repository: fixtures/repos/small
+  expected_goals:
+    - "both session formats"
+  expected_constraints:
+    - "no format-detection branching"
+  expected_questions:
+    - "how without branching"
+  expected_diagnostics: []
+  forbidden:
+    - "format-detection branching"

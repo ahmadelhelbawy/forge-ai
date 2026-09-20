@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "key": "sha256:21b61d7c88249b55cb53da0e9629942f74b316f3ebcba443ed938ade35c591b9",
+  "boundaryId": "intent.extract",
+  "boundaryVersion": "1",
+  "model": "kimi-k3",
+  "responseText": "{\n  \"objective\": {\n    \"statement\": \"Add request logging to every endpoint in src/api/ for audit purposes, such that the logging adds zero measurable latency and never logs request bodies, which contain PII.\",\n    \"kind\": \"feature\",\n    \"success_definition\": \"Every endpoint in src/api/ produces audit request logs; the logging adds zero measurable latency to request handling; and no request body content ever appears in the logs.\",\n    \"derived_from\": \"s1\"\n  },\n  \"goals\": [\n    {\n      \"id\": \"g1\",\n      \"statement\": \"Add request logging to every endpoint in src/api/ for audit purposes.\",\n      \"priority\": \"must\",\n      \"acceptance\": [\n        \"A request log entry is produced for every request handled by every endpoint under src/api/.\",\n        \"The log entries serve the stated audit purpose.\"\n      ],\n      \"derived_from\": \"s1\"\n    },\n    {\n      \"id\": \"g2\",\n      \"statement\": \"Ensure the request logging adds zero measurable latency.\",\n      \"priority\": \"must\",\n      \"acceptance\": [\n        \"No measurable latency difference in endpoint request handling is attributable to the logging.\"\n      ],\n      \"derived_from\": \"s1\"\n    },\n    {\n      \"id\": \"g3\",\n      \"statement\": \"Ensure request bodies are never logged, because they contain PII.\",\n      \"priority\": \"must\",\n      \"acceptance\": [\n        \"No request body content appears in any log output, for any endpoint or request type.\"\n      ],\n      \"derived_from\": \"s1\"\n    }\n  ],\n  \"constraints\": [\n    {\n      \"id\": \"c1\",\n      \"kind\": \"performance\",\n      \"hardness\":",
+  "recordedAt": "2026-09-12T09:15:19.838Z"
+}

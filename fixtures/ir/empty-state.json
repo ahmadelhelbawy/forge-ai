@@ -1,0 +1,181 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+
+  "objective": {
+    "statement": "Add an empty state to the search results view for when a query returns nothing",
+    "kind": "feature",
+    "success_definition": "A user who searches for something with no matches sees a clear, actionable empty state instead of a blank panel",
+    "source_ref": "user_input"
+  },
+
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Show a purpose-built empty state when a search returns zero results",
+      "priority": "must",
+      "acceptance": [
+        "A search with no matches renders the empty state rather than an empty list",
+        "The empty state names what was searched for"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Offer the user a next step from the empty state",
+      "priority": "should",
+      "acceptance": [
+        "The empty state offers at least one action, such as clearing filters"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "Do not change the search results data-fetching layer or its public props",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not introduce a new dependency for this",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "stylistic",
+      "hardness": "soft",
+      "statement": "Use the existing spacing and typography tokens rather than literal values",
+      "source_ref": "ctx3"
+    }
+  ],
+
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Redesigning the populated results list",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n2",
+      "statement": "Adding search suggestions or autocomplete",
+      "source_ref": "user_input"
+    }
+  ],
+
+  "scope": {
+    "include": ["src/search/**", "src/components/results/**"],
+    "exclude": ["**/*.snap"],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+
+  "required_capabilities": ["fs_read", "run_tests", "multi_turn", "long_context"],
+
+  "context_refs": [
+    {
+      "id": "ctx1",
+      "uri": "forge://repo/src/components/results/ResultsList.tsx#L1-L90",
+      "role": "definition",
+      "trust": "semi_trusted",
+      "justifies": ["g1", "c1"],
+      "content_hash": "sha256:5c1f0e2d3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5"
+    },
+    {
+      "id": "ctx2",
+      "uri": "forge://repo/src/components/empty/EmptyState.tsx",
+      "role": "example",
+      "trust": "semi_trusted",
+      "justifies": ["g1", "g2"],
+      "content_hash": "sha256:aa11bb22cc33dd44ee55ff6677889900aa11bb22cc33dd44ee55ff6677889900"
+    },
+    {
+      "id": "ctx3",
+      "uri": "forge://repo/docs/design-tokens.md",
+      "role": "constraint_source",
+      "trust": "semi_trusted",
+      "justifies": ["c3"],
+      "content_hash": "sha256:99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa"
+    },
+    {
+      "id": "ctx4",
+      "uri": "web://example.invalid/empty-state-patterns",
+      "role": "background",
+      "trust": "untrusted",
+      "justifies": ["g2"],
+      "content_hash": null
+    }
+  ],
+
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "\"Nothing\" means zero results after filters are applied, not a failed request",
+      "confidence": "medium",
+      "source_ref": "forge_derived"
+    }
+  ],
+
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Should the empty state differ when filters are active versus when the query itself matched nothing?",
+      "options": ["one state for both", "distinguish them"],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "forge_derived"
+    }
+  ],
+
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "pnpm test src/components/results",
+      "expected": "exit 0",
+      "satisfies": ["g1"],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "The results data-fetching layer and its props are unchanged in the diff",
+      "expected": "unchanged",
+      "satisfies": ["g1"],
+      "source_ref": "forge_derived"
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "Search for a term with no matches and confirm the empty state offers an action",
+      "expected": "action present",
+      "satisfies": ["g2"],
+      "source_ref": "user_input"
+    }
+  ],
+
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Empty state rendered by the search results view",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "test",
+      "description": "A test covering the zero-results path",
+      "source_ref": "user_input"
+    }
+  ],
+
+  "risk": {
+    "level": "low",
+    "factors": ["user-facing but non-destructive", "no data model change"]
+  }
+}

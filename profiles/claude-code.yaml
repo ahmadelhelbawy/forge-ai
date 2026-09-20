@@ -1,0 +1,69 @@
+id: claude-code
+display_name: Claude Code
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: anthropic-agentic
+# native_topology, not full: `full` additionally requires registered section overrides,
+# which FR-022 assigns to P6. Claiming `full` today would overclaim (INV-014, C101).
+fidelity: native_topology
+
+retrieval:
+  autonomous_search: strong
+  tools: [glob, grep, read, agentic_subsearch]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: conditional, note: "gated by the session's permission mode" }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: conditional, note: "commits and pushes require explicit approval" }
+  network: { level: conditional, note: "web access may be disabled for the session" }
+  package_install: { level: conditional, note: "requires shell approval" }
+  mcp: { level: supported }
+  subagents: { level: supported }
+  planning_mode: { level: supported }
+  multi_turn: { level: supported }
+  vision: { level: supported }
+  long_context: { level: supported }
+
+autonomy:
+  default: high
+  configurable: true
+  permission_model: per-tool-prompt
+
+budget:
+  max_context_tokens: 200000
+  artifact_share: 0.08
+
+output:
+  artifacts:
+    - path: "PROMPT.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - stop_conditions
+        - deliverables
+        - capability_notes
+        - advisory
+        - untrusted_appendix
+    - path: "CLAUDE.md"
+      sections:
+        - project_conventions
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "Idiomatic checklist framing for constraints awaits section overrides (P6)."
+  known_failure_modes:
+    - "widens scope when a constraint is stated only once"
+    - "degrades when many files are pre-injected rather than referenced"

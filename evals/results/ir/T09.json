@@ -1,0 +1,144 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Make onboarding faster: new hires currently take two days to get a green build, and the cause of that delay is unknown.",
+    "kind": "debug",
+    "success_definition": "A new hire can get a green build in measurably less than the current two days, and the reasons the process previously took two days are identified.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Determine why new hires currently take two days to get a green build.",
+      "priority": "must",
+      "acceptance": [
+        "The causes of the current two-day time from new-hire start to green build are identified and documented."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Reduce the time it takes a new hire to get a green build below the current two days.",
+      "priority": "must",
+      "acceptance": [
+        "A new hire can get a green build in measurably less than two days."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "The process by which a new hire gets the project to a green build"
+    ],
+    "exclude": [],
+    "blast_radius": "repo",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "shell"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "\"Onboarding\" here refers to the process by which a new hire gets the project's build to a green (passing) state.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The current baseline is two days from new-hire start to a green build, as stated.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "There is an existing build/onboarding process whose steps can be inspected and timed.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What target time to a green build defines success (how much faster is \"faster\")? The task states no numeric target.",
+      "options": [
+        "Under one day",
+        "Under half a day",
+        "Under one hour"
+      ],
+      "default_assumption_ref": null,
+      "blocking": true,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "Should the work stop at diagnosing why a green build takes two days, or also implement the changes that make onboarding faster? The deliverable form is not stated.",
+      "options": [
+        "Diagnosis only",
+        "Diagnosis plus implemented fixes"
+      ],
+      "default_assumption_ref": null,
+      "blocking": true,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q3",
+      "question": "Which repository/build system and which parts of the onboarding process are in scope to inspect and potentially change?",
+      "options": [],
+      "default_assumption_ref": null,
+      "blocking": true,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q4",
+      "question": "In what environment do new hires build (OS, hardware, network/VPN, local vs CI)?",
+      "options": [],
+      "default_assumption_ref": null,
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "manual",
+      "spec": "Have a new hire (or a fresh environment simulating one) follow the onboarding process and record the elapsed time from start to a green build; compare against the two-day baseline.",
+      "expected": "Time to a green build is measurably less than two days.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Review the documented diagnosis of where the two days from new-hire start to green build are spent.",
+      "expected": "The causes of the current two-day time are identified and agreed to be accurate.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "analysis",
+      "description": "Analysis identifying why new hires currently take two days to get a green build.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Task is underspecified: no numeric target, no stated scope, and no stated deliverable form.",
+      "Changes to build or onboarding tooling could affect all developers, not just new hires.",
+      "Diagnosis may depend on environment factors (hardware, network, access provisioning) outside the codebase."
+    ]
+  }
+}

@@ -1,0 +1,65 @@
+id: opencode
+display_name: OpenCode
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: open-agentic
+fidelity: native_topology
+
+retrieval:
+  autonomous_search: strong
+  tools: [glob, grep, read]
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: conditional, note: "edit permission is configured per agent" }
+  shell: { level: conditional, note: "bash permission is configured per agent" }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: conditional }
+  network: { level: conditional }
+  package_install: { level: conditional }
+  mcp: { level: supported }
+  subagents: { level: supported }
+  planning_mode: { level: conditional }
+  multi_turn: { level: supported }
+  vision: { level: conditional }
+  long_context: { level: supported }
+
+autonomy:
+  default: medium
+  configurable: true
+  permission_model: per-agent-permissions
+
+budget:
+  max_context_tokens: 160000
+  artifact_share: 0.08
+
+output:
+  artifacts:
+    - path: "AGENTS.md"
+      sections:
+        - project_conventions
+        - capability_notes
+    - path: ".opencode/task.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        - scope
+        - context_plan
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - stop_conditions
+        - deliverables
+        - advisory
+        - untrusted_appendix
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "The permission block is generic; per-agent permission wiring is not emitted."
+  known_failure_modes: []

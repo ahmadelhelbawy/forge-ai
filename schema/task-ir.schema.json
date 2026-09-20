@@ -1,0 +1,686 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/task-ir/1.0.json",
+  "title": "FORGE Task IR",
+  "description": "Canonical, provider-independent representation of an engineering task. Semantic layer only: no timestamps, scores, or compile-time decisions.",
+  "type": "object",
+  "properties": {
+    "ir_version": {
+      "default": "1.0",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "semantic_hash": {
+      "default": null,
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "objective": {
+      "type": "object",
+      "properties": {
+        "statement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "debug",
+            "feature",
+            "refactor",
+            "analysis",
+            "design",
+            "research",
+            "migration",
+            "review"
+          ]
+        },
+        "success_definition": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "user_input"
+            },
+            {
+              "type": "string",
+              "const": "forge_derived"
+            },
+            {
+              "type": "string",
+              "pattern": "^st_[a-z][a-z0-9_]*$"
+            },
+            {
+              "type": "string",
+              "pattern": "^ctx[0-9]+$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "statement",
+        "kind",
+        "success_definition",
+        "source_ref"
+      ],
+      "additionalProperties": false
+    },
+    "goals": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^g[0-9]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "must",
+              "should",
+              "could"
+            ]
+          },
+          "acceptance": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "statement",
+          "priority",
+          "acceptance",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "constraints": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^c[0-9]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "architectural",
+              "behavioral",
+              "stylistic",
+              "process",
+              "scope",
+              "security",
+              "performance",
+              "compatibility"
+            ]
+          },
+          "hardness": {
+            "type": "string",
+            "enum": [
+              "hard",
+              "soft"
+            ]
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "hardness",
+          "statement",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "non_goals": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^n[0-9]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "statement",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "include": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "exclude": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "blast_radius": {
+          "type": "string",
+          "enum": [
+            "file",
+            "module",
+            "package",
+            "repo",
+            "multi_repo"
+          ]
+        },
+        "source_ref": {
+          "anyOf": [
+            {
+              "type": "string",
+              "const": "user_input"
+            },
+            {
+              "type": "string",
+              "const": "forge_derived"
+            },
+            {
+              "type": "string",
+              "pattern": "^st_[a-z][a-z0-9_]*$"
+            },
+            {
+              "type": "string",
+              "pattern": "^ctx[0-9]+$"
+            }
+          ]
+        }
+      },
+      "required": [
+        "include",
+        "blast_radius",
+        "source_ref"
+      ],
+      "additionalProperties": false
+    },
+    "required_capabilities": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "fs_read",
+          "fs_write",
+          "shell",
+          "run_tests",
+          "git_history",
+          "git_write",
+          "network",
+          "package_install",
+          "mcp",
+          "subagents",
+          "planning_mode",
+          "multi_turn",
+          "vision",
+          "long_context"
+        ]
+      }
+    },
+    "context_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ctx[0-9]+$"
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "definition",
+              "example",
+              "constraint_source",
+              "background",
+              "counter_example"
+            ]
+          },
+          "trust": {
+            "type": "string",
+            "enum": [
+              "trusted",
+              "semi_trusted",
+              "untrusted"
+            ]
+          },
+          "justifies": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^g[0-9]+$"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^c[0-9]+$"
+                }
+              ]
+            }
+          },
+          "content_hash": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "uri",
+          "role",
+          "trust",
+          "justifies"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "assumptions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^a[0-9]+$"
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "statement",
+          "confidence",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "open_questions": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^q[0-9]+$"
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "options": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "default_assumption_ref": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^a[0-9]+$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blocking": {
+            "type": "boolean"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "blocking",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "verification": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^v[0-9]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "command",
+              "test",
+              "manual",
+              "review"
+            ]
+          },
+          "spec": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "expected": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "satisfies": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^g[0-9]+$"
+            }
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "spec",
+          "expected",
+          "satisfies",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "deliverables": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^d[0-9]+$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "code_change",
+              "doc",
+              "analysis",
+              "design",
+              "config",
+              "test"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "user_input"
+              },
+              {
+                "type": "string",
+                "const": "forge_derived"
+              },
+              {
+                "type": "string",
+                "pattern": "^st_[a-z][a-z0-9_]*$"
+              },
+              {
+                "type": "string",
+                "pattern": "^ctx[0-9]+$"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "description",
+          "source_ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "risk": {
+      "type": "object",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "factors": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "required": [
+        "level"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "objective",
+    "goals",
+    "scope",
+    "deliverables",
+    "risk"
+  ],
+  "additionalProperties": false
+}

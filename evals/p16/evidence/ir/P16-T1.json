@@ -1,0 +1,197 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Fix the brute-force bypass in the login rate limiter so that rapid spoofed requests are blocked, while legitimate users experience no added friction.",
+    "kind": "debug",
+    "success_definition": "The brute-force bypass in the login rate limiter is closed; normal logins still work through the limiter; a regression test proves 101 rapid spoofed requests are blocked; no new dependencies are added, auth is not redesigned, and no CAPTCHA is introduced.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Fix the brute-force bypass in the login rate limiter.",
+      "priority": "must",
+      "acceptance": [
+        "Rapid spoofed requests that previously bypassed the limiter are now blocked",
+        "A regression test issuing 101 rapid spoofed requests shows they are blocked"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Preserve frictionless access for legitimate users; the limiter must still allow normal logins.",
+      "priority": "must",
+      "acceptance": [
+        "Normal login attempts succeed through the rate limiter without added friction"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Add a regression test proving 101 rapid spoofed requests are blocked.",
+      "priority": "must",
+      "acceptance": [
+        "A regression test exists that issues 101 rapid spoofed requests",
+        "The test asserts those 101 requests are blocked and it passes"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "No new dependencies may be added.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "Do not redesign auth.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "behavioral",
+      "hardness": "hard",
+      "statement": "The fix must not add friction for legitimate users.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c4",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not add CAPTCHA.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Redesigning the authentication system.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n2",
+      "statement": "Adding a CAPTCHA or any similar user-facing challenge.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n3",
+      "statement": "Introducing new dependencies.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "login rate limiter",
+      "regression test for the rate limiter brute-force bypass"
+    ],
+    "exclude": [
+      "authentication system redesign",
+      "CAPTCHA",
+      "new dependencies"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "\"Spoofed requests\" refers to requests that forge the identity the rate limiter keys on (e.g., source address or equivalent identifier); the exact spoof/bypass mechanism is not specified and must be confirmed from the code.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The existing test setup can express the regression test without adding new dependencies.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "The change is confined to the rate limiter module and its tests (blast radius: module); exact files are not specified.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What is the exact bypass/spoof mechanism (e.g., which spoofed attribute evades the limiter)?",
+      "options": [
+        "Spoofed source network identity (e.g., forwarded-for header)",
+        "Spoofed account/credential identity",
+        "Other mechanism to be determined from the code"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "Which concrete files/modules constitute the rate limiter and its test location (i.e., the exact blast radius)?",
+      "options": [
+        "Single rate limiter module plus its existing test file",
+        "Multiple modules involved in request throttling"
+      ],
+      "default_assumption_ref": "a3",
+      "blocking": true,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "Run the new regression test that issues 101 rapid spoofed requests against the login rate limiter.",
+      "expected": "All 101 rapid spoofed requests are blocked and the test passes.",
+      "satisfies": [
+        "g1",
+        "g3"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "manual",
+      "spec": "Exercise normal login attempts through the rate limiter after the fix.",
+      "expected": "Legitimate logins succeed with no added friction.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Fix to the login rate limiter that closes the brute-force bypass.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "test",
+      "description": "Regression test proving 101 rapid spoofed requests are blocked.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Change touches security-sensitive login throttling; an incorrect fix could leave the bypass open or lock out legitimate users",
+      "The exact spoof/bypass mechanism is not specified in the task and must be confirmed from the code",
+      "Constraints (no new dependencies, no auth redesign, no CAPTCHA) narrow the solution space"
+    ]
+  }
+}

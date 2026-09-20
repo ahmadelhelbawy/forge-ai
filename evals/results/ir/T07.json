@@ -1,0 +1,127 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Redesign the empty dashboard state in web/dashboard/EmptyState.tsx so new users understand what to do next.",
+    "kind": "design",
+    "success_definition": "Three new users complete onboarding without asking for help.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Redesign the empty dashboard state in web/dashboard/EmptyState.tsx so new users understand what to do next.",
+      "priority": "must",
+      "acceptance": [
+        "Three new users complete onboarding without asking for help."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "stylistic",
+      "hardness": "hard",
+      "statement": "Keep the existing design tokens.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not add new dependencies.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "web/dashboard/EmptyState.tsx"
+    ],
+    "exclude": [],
+    "blast_radius": "file",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The redesign is limited to the single file web/dashboard/EmptyState.tsx and does not require changes to other components or onboarding flows.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The success criterion of three new users completing onboarding without asking for help will be evaluated through a manual user-testing session rather than an automated test.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What specific content, actions, or guidance should the redesigned empty state present to new users (e.g., primary call-to-action, onboarding steps, links to docs)?",
+      "options": [
+        "A single primary call-to-action button",
+        "A short list of onboarding steps",
+        "Links to documentation or templates"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "How will the 'three new users complete onboarding without asking for help' criterion be tested and measured (e.g., moderated usability test, analytics funnel)?",
+      "options": [
+        "Moderated usability testing with three participants",
+        "Unmoderated analytics-based measurement"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "manual",
+      "spec": "Have three new users go through onboarding with the redesigned empty dashboard state and observe whether they complete onboarding without asking for help.",
+      "expected": "All three new users complete onboarding without asking for help.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Review the changes to confirm only web/dashboard/EmptyState.tsx was modified, existing design tokens are used, and no new dependencies were added.",
+      "expected": "Diff is confined to web/dashboard/EmptyState.tsx, uses existing design tokens, and introduces no new dependencies.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Redesigned empty dashboard state in web/dashboard/EmptyState.tsx.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "low",
+    "factors": [
+      "Success criterion depends on a small-sample human usability test (three users), which is subjective and not automatable.",
+      "Scope is confined to a single file with explicit constraints, limiting blast radius."
+    ]
+  }
+}

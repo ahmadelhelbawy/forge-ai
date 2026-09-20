@@ -1,0 +1,41 @@
+# exploratory — map the territory before committing: alternatives, findings, timebox.
+id: exploratory
+version: 1
+description: >-
+  Survey before solving: compare the obvious alternatives, challenge the
+  framing where evidence warrants it, report findings even without a fix.
+  For research, ambiguous scope, and unfamiliar ground.
+overlay_template:
+  added_constraints:
+    - kind: process
+      hardness: soft
+      statement: "Survey the obvious alternatives before committing to an approach"
+    - kind: scope
+      hardness: soft
+      statement: "Report findings even when no fix is warranted"
+  added_verification: []
+  autonomy:
+    decision_authority: medium
+    ask_threshold: any_ambiguity
+  change_budget:
+    max_files: 10
+  verification_intensity: light
+  context_policy: thorough
+  exploration:
+    challenge_architecture: true
+    require_alternatives: 2
+parameters:
+  breadth:
+    type: int
+    min: 2
+    max: 12
+    derive: from_scope_count
+fit_rules:
+  - when: { objective_kind: [research, analysis, design, review] }
+    weight: 3
+  - when: { open_total_count: { min: 2 } }
+    weight: 2
+  - when: { blast_radius: [repo, multi_repo] }
+    weight: 1
+  - when: { context_ref_count: { min: 3 } }
+    weight: 1

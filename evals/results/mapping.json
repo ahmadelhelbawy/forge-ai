@@ -1,0 +1,50 @@
+{
+  "T01": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T02": {
+    "P": "forge",
+    "Q": "raw"
+  },
+  "T03": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T04": {
+    "P": "forge",
+    "Q": "raw"
+  },
+  "T05": {
+    "P": "forge",
+    "Q": "raw"
+  },
+  "T06": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T07": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T08": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T09": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T10": {
+    "P": "forge",
+    "Q": "raw"
+  },
+  "T11": {
+    "P": "raw",
+    "Q": "forge"
+  },
+  "T12": {
+    "P": "forge",
+    "Q": "raw"
+  }
+}

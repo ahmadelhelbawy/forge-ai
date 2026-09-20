@@ -1,0 +1,73 @@
+id: claude-design
+display_name: Claude Design
+version: 2026.9.1
+verified_against: "2026-09-07"
+family: design-surface
+# `native_topology`, matching spec.md AP-R8. Arity is not fidelity (AP-R6): this target's
+# native convention IS a single brief, and FORGE emits exactly that layout. Revision 2's
+# "native_topology requires >= 2 artifacts" rule forced this profile to under-claim
+# `compatibility`, which was the AP-R6/AP-R8 contradiction recorded in the P1 report.
+fidelity: native_topology
+
+retrieval:
+  # The honesty test for the capability model: no repository, no search. This is what
+  # forces by_value materialization and command-to-manual verification, and it is why
+  # the model cannot be secretly shaped around repository agents.
+  autonomous_search: none
+  tools: []
+
+capabilities:
+  fs_read: { level: absent }
+  fs_write: { level: absent }
+  shell: { level: absent }
+  run_tests: { level: absent }
+  git_history: { level: absent }
+  git_write: { level: absent }
+  network: { level: conditional }
+  package_install: { level: absent }
+  mcp: { level: absent }
+  subagents: { level: absent }
+  planning_mode: { level: conditional }
+  multi_turn: { level: supported }
+  vision: { level: supported }
+  long_context: { level: supported }
+
+autonomy:
+  default: low
+  configurable: false
+  permission_model: none
+
+budget:
+  max_context_tokens: 120000
+  artifact_share: 0.12
+
+output:
+  artifacts:
+    - path: "DESIGN-BRIEF.md"
+      sections:
+        - objective
+        - goals
+        - acceptance
+        - constraints
+        - non_goals
+        # `scope` was missing, so the author's stated paths and blast radius were
+        # silently deleted for this target (FORGE-C102 now refuses that). The scope is
+        # still meaningful without a filesystem: it says which part of the product is
+        # under discussion.
+        - scope
+        - context_inline
+        - assumptions
+        - open_questions
+        - verification
+        - deliverables
+        - capability_notes
+        - advisory
+        - untrusted_appendix
+  path_vars: []
+
+limits:
+  known_gaps:
+    - "No repository access: every reference must be attached by hand before the task is run."
+    - "Executable verification cannot run here and is recorded as manual review."
+  known_failure_modes:
+    - "will happily produce a plausible answer about code it has never seen"

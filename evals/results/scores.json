@@ -1,0 +1,190 @@
+{
+  "protocol": {
+    "extraction": "live kimi-k3 for all 12 (18 live calls, 3 repairs, 3 transport retries fully logged)",
+    "execution_subset_rule": "tasks with >=1 expected question OR >=2 expected constraints (pre-declared before outputs)",
+    "execution_subset": [
+      "T01",
+      "T02",
+      "T03",
+      "T05",
+      "T09",
+      "T11"
+    ],
+    "extraction_only": [
+      "T04",
+      "T06",
+      "T07",
+      "T08",
+      "T10",
+      "T12"
+    ],
+    "blinding": "P/Q coin flip seeded 20260911, mapping sealed pre-output; executors saw only their arm",
+    "executor_limitation": "subagent path failed (4x30min timeouts, zero output); primary agent self-executed under single-instruction discipline (see report)"
+  },
+  "extraction_fidelity_adjudicated": {
+    "T01": {
+      "goals": "2/2 (constraint-form goal captured as c1)",
+      "constraints": "1/1 (reword)",
+      "questions": "0/1 (reproduction criteria genuinely absent)",
+      "forbidden": "HIT (assumption names unstated auth/session module)"
+    },
+    "T02": {
+      "goals": "1/1",
+      "constraints": "n/a",
+      "questions": "1/3 (which-test/where genuinely absent; scope is prose, non-blocking)",
+      "forbidden": "clean"
+    },
+    "T03": {
+      "goals": "1/1",
+      "constraints": "3/3",
+      "questions": "n/a",
+      "forbidden": "clean (mechanical hit overturned: the match was the hard prohibition itself)"
+    },
+    "T04": {
+      "goals": "2/2",
+      "constraints": "2/2 (exports captured as goal+constraint)",
+      "forbidden": "clean"
+    },
+    "T05": {
+      "goals": "3/3",
+      "constraints": "2/2",
+      "questions": "0/1 (topology/failover genuinely absent)",
+      "forbidden": "clean"
+    },
+    "T06": {
+      "goals": "2/2",
+      "constraints": "1/1",
+      "forbidden": "clean"
+    },
+    "T07": {
+      "goals": "2/2",
+      "constraints": "2/2",
+      "forbidden": "clean"
+    },
+    "T08": {
+      "goals": "2/2 (reword)",
+      "constraints": "2/2 (reword)",
+      "forbidden": "clean"
+    },
+    "T09": {
+      "goals": "1/1",
+      "questions": "2/3 (blockers genuinely absent; 3 blocking asked)",
+      "forbidden": "clean"
+    },
+    "T10": {
+      "goals": "2/2",
+      "constraints": "1/1",
+      "forbidden": "clean"
+    },
+    "T11": {
+      "goals": "1/1",
+      "constraints": "2/2",
+      "questions": "1/1 (reword)",
+      "forbidden": "clean"
+    },
+    "T12": {
+      "goals": "1/1",
+      "constraints": "2/2 (flags captured as goal)",
+      "forbidden": "clean"
+    }
+  },
+  "arms": {
+    "T01": {
+      "raw": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0
+      },
+      "forge": {
+        "goals": "2/2",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0
+      },
+      "verdict": "tie"
+    },
+    "T02": {
+      "raw": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0
+      },
+      "forge": {
+        "goals": "1/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 0
+      },
+      "verdict": "tie"
+    },
+    "T03": {
+      "raw": {
+        "goals": "0/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "forge": {
+        "goals": "0/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "verdict": "tie"
+    },
+    "T05": {
+      "raw": {
+        "goals": "2/3 (g3 unverifiable w/o live redis)",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "forge": {
+        "goals": "2/3 (g3 unverifiable w/o live redis)",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "verdict": "tie"
+    },
+    "T09": {
+      "raw": {
+        "goals": "0/1",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "forge": {
+        "refusal": "honest, 3 blocking questions; excused per pre-registered rule (RAW did not resolve ambiguity)",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "verdict": "tie"
+    },
+    "T11": {
+      "raw": {
+        "goals": "2/3 (latency unmeasurable)",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "forge": {
+        "goals": "2/3 (latency unmeasurable)",
+        "violations": 0,
+        "overruns": 0,
+        "cycles": 1
+      },
+      "verdict": "tie"
+    }
+  },
+  "totals": {
+    "forge_wins": 0,
+    "raw_wins": 0,
+    "ties": 6
+  },
+  "decision_rule": "FORGE wins on ambiguous+multi-constraint -> CONTINUE; no difference -> RECONSIDER; FORGE loses -> FAIL",
+  "verdict": "RECONSIDER"
+}

@@ -1,0 +1,168 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Halve the measured latency of GET /items in src/items.js, measured with bench/bench.mjs before and after.",
+    "kind": "refactor",
+    "success_definition": "The measured latency of GET /items, as measured by bench/bench.mjs, is at most half of the baseline measurement taken before the change, with the test suite still green.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Reduce the measured latency of GET /items in src/items.js to at most half of its pre-change measured value.",
+      "priority": "must",
+      "acceptance": [
+        "bench/bench.mjs run before the change records a baseline latency for GET /items",
+        "bench/bench.mjs run after the change shows GET /items latency at or below 50% of the recorded baseline"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Keep the existing test suite passing.",
+      "priority": "must",
+      "acceptance": [
+        "The project's test suite passes after the change"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "behavioral",
+      "hardness": "hard",
+      "statement": "Do not add caching.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "Do not change the public response envelope.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "Do not add dependencies.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c4",
+      "kind": "process",
+      "hardness": "hard",
+      "statement": "Keep the suite green.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c5",
+      "kind": "performance",
+      "hardness": "hard",
+      "statement": "Latency must be measured with bench/bench.mjs before and after the change.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "No new endpoints.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "src/items.js",
+      "bench/bench.mjs"
+    ],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "bench/bench.mjs is an existing, runnable benchmark script that reports latency for GET /items.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "A test suite exists and can be run to confirm it stays green.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "What command runs the test suite, and what command runs bench/bench.mjs (e.g., node bench/bench.mjs)?",
+      "options": [
+        "npm test and node bench/bench.mjs",
+        "Commands defined in package.json scripts"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "Is the latency target a strict 50% reduction of the measured baseline, and which reported metric (mean, p50, p95) counts as 'the measured latency'?",
+      "options": [
+        "Mean latency at or below 50% of baseline",
+        "p50 latency at or below 50% of baseline",
+        "p95 latency at or below 50% of baseline"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "command",
+      "spec": "Run bench/bench.mjs before the change and record the baseline latency of GET /items; run it again after the change and compare.",
+      "expected": "Post-change measured latency of GET /items is at most 50% of the recorded baseline.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "test",
+      "spec": "Run the project's test suite after the change.",
+      "expected": "All tests pass (suite is green).",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Modification to src/items.js that reduces GET /items latency to at most half of the measured baseline without caching, new dependencies, new endpoints, or changes to the public response envelope.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "A 50% latency reduction may not be achievable without caching depending on the current implementation.",
+      "Benchmark variance could make the before/after comparison unreliable.",
+      "Optimizations risk subtly altering response behavior despite the envelope constraint."
+    ]
+  }
+}

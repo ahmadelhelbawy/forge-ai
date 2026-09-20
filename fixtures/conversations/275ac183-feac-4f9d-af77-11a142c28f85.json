@@ -1,0 +1,840 @@
+{
+  "id": "275ac183-feac-4f9d-af77-11a142c28f85",
+  "title": "Build a production-grade prompt for a pull-request review agent: read the diff, ",
+  "createdAt": "2026-09-16T20:07:56.737Z",
+  "updatedAt": "2026-09-16T20:09:01.942Z",
+  "target": "generic",
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Build a production-grade prompt for a pull-request review agent: read the diff, require tests, never push to main, and include a verification section.",
+      "at": "2026-09-16T20:07:56.801Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Stub reply to: the diff, require tests, never push to main, and include a verification section.",
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "role": "user",
+      "content": "Also require a rollback plan and a changelog entry in every review.",
+      "at": "2026-09-16T20:08:18.490Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Stub reply to: Also require a rollback plan and a changelog entry in every review.",
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "role": "user",
+      "content": "Why did you structure it that way?",
+      "at": "2026-09-16T20:08:42.728Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Stub reply to: Why did you structure it that way?",
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "role": "user",
+      "content": "Add a section requiring a rollback plan.",
+      "at": "2026-09-16T20:08:47.277Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Stub reply to: Add a section requiring a rollback plan.",
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "role": "user",
+      "content": "Also require the reviewer to confirm CI is green before approving, and add a short escalation policy for disagreements.",
+      "at": "2026-09-16T20:09:00.436Z"
+    },
+    {
+      "role": "assistant",
+      "content": "Stub reply to:  is green before approving, and add a short escalation policy for disagreements.",
+      "at": "2026-09-16T20:09:01.942Z"
+    }
+  ],
+  "attachmentContents": {},
+  "attachments": [],
+  "promptVersions": [
+    {
+      "v": 1,
+      "text": "Stub prompt v1 — revised from: the diff, require tests, never push to main, and include a verification section.",
+      "source": "model",
+      "at": "2026-09-16T20:07:58.312Z",
+      "action": "CREATE",
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf"
+    },
+    {
+      "v": 2,
+      "text": "Stub prompt v2 — revised from: Also require a rollback plan and a changelog entry in every review.",
+      "source": "model",
+      "at": "2026-09-16T20:08:22.930Z",
+      "action": "REVISE",
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f"
+    },
+    {
+      "v": 3,
+      "text": "Stub prompt v3 — revised from: Add a section requiring a rollback plan.",
+      "source": "model",
+      "at": "2026-09-16T20:08:48.334Z",
+      "action": "REVISE",
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74"
+    },
+    {
+      "v": 4,
+      "text": "Stub prompt v4 — revised from:  is green before approving, and add a short escalation policy for disagreements.",
+      "source": "model",
+      "at": "2026-09-16T20:09:01.942Z",
+      "action": "REVISE",
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e"
+    }
+  ],
+  "currentV": 4,
+  "candidates": [],
+  "pendingClarification": null,
+  "turnEvents": [
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "turn_started",
+      "message": "Build a production-grade prompt for a pull-request review agent: read the diff, require tests, never push to main, and include a verification section.",
+      "seq": 1,
+      "at": "2026-09-16T20:07:56.801Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "message_appended",
+      "role": "user",
+      "seq": 2,
+      "at": "2026-09-16T20:07:56.802Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 3,
+      "at": "2026-09-16T20:07:56.802Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 4,
+      "at": "2026-09-16T20:07:56.803Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "action_resolved",
+      "action": "CREATE",
+      "degraded": false,
+      "seq": 5,
+      "at": "2026-09-16T20:07:56.803Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 6,
+      "at": "2026-09-16T20:07:56.803Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Generating prompt…",
+      "seq": 7,
+      "at": "2026-09-16T20:07:56.804Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 8,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "stage",
+      "stage": "verifying",
+      "label": "Verifying result…",
+      "seq": 9,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "stage",
+      "stage": "saving",
+      "label": "Saving…",
+      "seq": 10,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "version_created",
+      "v": 1,
+      "action": "CREATE",
+      "seq": 11,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "message_appended",
+      "role": "assistant",
+      "seq": 12,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "903aed75-83a8-4997-bb14-5b362014debf",
+      "kind": "turn_completed",
+      "action": "CREATE",
+      "versionCreated": true,
+      "seq": 13,
+      "at": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "turn_started",
+      "message": "Also require a rollback plan and a changelog entry in every review.",
+      "seq": 14,
+      "at": "2026-09-16T20:08:18.490Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "message_appended",
+      "role": "user",
+      "seq": 15,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 16,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 17,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "action_resolved",
+      "action": "REVISE",
+      "degraded": false,
+      "seq": 18,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 19,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Generating prompt…",
+      "seq": 20,
+      "at": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 21,
+      "at": "2026-09-16T20:08:19.095Z"
+    },
+    {
+      "turnId": "1da441b9-f46d-47e0-8e8c-d31c0c2b47f8",
+      "kind": "turn_cancelled",
+      "seq": 22,
+      "at": "2026-09-16T20:08:19.095Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "turn_started",
+      "message": "Also require a rollback plan and a changelog entry in every review.",
+      "regenerated": true,
+      "seq": 23,
+      "at": "2026-09-16T20:08:21.573Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 24,
+      "at": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 25,
+      "at": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "action_resolved",
+      "action": "REVISE",
+      "degraded": false,
+      "seq": 26,
+      "at": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 27,
+      "at": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Generating prompt…",
+      "seq": 28,
+      "at": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 29,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "stage",
+      "stage": "verifying",
+      "label": "Verifying result…",
+      "seq": 30,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "stage",
+      "stage": "saving",
+      "label": "Saving…",
+      "seq": 31,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "version_created",
+      "v": 2,
+      "action": "REVISE",
+      "seq": 32,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "message_appended",
+      "role": "assistant",
+      "seq": 33,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "7bcf301b-fa9d-4aab-9f04-472e2dca239f",
+      "kind": "turn_completed",
+      "action": "REVISE",
+      "versionCreated": true,
+      "seq": 34,
+      "at": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "turn_started",
+      "message": "Why did you structure it that way?",
+      "seq": 35,
+      "at": "2026-09-16T20:08:42.728Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "message_appended",
+      "role": "user",
+      "seq": 36,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 37,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 38,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "action_resolved",
+      "action": "EXPLAIN",
+      "degraded": false,
+      "seq": 39,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 40,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Writing your answer…",
+      "seq": 41,
+      "at": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 42,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "stage",
+      "stage": "verifying",
+      "label": "Verifying result…",
+      "seq": 43,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "diagnostic",
+      "diagnostic": {
+        "code": "FORGE-W004",
+        "name": "read_only_write_blocked",
+        "severity": "error",
+        "source": "deterministic",
+        "message": "A prompt write was blocked: EXPLAIN is read-only with respect to the prompt, but the response carried a new prompt.",
+        "evidence": [
+          {
+            "kind": "measure",
+            "label": "blocked_version_writes",
+            "value": 1,
+            "unit": "writes"
+          }
+        ]
+      },
+      "seq": 44,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "stage",
+      "stage": "saving",
+      "label": "Saving…",
+      "seq": 45,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "message_appended",
+      "role": "assistant",
+      "seq": 46,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "c7fdfe62-7225-4553-9bfb-5aa60a937419",
+      "kind": "turn_completed",
+      "action": "EXPLAIN",
+      "versionCreated": false,
+      "seq": 47,
+      "at": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "turn_started",
+      "message": "Add a section requiring a rollback plan.",
+      "seq": 48,
+      "at": "2026-09-16T20:08:47.277Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "message_appended",
+      "role": "user",
+      "seq": 49,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 50,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 51,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "action_resolved",
+      "action": "REVISE",
+      "degraded": false,
+      "seq": 52,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 53,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Generating prompt…",
+      "seq": 54,
+      "at": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 55,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "stage",
+      "stage": "verifying",
+      "label": "Verifying result…",
+      "seq": 56,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "stage",
+      "stage": "saving",
+      "label": "Saving…",
+      "seq": 57,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "version_created",
+      "v": 3,
+      "action": "REVISE",
+      "seq": 58,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "message_appended",
+      "role": "assistant",
+      "seq": 59,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "1d946e53-dec0-48e6-b9b7-b248bdd18b74",
+      "kind": "turn_completed",
+      "action": "REVISE",
+      "versionCreated": true,
+      "seq": 60,
+      "at": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "turn_started",
+      "message": "Also require the reviewer to confirm CI is green before approving, and add a short escalation policy for disagreements.",
+      "seq": 61,
+      "at": "2026-09-16T20:09:00.436Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "message_appended",
+      "role": "user",
+      "seq": 62,
+      "at": "2026-09-16T20:09:00.436Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "stage",
+      "stage": "classifying",
+      "label": "Understanding request…",
+      "seq": 63,
+      "at": "2026-09-16T20:09:00.436Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "model_call",
+      "boundaryId": "conversation.classify",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 64,
+      "at": "2026-09-16T20:09:00.437Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "action_resolved",
+      "action": "REVISE",
+      "degraded": false,
+      "seq": 65,
+      "at": "2026-09-16T20:09:00.437Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "stage",
+      "stage": "reading_prompt",
+      "label": "Analyzing current prompt…",
+      "seq": 66,
+      "at": "2026-09-16T20:09:00.437Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "stage",
+      "stage": "generating",
+      "label": "Generating prompt…",
+      "seq": 67,
+      "at": "2026-09-16T20:09:00.437Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "stub",
+      "latencyMs": 0,
+      "seq": 68,
+      "at": "2026-09-16T20:09:01.942Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "stage",
+      "stage": "verifying",
+      "label": "Verifying result…",
+      "seq": 69,
+      "at": "2026-09-16T20:09:01.942Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "stage",
+      "stage": "saving",
+      "label": "Saving…",
+      "seq": 70,
+      "at": "2026-09-16T20:09:01.942Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "version_created",
+      "v": 4,
+      "action": "REVISE",
+      "seq": 71,
+      "at": "2026-09-16T20:09:01.942Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "message_appended",
+      "role": "assistant",
+      "seq": 72,
+      "at": "2026-09-16T20:09:01.942Z"
+    },
+    {
+      "turnId": "b44ed0d6-c642-4237-bddb-3f416f0e889e",
+      "kind": "turn_completed",
+      "action": "REVISE",
+      "versionCreated": true,
+      "seq": 73,
+      "at": "2026-09-16T20:09:01.942Z"
+    }
+  ],
+  "modelCalls": [
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:59d2046e3cf3d195696d5e6c5aa2369e625ecb970b7fe0c639c04944c0f62473",
+      "outputHash": "sha256:cbfb1668f63b17fb72f1781b0a79c97a6efc21ede1e50407cc77841e47056b55",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:07:56.802Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:8078ec8fdb1ea1d8cc687fa5a1fa0230bdc7247c058849f13d83d91790905c1d",
+      "outputHash": "sha256:76e5a2eae5e63e2d5e690ad78830ecf03c316031c224376660c82d79018f40a5",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:07:58.312Z"
+    },
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:cb69e19106ffdc6e14e323390b0ca458f329b82a2008bd181e7890beab1fb85b",
+      "outputHash": "sha256:157149067be790de9d3ff8e1cb3621080d50b74761b43d05f3c1f61c1f6659cd",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:18.491Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:79d5ef29700a342406cb9026c7918451277d7efa1013841876418ef96f7c4026",
+      "outputHash": "sha256:516e51a525088c9e6bd1a9c67d777f2a5821443fe80e706e4482519fa7314b2b",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:19.095Z"
+    },
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:cb69e19106ffdc6e14e323390b0ca458f329b82a2008bd181e7890beab1fb85b",
+      "outputHash": "sha256:157149067be790de9d3ff8e1cb3621080d50b74761b43d05f3c1f61c1f6659cd",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:21.574Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:79d5ef29700a342406cb9026c7918451277d7efa1013841876418ef96f7c4026",
+      "outputHash": "sha256:516e51a525088c9e6bd1a9c67d777f2a5821443fe80e706e4482519fa7314b2b",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:22.930Z"
+    },
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:054b1c609f43cb6e0346f5ee433b0111479cb19cf0fb1ad50f58363732735e95",
+      "outputHash": "sha256:87e4dda9c4303ab4a696921773671e2148231fd31a310e42e272a0338dac4eff",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:42.729Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:85763262e3808f28f58ef5e51ff31eced786acf0534905cecff1a52e2d5fae90",
+      "outputHash": "sha256:8ba548fa7a053f377b3a4852d02b6e017cc588930121d2e8994451ac765c85f9",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:43.635Z"
+    },
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:fa90b843f13ca88acd32b8859e477bf9bb66e9c2ba9ea74d75e4a48fbf8232c8",
+      "outputHash": "sha256:157149067be790de9d3ff8e1cb3621080d50b74761b43d05f3c1f61c1f6659cd",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:47.278Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:6ea041b2575eea4587ffb6084f0e12140ddf01f54b36b00407f2e52ff48fe123",
+      "outputHash": "sha256:5414f2ab67b6fc6932a36901144441ac1acefc4eaa1f712f3a5d01b8598bf69f",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:08:48.334Z"
+    },
+    {
+      "boundaryId": "conversation.classify",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:bc36733d17518d4215203ea2155df939915ea96b10433ee8438daf6391f0f3a5",
+      "outputHash": "sha256:157149067be790de9d3ff8e1cb3621080d50b74761b43d05f3c1f61c1f6659cd",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:09:00.436Z"
+    },
+    {
+      "boundaryId": "conversation.generate",
+      "boundaryVersion": "1",
+      "provider": "stub",
+      "model": "stub",
+      "promptHash": "sha256:04f6fed3b76ae49e0701a4babc26521fe465be1cec2417c9959a1e0cbc69a711",
+      "outputHash": "sha256:9295ccaa519739d31a40b5deeac9db643e09a6d0dfc5f82fedb5c9075d619e31",
+      "repairs": 0,
+      "latencyMs": 0,
+      "replayed": false,
+      "timestamp": "2026-09-16T20:09:01.942Z"
+    }
+  ]
+}

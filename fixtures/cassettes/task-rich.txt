@@ -1,0 +1,1 @@
+Fix the flaky login redirect test in src/auth/login.test.ts without changing the AuthProvider interface in src/auth/provider.ts. Done when the test passes three times in a row.

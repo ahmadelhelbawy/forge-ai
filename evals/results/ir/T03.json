@@ -1,0 +1,125 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Cut API p95 latency in src/api/ in half, measured with the existing k6 script in perf/, without adding caching, changing the public response schema, or adding new dependencies.",
+    "kind": "refactor",
+    "success_definition": "The p95 latency of the API code in src/api/, as measured by the existing k6 script in perf/, is reduced to at most 50% of the pre-change baseline.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Reduce API p95 latency for code in src/api/ to at most half of its current baseline.",
+      "priority": "must",
+      "acceptance": [
+        "Running the existing k6 script in perf/ after the change reports a p95 latency value that is ≤ 50% of the baseline measured by the same script before the change."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "Do not add caching.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "Do not change the public response schema.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not add new dependencies.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c4",
+      "kind": "process",
+      "hardness": "hard",
+      "statement": "Latency must be measured with the existing k6 script in perf/.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "src/api/"
+    ],
+    "exclude": [
+      "caching mechanisms",
+      "public response schema changes",
+      "new dependencies"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The existing k6 script in perf/ is functional and produces a p95 latency measurement usable as a before/after comparison baseline.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The 50% latency-reduction target applies to the aggregate p95 measured by the k6 script, rather than requiring every endpoint under src/api/ to individually halve its p95.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Does the 'cut p95 in half' target apply to aggregate p95 across the API surface in src/api/, or must each endpoint in src/api/ individually halve its p95?",
+      "options": [
+        "Aggregate p95 across src/api/ as reported by the k6 script",
+        "Per-endpoint p95 for every route under src/api/"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "command",
+      "spec": "Run the existing k6 script in perf/ against the code before the change to capture baseline p95, then run the same script after the change and compare reported p95 values.",
+      "expected": "Post-change p95 is ≤ 50% of the pre-change baseline p95 reported by the same k6 script.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Performance optimization changes within src/api/ that reduce API p95 latency by at least half.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Hard constraints (no caching, no schema change, no new dependencies) significantly narrow the available optimization techniques.",
+      "Latency work in request-handling code carries regression risk for API behavior.",
+      "Baseline measurement quality depends on the existing k6 script in perf/."
+    ]
+  }
+}

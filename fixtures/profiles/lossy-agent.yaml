@@ -1,0 +1,65 @@
+# FORGE-C102 `topology_gap` fixture (DG-R5, FR-050, INV-012).
+#
+# A profile that is entirely VALID — it passes the AgentProfile schema, it declares the
+# mandatory sections exactly once, every section key exists, its fidelity claim is honest
+# — and yet silently deletes the author's content, because its topology has no
+# destination for it.
+#
+# This is what the hardening pass closed. Compiling `empty-state` against a topology
+# shaped like this used to succeed with `refused: false` and not one diagnostic naming
+# the loss: both non-goals, all three verification steps, the whole scope, every
+# acceptance criterion, and the semi-trusted constraint that FORGE-C052 had just promised
+# would "be rendered as advisory".
+#
+# Loading this profile in `forge agents` is fine; compiling a task with the corresponding
+# content is a refusal.
+id: lossy-agent
+display_name: Lossy Agent
+version: "1.0"
+verified_against: "2026-09-10"
+family: synthetic-test-target
+fidelity: compatibility
+
+retrieval:
+  autonomous_search: strong
+  tools: []
+
+capabilities:
+  fs_read: { level: supported }
+  fs_write: { level: supported }
+  shell: { level: supported }
+  run_tests: { level: supported }
+  git_history: { level: supported }
+  git_write: { level: supported }
+  network: { level: supported }
+  package_install: { level: supported }
+  mcp: { level: supported }
+  subagents: { level: supported }
+  planning_mode: { level: supported }
+  multi_turn: { level: supported }
+  vision: { level: supported }
+  long_context: { level: supported }
+
+autonomy:
+  default: medium
+  configurable: true
+  permission_model: prompt
+
+budget:
+  max_context_tokens: 200000
+  artifact_share: 0.5
+
+output:
+  artifacts:
+    # Mandatory sections present; everything else omitted. Each omission is a class of
+    # content FORGE-C102 must catch.
+    - path: "TASK.md"
+      sections:
+        - objective
+        - goals
+        - constraints
+  path_vars: []
+
+limits:
+  known_gaps: ["Exists only to trigger FORGE-C102."]
+  known_failure_modes: []

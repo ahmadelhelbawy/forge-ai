@@ -1,0 +1,128 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Diagnose and fix the flaky login test so that it passes consistently.",
+    "kind": "debug",
+    "success_definition": "The login test no longer exhibits flaky behavior; it passes (or fails) deterministically and consistently across runs.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Identify the root cause of the flaky behavior in the login test.",
+      "priority": "must",
+      "acceptance": [
+        "The root cause of the intermittent test behavior has been identified."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Modify the login test (or the code it exercises) so the flakiness is resolved.",
+      "priority": "must",
+      "acceptance": [
+        "The login test runs deterministically with consistent results across runs."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "the login test"
+    ],
+    "exclude": [],
+    "blast_radius": "file",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "There exists a specific, identifiable test for the login flow referred to as 'the login test'.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "'Flaky' means the test intermittently passes or fails without changes to the code under test.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "The source of the flakiness (test code vs. production login code) is unspecified, so the fix may need to touch either.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "How many consistent runs (locally or in CI) are required for the test to be considered 'fixed'?",
+      "options": [
+        "a single green run",
+        "repeated local/CI runs (e.g., 10+ iterations)",
+        "a defined CI stability criterion set by the team"
+      ],
+      "default_assumption_ref": null,
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "Is the fix expected to be confined to the test, or may it also change the production login code if the flakiness originates there?",
+      "options": [
+        "test code only",
+        "test and/or production code as needed"
+      ],
+      "default_assumption_ref": "a3",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "review",
+      "spec": "Review the diagnosis to confirm the root cause of the flaky behavior has been identified.",
+      "expected": "Root cause of the flakiness is identified and documented.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "test",
+      "spec": "Run the login test repeatedly (multiple iterations) and observe the results.",
+      "expected": "The login test produces consistent, deterministic results across runs; no intermittent failures.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "A fix that resolves the flakiness of the login test.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Flaky-test root causes are often nondeterministic and hard to reproduce.",
+      "A fix may mask the symptom (e.g., added retries/sleeps) rather than resolve the underlying timing, environment, or dependency issue."
+    ]
+  }
+}

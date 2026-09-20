@@ -1,0 +1,156 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Move session storage from in-memory to Redis so the API can run with two replicas.",
+    "kind": "migration",
+    "success_definition": "Session storage is backed by Redis, the API can run with two replicas, sessions survive a rolling restart, the AuthProvider interface is unchanged, and existing tests pass.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Move session storage from in-memory storage to Redis.",
+      "priority": "must",
+      "acceptance": [
+        "Session data is stored in and served from Redis rather than in-memory structures"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Enable the API to run with two replicas.",
+      "priority": "must",
+      "acceptance": [
+        "The API can run with two replicas"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Ensure sessions survive a rolling restart.",
+      "priority": "must",
+      "acceptance": [
+        "Sessions survive a rolling restart"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "The AuthProvider interface stays unchanged.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "behavioral",
+      "hardness": "hard",
+      "statement": "Existing tests must pass.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [],
+  "scope": {
+    "include": [
+      "Session storage implementation"
+    ],
+    "exclude": [
+      "AuthProvider interface"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "run_tests",
+    "package_install"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "A Redis instance will be available for the API to connect to in the target deployment.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "Session storage changes are confined to the session storage module of the API codebase.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "A Redis client library may be added as a dependency.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Must existing in-memory sessions be migrated to Redis, or may they be dropped during the cutover?",
+      "options": [
+        "Migrate existing sessions",
+        "Drop existing sessions during cutover"
+      ],
+      "default_assumption_ref": null,
+      "blocking": false,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "What session expiration/TTL semantics, if any, should apply to sessions stored in Redis?",
+      "options": [
+        "Preserve current in-memory session expiration behavior",
+        "Introduce explicit Redis TTL"
+      ],
+      "default_assumption_ref": null,
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "Run the existing test suite against the Redis-backed session storage implementation.",
+      "expected": "All existing tests pass",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "manual",
+      "spec": "Run the API with two replicas backed by Redis, establish a session on one replica, restart replicas in a rolling fashion, and confirm the session remains valid.",
+      "expected": "Session survives the rolling restart while two replicas are running",
+      "satisfies": [
+        "g2",
+        "g3"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Redis-backed session storage implementation replacing the in-memory store.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "Session data loss if existing in-memory sessions are not migrated",
+      "Redis availability becomes a runtime dependency for session storage",
+      "Rolling-restart correctness depends on Redis connection handling across replicas"
+    ]
+  }
+}

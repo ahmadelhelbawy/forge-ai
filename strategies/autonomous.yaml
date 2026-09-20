@@ -1,0 +1,41 @@
+# autonomous — run free within the constraints: decide, act, log.
+id: autonomous
+version: 1
+description: >-
+  Complete the task end to end without handing off: decide within the stated
+  constraints, keep a decision log, ask only when truly blocked. For
+  well-specified work on capable targets.
+overlay_template:
+  added_constraints:
+    - kind: process
+      hardness: hard
+      statement: "Complete the task end to end without handing off"
+    - kind: process
+      hardness: soft
+      statement: "Record every decision with its evidence in the work log"
+  added_verification: []
+  autonomy:
+    decision_authority: high
+    ask_threshold: never
+  change_budget:
+    max_files: 15
+  verification_intensity: standard
+  context_policy: thorough
+  exploration:
+    challenge_architecture: false
+    require_alternatives: 0
+parameters:
+  unasked_budget:
+    type: int
+    min: 0
+    max: 10
+    derive: from_open_questions
+fit_rules:
+  - when: { open_blocking_count: [0] }
+    weight: 3
+  - when: { profile.autonomy: [high] }
+    weight: 2
+  - when: { objective_kind: [refactor, feature] }
+    weight: 1
+  - when: { risk_level: [low, medium] }
+    weight: 1

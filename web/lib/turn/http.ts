@@ -1,0 +1,101 @@
+/**
+ * What both turn routes must do before and after the pipeline runs.
+ *
+ * Next.js route files may only export handlers, and V2-B gave the product two
+ * of them (whole-response and SSE) over the same turn. The shared half lives
+ * here so validation, provider selection and failure reporting cannot differ
+ * between them.
+ */
+import { NextResponse } from "next/server";
+
+import {
+  classifyFailure,
+  formatDiagnostic,
+  logProviderFailure,
+  providerDiagnostic,
+} from "@/lib/diagnostics";
+import { currentPrompt, saveConversation, type Conversation } from "@/lib/store";
+import { buildDeps, stubDeps } from "@/lib/turn/deps";
+import type { TurnDeps } from "@/lib/turn/pipeline";
+
+export interface TurnRequestBody {
+  content?: unknown;
+  target?: unknown;
+  provider?: unknown;
+  model?: unknown;
+  regenerate?: unknown;
+}
+
+export interface PreparedTurn {
+  readonly content: string;
+  readonly regenerate: boolean;
+  readonly before: string | null;
+}
+
+/**
+ * Validate, apply the header selections, and work out which message this turn
+ * is about. Returns a response instead when the request cannot become a turn.
+ *
+ * A retry may arrive with no content: the last thing the user asked for is
+ * the thing to re-run, and the server decides that rather than trusting the
+ * client to echo it back.
+ */
+export function prepareTurn(convo: Conversation, body: TurnRequestBody): PreparedTurn | NextResponse {
+  const regenerate = body.regenerate === true;
+  let content = typeof body.content === "string" ? body.content.trim() : "";
+
+  if (regenerate) {
+    const lastUser = [...convo.messages].reverse().find((m) => m.role === "user");
+    if (!lastUser) {
+      return NextResponse.json({ error: "There is no message to regenerate." }, { status: 409 });
+    }
+    content = lastUser.content;
+  }
+  if (!content) return NextResponse.json({ error: "Message content must not be empty." }, { status: 400 });
+  if (content.length > 200_000) {
+    return NextResponse.json({ error: "Message too large (200k character limit)." }, { status: 413 });
+  }
+
+  if (typeof body.target === "string" && body.target) convo.target = body.target;
+  if (typeof body.provider === "string" && body.provider) convo.provider = body.provider;
+  if (typeof body.model === "string") convo.model = body.model;
+
+  if (convo.messages.length === 0 && convo.title === "New conversation") {
+    convo.title = content.slice(0, 80);
+  }
+  return { content, regenerate, before: currentPrompt(convo) };
+}
+
+export function depsFor(convo: Conversation, before: string | null): TurnDeps {
+  return process.env["FORGE_CHAT_STUB"] ? stubDeps(convo, before) : buildDeps(convo, before);
+}
+
+/** The user-facing text and full diagnostic for a provider failure. */
+export function failureReport(convo: Conversation, error: unknown): { message: string; diagnostic: string; detail: unknown } {
+  const finding = providerDiagnostic(error, {
+    provider: convo.provider,
+    stage: "chat",
+    ...(convo.model ? { model: convo.model } : {}),
+  });
+  logProviderFailure(finding);
+  const message = classifyFailure(finding);
+  return { message, diagnostic: `${message}\n\n${formatDiagnostic(finding)}`, detail: finding };
+}
+
+/**
+ * WS-R12: the user's message is kept; no assistant message and no version was
+ * written. Nothing is lost except the failed turn itself.
+ */
+export function failure(convo: Conversation, error: unknown): NextResponse {
+  saveConversation(convo);
+  const report = failureReport(convo, error);
+  return NextResponse.json(
+    {
+      error: report.message,
+      diagnostic: report.diagnostic,
+      detail: report.detail,
+      conversationIntact: true,
+    },
+    { status: 502 },
+  );
+}

@@ -1,0 +1,284 @@
+{
+  "T01": {
+    "goals_hit": [
+      "diagnose the session drop trigger"
+    ],
+    "goals_miss": [
+      "fix without changing the AuthProvider interface"
+    ],
+    "constr_hit": [],
+    "constr_miss": [
+      "AuthProvider interface unchanged"
+    ],
+    "q_hit": [],
+    "q_miss": [
+      "what counts as the reproduction"
+    ],
+    "forbidden_hit": [
+      "a specific file or module to change"
+    ],
+    "n_goals": 2,
+    "n_constr": 1,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "Authentication session handling, specifically the token refresh flow suspected of causing the drop"
+    ]
+  },
+  "T02": {
+    "goals_hit": [
+      "stabilise the login test"
+    ],
+    "goals_miss": [],
+    "constr_hit": [],
+    "constr_miss": [],
+    "q_hit": [
+      "which test"
+    ],
+    "q_miss": [
+      "where it lives",
+      "what flaky means here"
+    ],
+    "forbidden_hit": [],
+    "n_goals": 2,
+    "n_constr": 0,
+    "n_q": 2,
+    "n_blocking": 0,
+    "scope_include": [
+      "the login test"
+    ]
+  },
+  "T03": {
+    "goals_hit": [
+      "halve p95 latency"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "no caching",
+      "public response schema unchanged",
+      "no new dependencies"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [
+      "permission to change the schema"
+    ],
+    "n_goals": 1,
+    "n_constr": 4,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "src/api/"
+    ]
+  },
+  "T04": {
+    "goals_hit": [
+      "split the handler into smaller modules",
+      "no behaviour change"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "existing tests green"
+    ],
+    "constr_miss": [
+      "public exports unchanged"
+    ],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 4,
+    "n_constr": 3,
+    "n_q": 2,
+    "n_blocking": 0,
+    "scope_include": [
+      "src/checkout/handler.ts",
+      "The new smaller modules created by splitting src/checkout/handler.ts"
+    ]
+  },
+  "T05": {
+    "goals_hit": [
+      "Redis-backed sessions",
+      "survive rolling restart",
+      "run with two replicas"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "AuthProvider interface unchanged",
+      "existing tests pass"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [
+      "Redis topology and failover expectations"
+    ],
+    "forbidden_hit": [],
+    "n_goals": 3,
+    "n_constr": 2,
+    "n_q": 2,
+    "n_blocking": 0,
+    "scope_include": [
+      "Session storage implementation"
+    ]
+  },
+  "T06": {
+    "goals_hit": [
+      "redact secrets in logs",
+      "regression test for secret leakage"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "no secret in any diagnostic output"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 2,
+    "n_constr": 1,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "The staging API logging path that emits the database URL on connection retry.",
+      "Secret redaction in log output.",
+      "A regression test guarding against secrets in log output."
+    ]
+  },
+  "T07": {
+    "goals_hit": [
+      "redesign the empty dashboard state",
+      "new users complete onboarding unaided"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "existing design tokens kept",
+      "no new dependencies"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 1,
+    "n_constr": 2,
+    "n_q": 2,
+    "n_blocking": 0,
+    "scope_include": [
+      "web/dashboard/EmptyState.tsx"
+    ]
+  },
+  "T08": {
+    "goals_hit": [
+      "written recommendation, no code"
+    ],
+    "goals_miss": [
+      "evaluate rate limiter replacement"
+    ],
+    "constr_hit": [
+      "at most three candidates"
+    ],
+    "constr_miss": [
+      "no code changes"
+    ],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 3,
+    "n_constr": 2,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "src/middleware/rateLimit.ts (the existing hand-rolled rate limiter under evaluation)",
+      "Comparison of at most three token-bucket library candidates on throughput, memory, and API fit"
+    ]
+  },
+  "T09": {
+    "goals_hit": [
+      "faster onboarding to green build"
+    ],
+    "goals_miss": [],
+    "constr_hit": [],
+    "constr_miss": [],
+    "q_hit": [
+      "what green build means here",
+      "what faster means (target time)"
+    ],
+    "q_miss": [
+      "what the current blockers are"
+    ],
+    "forbidden_hit": [],
+    "n_goals": 2,
+    "n_constr": 0,
+    "n_q": 4,
+    "n_blocking": 3,
+    "scope_include": [
+      "The process by which a new hire gets the project to a green build"
+    ]
+  },
+  "T10": {
+    "goals_hit": [
+      "fix pagination off-by-one",
+      "regression test on page boundaries"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "response envelope unchanged"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 2,
+    "n_constr": 1,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "src/api/items.ts",
+      "regression test for pagination page boundaries (test file location not specified in the task)"
+    ]
+  },
+  "T11": {
+    "goals_hit": [
+      "request logging on every endpoint"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "zero measurable latency impact",
+      "never log request bodies (PII)"
+    ],
+    "constr_miss": [],
+    "q_hit": [],
+    "q_miss": [
+      "what zero measurable means (budget, harness)"
+    ],
+    "forbidden_hit": [],
+    "n_goals": 3,
+    "n_constr": 3,
+    "n_q": 2,
+    "n_blocking": 0,
+    "scope_include": [
+      "src/api/"
+    ]
+  },
+  "T12": {
+    "goals_hit": [
+      "convert watcher to async iteration"
+    ],
+    "goals_miss": [],
+    "constr_hit": [
+      "Node 22 only, no shims"
+    ],
+    "constr_miss": [
+      "CLI flags and exit codes identical"
+    ],
+    "q_hit": [],
+    "q_miss": [],
+    "forbidden_hit": [],
+    "n_goals": 2,
+    "n_constr": 1,
+    "n_q": 1,
+    "n_blocking": 0,
+    "scope_include": [
+      "tools/watcher.js"
+    ]
+  }
+}
