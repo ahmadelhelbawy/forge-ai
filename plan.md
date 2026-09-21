@@ -10,18 +10,23 @@
 > to implement FORGE from this document while consulting `spec.md` and
 > `docs/architecture.md`.
 >
-> **Status (V2 reconciliation, 2026-09-16).** Complete and verified: **P0, P1,
-> P1.4, P1.5, P1.6, P1.7, P2, P3, P4**. Not started: **P5** (Execution Package,
-> persistence, `forge explain`) and **P6** (full-fidelity renderer, judged
-> diagnostics). The thesis gates ran — P1.5 RECONSIDER, P1.6 FAIL — and the
-> structure-beats-raw claim is retired (`intent.md`). A conversational workspace
-> shipped outside this plan; §V2 below resequences the remaining work around it.
-> Each phase still requires explicit human approval before it begins.
+> **Status (2026-09-21).** Complete and verified: **P0, P1, P1.4, P1.5, P1.6,
+> P1.7, P2, P3, P4**, and the V2 sequence **V2-0 … V2-E** plus **V2-R** (product
+> convergence). Next, and not started: **V2-F** (Execution Contract + requirement
+> identity, absorbing P5). Then V2-G (evidence-based verification), V2-H
+> (requirement governance + code linkage), V2-I (productization). The reasoning
+> behind that ordering — including the two phases struck because V2-R already did
+> the work — is in [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
+>
+> **P6 stays deferred and partly cancelled**: the full-fidelity renderer is not on
+> the path, and the judged diagnostics (`C040`, `C041`, `C051`) stay catalogued but
+> unbuilt. The thesis gates ran — P1.5 RECONSIDER, P1.6 FAIL — and the
+> structure-beats-raw claim is retired (`intent.md`). Each phase still requires
+> explicit human approval before it begins.
 >
 > *This header was previously frozen at the P1.4 checkpoint and claimed P1.5 was
 > "not started and not authorized" while the deviation log below recorded P1.5
-> through P4 as done. The deviation log was right; the header is now derived from
-> it.*
+> through P4 as done. The deviation log was right; the header is derived from it.*
 
 ---
 
@@ -993,9 +998,11 @@ is code is ceremony, not capability.
 | V2-D1 | `WS-R24`, `WS-R25`, `WS-R29`, `DG-R1`–`DG-R2` | `AC-039`, `AC-040`, `AC-042` |
 | V2-D2 | `WS-R9`, `WS-R26`–`WS-R29`, `DG-R3`–`DG-R4` | `AC-041`, `AC-043` |
 | V2-E | `WS-R8`, `ST-R1`–`ST-R7` | — |
-| V2-F | `FR-040`–`FR-046`, `WS-R20`, `WS-R21` | `AC-005`, `AC-020`, `AC-034`, `AC-035` |
-| V2-G | `WS-R15`, `SC-R3`–`SC-R7` | `AC-033`, `AC-037` |
-| V2-H | `NFR-011`, `TS-R6` | `AC-038` |
+| V2-R | `FR-051`, `WS-R15`, `WS-R20`, `WS-R21`, `SC-R2`, `SC-R6`, `INV-012`, `INV-016` | `AC-033`, `AC-034`, `AC-035`, `AC-037` |
+| V2-F | `FR-040`–`FR-044`, `FR-046`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`, `INV-004`, `INV-005`, `INV-013`, `INV-015` | `AC-005`, `AC-020` |
+| V2-G | `EV-R1`, `EV-R2` *(new in V2-G)* | new — `FORGE-V001`–`V003` |
+| V2-H | `INV-002`, `INV-011`, `FR-025`–`FR-030` *(reused)* | new |
+| V2-I | `NFR-011`, `TS-R6` | `AC-038` |
 
 ---
 
@@ -1008,6 +1015,13 @@ is code is ceremony, not capability.
 > left that unaddressed. P5 is **not cancelled** — it is resequenced into V2-F,
 > where the Execution Package becomes something the product exports rather than a
 > milestone that precedes the product. P6 stays deferred.
+>
+> **Revised 2026-09-21, after V2-R.** The V2-F…V2-I entries below replace the
+> original V2-F/V2-G/V2-H. Two of those were struck outright because V2-R shipped
+> them; `forge history` was dropped rather than rescheduled; and V2-G and V2-H
+> were **swapped** — verification depends on the Execution Contract but not on
+> requirement lifecycle, while linkage is nearly worthless until there are verdicts
+> to link to. See [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
 >
 > Every V2 phase is a vertical slice that must leave a usable product visibly
 > better than it found it. The rules in "How to use this plan" apply unchanged:
@@ -1394,30 +1408,96 @@ point of the ordering.
 >   `chat-completions` models work by coincidence.
 >   All three are listed in `CLAUDE.md`'s known defects.
 
-### V2-F · Target intelligence and export *(absorbs P5)*
+### V2-R · Product convergence *(COMPLETE — 2026-09-21)*
 
-**Objective.** "Compile for target X" emits a real Execution Package from the
-current artifact; target metadata governs model routing.
-**Requirements.** `FR-040`–`FR-046`, `WS-R20`, `WS-R21`, `INV-004`.
-**Exit gate.** `AC-005`, `AC-020`, `AC-034`, `AC-035`. Determinism holds across
-separate invocations with no mocked clock (`TS-R3`).
+> **Verified 2026-09-21** at `e9b3c68`. `pnpm typecheck`, `pnpm schema:check`
+> clean · `pnpm test` **1078 passed / 65 skipped** (from 1017/53) with no API key
+> and no network · `web/scripts/e2e.sh` **64/64** (from 52/52) ·
+> `sha256sum -c evals/p16/MANIFEST.sha256` OK ×3 and
+> `git diff --name-only 8ac59a5..HEAD -- evals/p16/` empty.
 
-### V2-G · Attachments through WorkspaceGuard
+**Objective.** Converge the shipped workspace with the compiler architecture and
+fix the product-value defects the audit found. Eleven commits, one per step.
 
-**Objective.** Uploaded files get the same treatment repository files get: path
-and type checks, secret detection with recorded redaction, trust-tier assignment,
-untrusted fencing.
-**Why now.** Today attachments are concatenated into the system prompt as prose.
-This is the largest gap between the security model as specified and as shipped.
-**Exit gate.** `AC-033`, `AC-037`. Adversarial corpora, not spot checks.
+| Step | What shipped |
+|---|---|
+| 1 | OSS baseline: `README`, `LICENSE`, `CONTRIBUTING`, CI, and `src/index.ts` — the root `exports` map had always pointed at a `dist/index.js` that was never built |
+| 2–3 | The renderer stopped asserting `"assumed, not stated"` about content whose `source_ref` is `user_input`. A false provenance claim is FORGE's defect, not the model's (`INV-016`) |
+| 4 | The diagnostic catalogue became a contract: `FORGE-W007` backfilled into `spec.md` §10.2, `FORGE-W008` added, and `tests/contract/diagnostic-catalogue.test.ts` now parses the specification and compares it to the registry both ways |
+| 5 | Extraction rule 3 forbids demoting a stated obligation into an assumption; `src/intent/demotion.ts` detects it and emits `FORGE-W008`. **Reports, never repairs** — promoting would mean inventing a `hardness` and `kind` the user never gave |
+| 6 | `DiagnosticList` + `ChatPanel` wiring. The findings had been produced, serialised and typed all along, then discarded by `void outcome` |
+| 7 | `FR-051` conservative compaction with `FORGE-C103`. **Measured yield 0.2%** — reported, not tuned toward |
+| 8 | `forge explain`: per-section byte ranges, origins, constraint destinations, diagnostics with evidence |
+| 9 | Compile-on-demand. `web/lib/compile.ts` **calls** `compile()`; parity tests hold the bytes identical to the CLI's |
+| 10 | Attachments scanned with `scanSecrets` and classified `semi_trusted` before storage — a `.env` dropped into chat had been forwarded to the provider verbatim |
+| 11 | `getEffectiveProvider` routes by the model's protocol, not the provider's kind; `/preservation` dispatches its two extractions together |
 
-### V2-H · Observability, evaluation, hardening
+**Deviations.** Three, all recorded in the deviation log below.
 
-**Objective.** Optional local observability; Promptfoo regression suites; a real
-browser E2E suite; an opt-in live-provider smoke test.
-**Binding rule.** A mock passing is not a feature working. `AC-038` is a live
-browser workflow against a real provider, and it is the gate for release, not a
-nice-to-have.
+---
+
+### V2-F · Execution Contract + requirement identity *(absorbs P5 — NEXT)*
+
+**Objective.** A portable Execution Package a developer or CI consumes with JSON
+parsing and the published schema alone, plus stable requirement identity that
+survives version churn.
+**Requirements.** `FR-040`–`FR-044`, `FR-046`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`,
+`INV-004`, `INV-005`, `INV-013`, `INV-015`.
+**Reasoning and rejected alternatives.** [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
+**Exit gate.** `AC-005` (two compilations `diff -r` identical except `run.json`,
+**no frozen clock** — `TS-R3`) · `AC-020` (static: no code path executes a command
+derived from an IR or package) · `PK-R1`–`PK-R8` · a package built by the web
+route and by the CLI for the same IR and profile is byte-identical except
+`run.json` · a package parses against the published schema with no FORGE import.
+**Must NOT be done.** No execution, no orchestration, no daemon, no
+`forge history` (the workspace *is* the history UI since V2-C), no new
+representation of anything the IR already holds.
+
+### V2-G · Evidence-based verification
+
+**Objective.** `VERIFIED` / `FAILED` / `UNVERIFIED` / `REVIEW_REQUIRED` per
+obligation, from an evidence file produced by the user, their agent, or CI.
+**`INV-004` is not amended.** FORGE ingests evidence; it never runs anything. This
+is also the safer reading — `verification[].spec` is authored by the
+`intent.extract` model, so executing it would mean executing a model-derived
+command string.
+**Reuses the taxonomy that already exists:** `command`/`test` are mechanically
+checkable, `manual`/`review` are `REVIEW_REQUIRED` **by construction**.
+**New spec rules.** `EV-R1` (evidence is never model-authored), `EV-R2` (evidence
+binds to a package by `semantic_id`), and codes `FORGE-V001`–`V003`.
+
+### V2-H · Requirement governance + code linkage
+
+**Objective.** Lifecycle (`origin` immutable and FORGE-assigned, orthogonal to
+`status`), repository binding through `WorkspaceGuard`, and the traceability
+matrix — requirement × files × tests × verdict.
+**Highest-risk phase**, because repository binding gives the served workspace
+filesystem reach it has never had. Every read goes through `WorkspaceGuard`
+(`INV-011`) and every file through `scanSecrets`, exactly as V2-R step 10 did for
+attachments.
+**Deferrable.** V2-F + V2-G + V2-I is a coherent shippable product without it.
+
+### V2-I · Productization
+
+**Objective.** One-command start, Docker, published schemas, release, and a UI
+that does not require internal research vocabulary.
+**Binding rule.** A mock passing is not a feature working. The release gate is a
+live browser workflow against a real provider, not a nice-to-have.
+**Folded in, gated:** the bounded verbosity work. V2-R's compaction moved the
+corpus 0.2% because the repetition is model-authored, not renderer-authored. A
+prompt-level fix is legitimate only with a version bump, before/after counts on
+all twelve eval IRs, **zero** ledger presence-verdict changes, and reversion if
+the measured reduction is under 10%. It may never be justified as improving
+execution quality — `intent.md` retires that claim.
+
+> **Struck, not deferred.** Two phases that stood here are gone because V2-R did
+> the work: *"Target intelligence and export … target metadata governs model
+> routing"* (`WS-R20`/`WS-R21`, `AC-034`/`AC-035`) landed in V2-R step 11 and is
+> covered by `tests/product/opencode-routing.test.ts`; *"Attachments through
+> WorkspaceGuard"* landed in V2-R step 10. `forge history` (`FR-045`) is dropped
+> rather than rescheduled. P6's judged diagnostics (`C040`, `C041`, `C051`) and
+> `critic.judge` stay **unbuilt** — neither V2-D, V2-E, nor anything in this
+> sequence asks a model for a finding.
 
 ---
 
@@ -1513,3 +1593,7 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-19 | V2-E | **Found by the live candidate smoke (OpenRouter, `nvidia/nemotron-3-ultra-550b-a55b:free`) and fixed: the candidate generator never told the model which requirements were pinned.** Each candidate request now carries a `PINNED REQUIREMENTS` block listing every ledger text with an instruction to keep it word for word. | The model kept the *meaning* of the pinned "It must read the full diff before judging" in all three candidates but reworded it ("Read the complete diff"), and Layer 1 — correctly — reported `FORGE-W005` on every one. The generator was enforcing a verbatim rule it never stated. The check itself is unchanged and still decides; the texts are user-authored ledger entries already present in the prompt being rewritten, and nothing lets the model edit them (`WS-R24`, `WS-R27.4`). Re-run: pinned requirement present, verbatim, in every returned candidate. Asserted offline by capturing every candidate request. |
 | 2026-09-19 | V2-E | **Found by the same run and fixed: `GET /candidates` still reported a candidate's dropped pin as "absent from version 1".** All candidate Layer 1 checks now go through one helper, `candidatePreservation`, which names the candidate. | The 2026-09-18 fix covered generation and comparison but missed the list route, so the Studio could state that a version dropped a requirement the version in fact contains. One helper for every surface removes the chance of a fourth copy drifting. |
 | 2026-09-20 | V2-E | **Found by the V2-E live acceptance run and fixed: candidate generation chose its transport from the PROVIDER's kind instead of the MODEL's documented protocol.** `web/lib/candidates.ts` now resolves through `resolveCall` + `transportFor` — the same pair the turn pipeline (`web/lib/turn/deps.ts`) and the connection test already used — in place of `getEffectiveProvider` + `callHeaders`. | OpenCode Go's provider kind is `openai-compat`, so every candidate call went to `/chat/completions`. That is correct for 17 of its 29 models and **wrong for the 12 that speak `anthropic-messages` or `responses`**; the gateway answered the wrong path with `HTTP 503` and an empty body, giving three failed archetypes and zero candidates. It survived five prior live runs only because every one of them used `kimi-k3`, which *is* chat-completions. The connection test passed throughout, because it was the one path already routing correctly — **a connection test passing is not the feature working**, which is `TS-R1`'s rule in a new place. Locked out by `tests/product/opencode-routing.test.ts`, whose stated purpose is exactly this defect class: a fetch-level assertion that two requested alternatives produce two calls to `/messages` and none to `/chat/completions`, verified RED before the fix and GREEN after. The same change also replaces a fresh `randomUUID()` session header per call with the conversation id the gateway documents, which that file's defect 3 already forbade elsewhere. |
+| 2026-09-21 | V2-R | **`claude-design` does not refuse the current prompt, and the plan's real-app check assumed it would.** The check was written as "compile for kiro and claude-design; confirm claude-design refuses with `FORGE-C030`". Refusal is a property of the **IR**, not of the target: `run_tests` and `shell` are soft (`degrade.command_to_manual` compensates), so their absence degrades rather than refuses. The first parity test asserted a refusal on those and failed correctly. Verified instead on `fs_write`, which has no compensating rule — `claude-design` refuses it with `FORGE-C030` and zero artifacts, both in-process and through `forge explain` on `evals/results/ir/T01.json`. | The approved check named the wrong capability. Recording the correction rather than restating the check as if it had passed. |
+| 2026-09-21 | V2-R | Added `STUB_UNREADABLE_SENTINEL` to `web/lib/turn/deps.ts`, a message marker that makes the stub answer with prose instead of an envelope. | R4 requires a turn that emits `FORGE-W003` to render it in the chat surface, and the stub always returned a well-formed envelope. Without the sentinel the only way to see a degraded turn is a live provider misbehaving, which no test can arrange. The sentinel drives the **real** degradation path in `pipeline.ts` rather than mocking it. |
+| 2026-09-21 | V2-R | Added `FR-051` and `FORGE-C103 redundant_line_suppressed` (info, deterministic) to `spec.md`, which the approved plan implied ("every suppression carries a diagnostic") but did not name. Specification changed first; the step-4 cross-check test then caught the registry lagging by one commit, which is what it was written for. | `INV-012` admits no silent removal and no existing code fit — `C011` is context-specific and `C061` is budget-specific. Inventing a workspace-local finding type instead would have rebuilt the parallel diagnostic system V2-A explicitly rejected. |
+| 2026-09-21 | V2-R | **Compaction's measured yield is 0.2%** (18,710 → 18,681 words across twelve eval IRs × three profiles; T04 615→615, T07 403→403, T12 557→557), against a 30% target. No guard was loosened and no category widened to raise it. | The target was declared a non-gate in advance, and the gap is a design consequence rather than an implementation shortfall: the audit had already established that most repetition is **model-authored paraphrase**, and the approved whitelist fires only on near-verbatim restatement. Widening it to catch paraphrase is exactly what would put R5 — no presence verdict may change — at risk. Carried into V2-I as bounded, gated prompt work. |

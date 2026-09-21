@@ -35,15 +35,11 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-20 — 1017 tests passing (53 skipped), typecheck/schema/web
-build clean, the HTTP product suite green (`web/scripts/e2e.sh`, 52/52), and the
-live-provider smoke run against Kimi K3 (`web/scripts/live-smoke.mjs`, opt-in),
-which now covers candidates as well as streaming and requirement preservation.
-**V2-E's last outstanding gate closed on 2026-09-20**: a live acceptance run
-against OpenCode Go / `kimi-k3` returned **3 of 3** candidates with zero
-diagnostics, concurrency measured at 63.1s wall against a 106.9s sequential sum,
-pinned requirements verbatim in all three, and full state surviving a real
-server restart (`plan.md`, V2-E).
+Verified 2026-09-21 at `e9b3c68` — **1078 tests passing (65 skipped)**,
+typecheck / `schema:check` / web build clean, the HTTP product suite green
+(`web/scripts/e2e.sh`, **64/64**), the frozen P1.6 manifest verifying, and the
+opt-in live-provider smoke (`web/scripts/live-smoke.mjs`) covering streaming,
+requirement preservation and candidates.
 
 **Complete:** P0 (IR foundation) · P1 (compiler + 7 profiles) · P1.4 (security
 hardening) · P1.5 + P1.6 (thesis gates — both ran; claim retired) · P2 (context
@@ -55,16 +51,29 @@ append-only runs, derivable SQLite index, migration from flat JSON) · **V2-D**
 (requirement preservation in two layers: the deterministic user-pinned ledger
 `FORGE-W005`, then opt-in judged semantic drift `FORGE-W006`) · **V2-E**
 (prompt candidates from the §9 archetypes, the `FORGE-W007` duplicate gate,
-deterministic block-union `MERGE`, explicit promotion with the choice recorded).
+deterministic block-union `MERGE`, explicit promotion with the choice recorded) ·
+**V2-R** (product convergence — see below).
 
-**Not built:** P5 → resequenced into **V2-F** (Execution Package, persistence,
-`forge explain`) · P6 (full-fidelity renderer, judged diagnostics — `C040`,
-`C041`, `C051` are catalogued but unimplemented, and `critic.judge` is **not** in
-the boundary registry; neither V2-D nor V2-E needed it, because neither asks a
-model for a finding — see `docs/architecture.md` §23.5 and §23.6).
+**V2-R, eleven commits, 2026-09-21.** OSS baseline and the root `exports` fix ·
+the renderer stopped asserting `"assumed, not stated"` about user-derived content
+· the diagnostic catalogue became a contract enforced against `spec.md` §10.2 ·
+`FORGE-W008` detects a demoted requirement and **reports, never repairs** ·
+diagnostics render in the chat surface (they were computed and discarded before)
+· `FR-051` compaction with `FORGE-C103`, **measured yield 0.2%** · `forge explain`
+· compile-on-demand, with `web/lib/compile.ts` calling `compile()` and parity
+tests holding the bytes identical to the CLI's · attachments scanned and
+classified `semi_trusted` before storage · protocol-aware provider routing and
+parallel preservation extraction.
 
-**Current work: the V2 sequence in `plan.md`.** V2-F (Execution Package,
-persistence, `forge explain`) is next and is **not** started.
+**Not built:** **V2-F** (Execution Contract + stable requirement identity,
+absorbing P5) is **next and not started** · V2-G (evidence-based verification) ·
+V2-H (requirement governance + code linkage) · V2-I (productization). The
+reasoning, the rejected alternatives and the two struck phases are in
+[`docs/roadmap-v2.md`](docs/roadmap-v2.md); the phase entries are in `plan.md`.
+P6's judged diagnostics (`C040`, `C041`, `C051`) stay **catalogued but
+unimplemented**, and `critic.judge` is **not** in the boundary registry — nothing
+in the remaining sequence asks a model for a finding
+(`docs/architecture.md` §23.5, §23.6).
 
 **The boundary registry holds four boundaries:** `intent.extract`,
 `conversation.classify`, `conversation.generate` and `conversation.candidate`.
@@ -72,40 +81,23 @@ AD-22's open question is closed — generation is registered, governing the
 envelope and the action → effect relation rather than the prose (see the V2-A
 deviation entries). V2-E added the fourth because `MB-R1` admits no ungoverned
 model call; it carries **no `action`**, so nothing it returns can become a
-version (`docs/architecture.md` §23.6). `critic.judge` is still unbuilt.
+version. `critic.judge` is still unbuilt. `intent.extract` is at **version 2**
+since V2-R step 5 (prompt rule 3 forbids demoting a stated obligation), so the
+committed fixture cassettes were regenerated — regenerate with
+`tsx scripts/gen-task-cassettes.ts` after any `src/intent/prompt.md` change.
 
-**Known defects, recorded and unfixed** (see the V2-0 deviation entry): the root
-`exports` maps `.` to a `dist/index.js` that is never built; `evals/p16/README.md`
-still says "NOT RUN" over a scored FAIL; AC-023 asserts a dependency test that
-does not exist; cassette replay is unreachable from `web/`. **Found in V2-E, not
-fixed because it is V2-D's:** `/api/conversations/[id]/preservation` extracts the
-two version IRs **sequentially** in one request, so on a slow reasoning model it
-can exceed a client's patience — a live run aborted it with
-`UND_ERR_HEADERS_TIMEOUT` after five minutes. V2-E hit the same wall in candidate
-generation and fixed it there by dispatching the independent calls together; the
-same fix applies here and is a few lines, but it is outside V2-E's scope.
-Measured at 205s on a live run. **Also found in V2-E, also not fixed:** a
-provider `HTTP 429` rate limit is classified to the user as "rejected the
-request for billing reasons, not a bad key" — the wrong cause, though the
+**Known defects, recorded and unfixed.** `evals/p16/README.md` still says
+"NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023
+asserts a dependency test that does not exist; cassette replay is unreachable
+from `web/`; a provider `HTTP 429` is classified to the user as "rejected the
+request for billing reasons, not a bad key", which is the wrong cause, though the
 provider's true message is carried correctly in the diagnostic beneath it.
-**Found in V2-E's 2026-09-20 live acceptance, not fixed because it is V2-D's and
-needs a core change:** `irForVersion` (`web/lib/preservation.ts`) picks its
-transport from the **provider's kind** rather than the **model's documented
-protocol**, so `intent.extract` sends an OpenCode Go anthropic-messages model to
-`/chat/completions` and gets `HTTP 503` with an empty body. The same defect was
-fixed for candidates here, but it cannot be fixed the same way: `extractIntent`
-needs a core `ModelProvider`, and core's `AnthropicProvider` accepts **no base
-URL**, so no core transport can currently reach that gateway path. Measured on
-`qwen3.8-flash`: three attempts, 183s, V2-E's gate blocked behind it.
-**Scope of the debt, counted rather than estimated: 12 of the 29 documented
-OpenCode Go models are unreachable through this path** — the 8 that speak
-`anthropic-messages` and the 4 that speak `responses`; only the 17
-`chat-completions` models work, and they work by coincidence. Use a
-chat-completions model (`kimi-k3`, `glm-5.3-flash`) until it is fixed. The fix
-is an optional base URL on core's `AnthropicProvider` plus protocol-aware
-selection in `getEffectiveProvider`; it is a **core** change, which is why it
-was not taken under V2-E's authority. *(Fixed in V2-A: the product now persists a `ModelCallRecord` for every
-conversation model call.)*
+
+*Fixed in V2-R, previously listed here:* the root `exports` map pointing at a
+`dist/index.js` that was never built (step 1); `irForVersion` choosing its
+transport from the provider's kind rather than the model's protocol, which left
+12 of 29 OpenCode Go models unreachable (step 11); `/preservation` extracting its
+two version IRs sequentially, measured at 205s live (step 11).
 
 ## Architecture boundaries — who owns what
 
@@ -210,6 +202,7 @@ pnpm forge compile --ir <path> --target <profile> [--out <dir>]
 pnpm forge task "<text>" --target <profile>
 pnpm forge context resolve --ir <path> --workspace <dir>
 pnpm forge strategies --ir <path> [--target <profile>]
+pnpm forge explain --ir <path> --target <profile> [--json]
 pnpm forge ir validate|hash|show <path>
 pnpm --dir web build  # builds the core first, then Next
 pnpm --dir web dev    # local workspace
@@ -219,6 +212,14 @@ pnpm --dir web dev    # local workspace
 must run before `pnpm test`** after any change under `src/`. `pnpm --dir web build`
 and `web/scripts/e2e.sh` (the HTTP product suite) do it for you.
 
+```
+./web/scripts/e2e.sh                      # HTTP product suite (builds web first)
+sha256sum -c evals/p16/MANIFEST.sha256    # frozen benchmark — must stay OK x3
+tsx scripts/gen-task-cassettes.ts         # after any src/intent/prompt.md change
+```
+
 `schema/` is **generated** — never hand-edit it; run `pnpm schema:emit`.
+**Nothing under `evals/p16/` may be modified** — it is a frozen benchmark, and
+its README's "NOT RUN" line is wrong but stays wrong.
 Not yet present: `pnpm lint`, `pnpm build` at the workspace root, and the focused
 suites `test:determinism` · `test:security` · `test:boundaries`.
