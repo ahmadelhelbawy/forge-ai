@@ -128,6 +128,9 @@ export function newConversation(partial: {
     candidatePromotions: [],
     pendingClarification: null,
     ledger: [],
+    repository: null,
+    governance: [],
+    advisoryLinks: [],
     versionIrs: [],
     turnEvents: [],
     modelCalls: [],
@@ -425,6 +428,20 @@ export function ledgerState(convo: Conversation): string {
 }
 
 /**
+ * The V2-H fingerprint a model path must not change (RG-R6, AC-053): the
+ * governance log, the advisory links and the repository binding. All three are
+ * written only from user-action routes; the turn pipeline checks this beside
+ * `ledgerState` and refuses a turn during which it moved.
+ */
+export function governanceState(convo: Conversation): string {
+  return JSON.stringify({
+    governance: convo.governance.map((g) => g.decision),
+    advisoryLinks: convo.advisoryLinks.map((l) => [l.id, l.requirementId, l.path]),
+    repository: convo.repository?.root ?? null,
+  });
+}
+
+/**
  * The semantic projection of a conversation (WS-R9, §6.3).
  *
  * Run data — timestamps, latency, model identity, the event log and the model
@@ -476,6 +493,11 @@ export function semanticSnapshot(convo: Conversation): string {
     // part of a conversation AC-036 compares byte for byte. A cancelled turn
     // that quietly changed the ledger would otherwise compare as unchanged.
     ledger: convo.ledger.map((e) => ({ text: e.text, contentHash: e.contentHash, origin: e.origin })),
+    // RG-R3 / LK-R4: human decisions and user-asserted links are semantic —
+    // they are what a user did, not when. RB-R1: whether a repository is bound.
+    governance: convo.governance.map((g) => ({ decision: g.decision, subjects: g.subjects })),
+    advisoryLinks: convo.advisoryLinks.map((l) => ({ requirementId: l.requirementId, path: l.path, note: l.note })),
+    repositoryBound: convo.repository !== null,
     attachments: convo.attachments.map((a) => ({ name: a.name, size: a.size, truncated: a.truncated })),
   });
 }

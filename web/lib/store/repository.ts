@@ -73,6 +73,11 @@ interface Baseline {
    */
   readonly ledgerIds: readonly string[];
   readonly versionIrs: number;
+  /** RB-R1: the bound root at load, compared rather than counted. */
+  readonly repositoryRoot: string | null;
+  readonly governance: number;
+  /** Advisory links can be removed, so like the ledger they are a set. */
+  readonly advisoryLinkIds: readonly string[];
   readonly currentV: number;
   readonly title: string;
   readonly target: string;
@@ -98,6 +103,9 @@ function emptyBaseline(convo: Conversation): Baseline {
     modelCalls: 0,
     ledgerIds: [],
     versionIrs: 0,
+    repositoryRoot: null,
+    governance: 0,
+    advisoryLinkIds: [],
     currentV: 0,
     title: "",
     target: "",
@@ -119,6 +127,9 @@ function baselineOf(convo: Conversation, existed: boolean): Baseline {
     modelCalls: convo.modelCalls.length,
     ledgerIds: convo.ledger.map((e) => e.id),
     versionIrs: convo.versionIrs.length,
+    repositoryRoot: convo.repository?.root ?? null,
+    governance: convo.governance.length,
+    advisoryLinkIds: convo.advisoryLinks.map((l) => l.id),
     currentV: convo.currentV,
     title: convo.title,
     target: convo.target,
@@ -166,6 +177,9 @@ function shell(id: string, at: string): Conversation {
     pendingClarification: null,
     ledger: [],
     versionIrs: [],
+    repository: null,
+    governance: [],
+    advisoryLinks: [],
     turnEvents: [],
     modelCalls: [],
   };
@@ -318,6 +332,34 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
           }),
         );
         break;
+      case "repository_bound":
+        convo.repository = Object.freeze({ root: body.root, at: body.boundAt });
+        break;
+      case "repository_unbound":
+        convo.repository = null;
+        break;
+      case "requirement_decided":
+        convo.governance.push(
+          Object.freeze({ decision: body.decision, subjects: body.subjects, at: body.decidedAt }),
+        );
+        break;
+      case "advisory_link_added":
+        convo.advisoryLinks.push(
+          Object.freeze({
+            id: body.linkId,
+            requirementId: body.requirementId,
+            path: body.path,
+            note: body.note,
+            source: body.source,
+            at: body.addedAt,
+          }),
+        );
+        break;
+      case "advisory_link_removed": {
+        const at = convo.advisoryLinks.findIndex((l) => l.id === body.linkId);
+        if (at !== -1) convo.advisoryLinks.splice(at, 1);
+        break;
+      }
       case "turn_event":
         convo.turnEvents.push(Object.freeze({ ...body.event }));
         break;
@@ -481,6 +523,44 @@ export function saveConversation(store: Store, convo: Conversation): void {
       boundaryVersion: extracted.boundaryVersion,
       extractedAt: extracted.at,
     });
+  }
+
+  // RB-R1: the binding is a value, compared; a change of root is an unbind
+  // followed by a bind, so the log reads as the two user actions it was.
+  const root = convo.repository?.root ?? null;
+  if (root !== base.repositoryRoot) {
+    if (base.repositoryRoot !== null) emit({ kind: "repository_unbound", id: convo.id });
+    if (convo.repository) {
+      emit({ kind: "repository_bound", id: convo.id, root: convo.repository.root, boundAt: convo.repository.at });
+    }
+  }
+  // RG-R3: append-only, so the delta is the tail.
+  for (const record of convo.governance.slice(base.governance)) {
+    emit({
+      kind: "requirement_decided",
+      id: convo.id,
+      decision: record.decision,
+      subjects: record.subjects,
+      decidedAt: record.at,
+    });
+  }
+  const baseLinks = new Set(base.advisoryLinkIds);
+  const nowLinks = new Set(convo.advisoryLinks.map((l) => l.id));
+  for (const link of convo.advisoryLinks) {
+    if (baseLinks.has(link.id)) continue;
+    emit({
+      kind: "advisory_link_added",
+      id: convo.id,
+      linkId: link.id,
+      requirementId: link.requirementId,
+      path: link.path,
+      note: link.note,
+      source: link.source,
+      addedAt: link.at,
+    });
+  }
+  for (const linkId of base.advisoryLinkIds) {
+    if (!nowLinks.has(linkId)) emit({ kind: "advisory_link_removed", id: convo.id, linkId });
   }
 
   for (const event of convo.turnEvents.slice(base.turnEvents)) {

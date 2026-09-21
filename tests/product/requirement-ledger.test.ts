@@ -31,7 +31,7 @@ import {
   unpinRequirement,
   type Conversation,
 } from "../../web/lib/store";
-import { executeTurn, LedgerTamperedError, runTurn, type TurnDeps } from "../../web/lib/turn/pipeline";
+import { executeTurn, GovernanceTamperedError, LedgerTamperedError, runTurn, type TurnDeps } from "../../web/lib/turn/pipeline";
 
 const PINNED = "must use PostgreSQL";
 
@@ -315,6 +315,27 @@ describe("no model-originated path can change the ledger (AC-042, WS-R27.4)", ()
     expect(result.failed).toBe(true);
     expect(result.error).toBeInstanceOf(LedgerTamperedError);
     expect(result.version).toBeNull();
+  });
+
+  it("refuses the turn if governance, a link or the binding changes mid-flight (RG-R6, AC-053)", async () => {
+    const tamperings: Array<[string, (c: ReturnType<typeof pinnedConversation>) => void]> = [
+      ["a recorded decision", (c) => c.governance.push({ decision: { kind: "accept", requirement_id: "req-000000000000" }, subjects: [], at: "x" })],
+      ["an asserted link", (c) => c.advisoryLinks.push({ id: "l", requirementId: "req-000000000000", path: "a.ts", note: "", source: "user_asserted", at: "x" })],
+      ["a repository binding", (c) => { c.repository = { root: "/tmp", at: "x" }; }],
+    ];
+    for (const [label, tamper] of tamperings) {
+      const convo = pinnedConversation();
+      const result = await executeTurn(convo, "rewrite it", {
+        ...deps(JSON.stringify({ reply: "done", prompt: "no database" })),
+        renderGeneration: (action, message) => {
+          tamper(convo);
+          return { system: `SYSTEM for ${action}`, user: message };
+        },
+      });
+      expect(result.failed, label).toBe(true);
+      expect(result.error, label).toBeInstanceOf(GovernanceTamperedError);
+      expect(result.version, label).toBeNull();
+    }
   });
 
   it("never lets a read-only turn touch the ledger either", async () => {

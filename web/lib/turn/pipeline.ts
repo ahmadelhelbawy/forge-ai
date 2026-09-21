@@ -49,6 +49,7 @@ import {
   appendTurnEvent,
   checkLedger,
   currentPrompt,
+  governanceState,
   ledgerState,
   recordModelCall,
   resolvePendingClarification,
@@ -164,6 +165,22 @@ export interface TurnResult {
  * ledger a model path can edit is not a guarantee at all. A hard error beats a
  * plausible wrong answer.
  */
+/**
+ * The governance log, an advisory link or the repository binding changed while
+ * a model call was in flight (RG-R6, AC-053). The same tripwire as the ledger's:
+ * nothing in this pipeline writes any of them, so reaching this means a model
+ * path found a way in, and the turn is refused rather than kept.
+ */
+export class GovernanceTamperedError extends Error {
+  constructor() {
+    super(
+      "Requirement governance changed during a turn. Only a user action may record a decision, " +
+        "assert a link or bind a repository (RG-R6); the turn was refused.",
+    );
+    this.name = "GovernanceTamperedError";
+  }
+}
+
 export class LedgerTamperedError extends Error {
   constructor() {
     super(
@@ -248,6 +265,7 @@ export async function* runTurn(
    * again after every model call and before the turn ends.
    */
   const ledgerAtStart = ledgerState(convo);
+  const governanceAtStart = governanceState(convo);
 
   const push = (body: TurnEventBody): TurnEvent => {
     const event = appendTurnEvent(convo, { turnId, ...body });
@@ -261,6 +279,7 @@ export async function* runTurn(
 
   const checkLedgerIntact = (): void => {
     if (ledgerState(convo) !== ledgerAtStart) throw new LedgerTamperedError();
+    if (governanceState(convo) !== governanceAtStart) throw new GovernanceTamperedError();
   };
 
   const note = (finding: Diagnostic): void => {

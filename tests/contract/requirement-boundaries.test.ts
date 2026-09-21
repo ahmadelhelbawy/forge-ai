@@ -30,7 +30,7 @@ const ALLOWED_WEB_IMPORTERS: ReadonlyMap<string, string> = new Map([
   ["web/app/api/conversations/[id]/links/route.ts", "user-asserted advisory links"],
 ]);
 
-const CORE_IMPORT = /from\s+["'][^"']*\/requirement\/(?:governance|linkage|traceability)(?:\.js)?["']/;
+const CORE_IMPORT = /from\s+["'][^"']*\/requirement\/(?:governance|linkage|traceability|binding)(?:\.js)?["']/;
 const WEB_IMPORT = /from\s+["'](?:@\/lib\/requirements|[^"']*\/lib\/requirements|\.\/requirements)["']/;
 
 /** Directories whose modules a model boundary can reach, or which run a model turn. */

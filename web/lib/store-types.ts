@@ -115,6 +115,57 @@ export interface VersionIr {
   readonly at: string;
 }
 
+/**
+ * RB-R1: the one local repository a conversation is explicitly bound to.
+ *
+ * `root` is the real path the binding resolved to. It is an absolute host path,
+ * so it stays in the operator's own store and never enters a package or a
+ * matrix (RB-R3, PK-R7).
+ */
+export interface RepositoryBinding {
+  readonly root: string;
+  readonly at: string;
+}
+
+/**
+ * RG-R3: one recorded human governance decision, as persisted.
+ *
+ * Declared structurally rather than imported from the governance layer: the
+ * store persists decisions, it does not make them, and nothing a model turn can
+ * reach may import that layer (AC-053).
+ */
+export type GovernanceDecisionShape =
+  | { readonly kind: "accept"; readonly requirement_id: string }
+  | { readonly kind: "supersede"; readonly requirement_id: string; readonly successor_id: string }
+  | { readonly kind: "conflict"; readonly requirement_ids: readonly [string, string] };
+
+export interface GovernanceDecisionRecord {
+  readonly decision: GovernanceDecisionShape;
+  /** FORGE's snapshot of every requirement the decision names (RG-R3). */
+  readonly subjects: ReadonlyArray<{
+    readonly id: string;
+    readonly text: string;
+    readonly origin: "user_stated" | "inferred";
+  }>;
+  readonly at: string;
+}
+
+/**
+ * LK-R4: a link the user asserted between a requirement and a repository path.
+ *
+ * Advisory by construction — it is not deterministic evidence — and kept in a
+ * collection of its own so it can never be mistaken for an authoritative link.
+ */
+export interface AdvisoryLinkRecord {
+  readonly id: string;
+  readonly requirementId: string;
+  /** Repository-relative, checked through WorkspaceGuard when asserted. */
+  readonly path: string;
+  readonly note: string;
+  readonly source: "user_asserted";
+  readonly at: string;
+}
+
 /** WS-R5: a question that must survive across turns for CLARIFY to be legal. */
 export interface PendingClarification {
   readonly id: string;
@@ -177,6 +228,12 @@ export interface Conversation {
    * advice never pays for it.
    */
   versionIrs: VersionIr[];
+  /** RB-R1. Null unless the user explicitly bound a repository. */
+  repository: RepositoryBinding | null;
+  /** RG-R3. Append-only human decisions; status is derived from them, never stored. */
+  governance: GovernanceDecisionRecord[];
+  /** LK-R4. User-asserted, advisory. Never merged with deterministic linkage. */
+  advisoryLinks: AdvisoryLinkRecord[];
   /** WS-R10. Append-only: only `appendTurnEvent` may extend it. */
   turnEvents: TurnEvent[];
   /** WS-R14. One record per model call the workspace made. */

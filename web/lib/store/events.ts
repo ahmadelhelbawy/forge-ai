@@ -18,6 +18,7 @@
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
 import type { ModelCallRecord } from "forge/dist/model/provider.js";
 
+import type { GovernanceDecisionRecord, GovernanceDecisionShape } from "../store-types";
 import type { TurnEvent } from "../turn/events";
 
 export type ConversationEventBody =
@@ -126,6 +127,26 @@ export type ConversationEventBody =
       readonly boundaryVersion: string;
       readonly extractedAt: string;
     }
+  | { readonly kind: "repository_bound"; readonly id: string; readonly root: string; readonly boundAt: string }
+  | { readonly kind: "repository_unbound"; readonly id: string }
+  | {
+      readonly kind: "requirement_decided";
+      readonly id: string;
+      readonly decision: GovernanceDecisionShape;
+      readonly subjects: GovernanceDecisionRecord["subjects"];
+      readonly decidedAt: string;
+    }
+  | {
+      readonly kind: "advisory_link_added";
+      readonly id: string;
+      readonly linkId: string;
+      readonly requirementId: string;
+      readonly path: string;
+      readonly note: string;
+      readonly source: "user_asserted";
+      readonly addedAt: string;
+    }
+  | { readonly kind: "advisory_link_removed"; readonly id: string; readonly linkId: string }
   | { readonly kind: "turn_event"; readonly id: string; readonly event: TurnEvent }
   | { readonly kind: "model_call"; readonly id: string; readonly record: ModelCallRecord };
 
@@ -148,6 +169,11 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   "requirement_pinned",
   "requirement_unpinned",
   "version_ir_extracted",
+  "repository_bound",
+  "repository_unbound",
+  "requirement_decided",
+  "advisory_link_added",
+  "advisory_link_removed",
   "turn_event",
   "model_call",
 ];
