@@ -69,7 +69,7 @@ describe("two packages of the same inputs agree on everything semantic", () => {
 });
 
 describe("what semantic identity covers, and what it must not", () => {
-  it("covers the §6.4 tuple and every artifact hash (PK-R3)", () => {
+  it("covers the §6.4 tuple, the requirement manifest and every artifact hash (PK-R3)", () => {
     const ir = IR();
     const profile = PROFILES.get("claude-code");
     const result = compile(ir, profile, { taskSlug: "package" });
@@ -82,6 +82,7 @@ describe("what semantic identity covers, and what it must not", () => {
       "ir_semantic_hash",
       "ir_version",
       "profile",
+      "requirement_manifest",
       "strategy_semantic_hash",
       "tokenizer",
     ]);
@@ -106,12 +107,14 @@ describe("what semantic identity covers, and what it must not", () => {
   });
 
   /**
-   * PK-R3, decided deliberately: pinning a requirement changes no byte of any
-   * artifact, so it is a record of what was asked rather than an input the
-   * compiler consumed. Its hash is still listed in `package.json`, so tampering
-   * remains detectable.
+   * PK-R3 as corrected in the V2-F closure audit. `semantic_id` names the
+   * Execution Contract, not only the compilation, and V2-G binds evidence to it
+   * (`EV-R2`). If two packages with different requirement manifests shared an
+   * id, evidence produced against one would be silently accepted for the other,
+   * and `INV-005` — fixed semantic inputs, byte-identical semantic outputs —
+   * would be false of `requirements.json` and `package.json`.
    */
-  it("does not cover the requirement manifest", () => {
+  it("covers the requirement manifest — a pin changes the package's identity", () => {
     const ir = IR();
     const profile = PROFILES.get("claude-code");
     const result = compile(ir, profile, { taskSlug: "package" });
@@ -122,14 +125,74 @@ describe("what semantic identity covers, and what it must not", () => {
       ledger: [{ id: "k1", text: "Never widen the scope", contentHash: "sha256:x", origin: "user_input" }],
     });
 
-    expect(withPins.semanticId).toBe(withoutPins.semanticId);
-    // …but the manifest itself, and therefore package.json, must differ.
-    const manifestOf = (p: typeof withPins): string =>
-      p.files.find((f) => f.path === "requirements.json")!.content;
-    expect(manifestOf(withPins)).not.toBe(manifestOf(withoutPins));
-    const pkgJson = (p: typeof withPins): string =>
-      p.files.find((f) => f.path === "package.json")!.content;
-    expect(pkgJson(withPins)).not.toBe(pkgJson(withoutPins));
+    expect(withPins.semanticId).not.toBe(withoutPins.semanticId);
+    // The compilation itself is unchanged: same artifacts, byte for byte.
+    const artifactsOf = (p: typeof withPins): string[] =>
+      p.files.filter((f) => f.path.startsWith("artifacts/")).map((f) => f.content);
+    expect(artifactsOf(withPins)).toEqual(artifactsOf(withoutPins));
+  });
+
+  /**
+   * The origin-only case, which is the one a count-based check would miss: the
+   * user pins the exact text the extraction already captured as a constraint.
+   * The manifest has the same ids, but one entry is now `user_stated` rather
+   * than `inferred` (`RQ-R3`). That is a different contract.
+   */
+  it("changes identity when only a requirement's origin changes", () => {
+    const ir = IR();
+    const profile = PROFILES.get("claude-code");
+    const result = compile(ir, profile, { taskSlug: "package" });
+    const base = { ir, profile, result, generatedAt: "2026-01-01T00:00:00.000Z" };
+    const text = ir.constraints[0]!.statement;
+    const pinned = assemblePackage({
+      ...base,
+      ledger: [{ id: "k1", text, contentHash: "sha256:x", origin: "user_input" }],
+    });
+    const unpinned = assemblePackage(base);
+
+    const idsOf = (p: typeof pinned): string[] =>
+      (JSON.parse(p.files.find((f) => f.path === "requirements.json")!.content).requirements as Array<{
+        id: string;
+      }>)
+        .map((r) => r.id)
+        .sort();
+    expect(idsOf(pinned)).toEqual(idsOf(unpinned));
+    expect(pinned.semanticId).not.toBe(unpinned.semanticId);
+  });
+
+  /**
+   * The property V2-G's evidence binding actually relies on, stated directly:
+   * **one `semantic_id`, one package.** Across every ledger variation, packages
+   * that share an id must agree on every semantic file, byte for byte.
+   */
+  it("never gives two packages with different semantic files the same id (INV-005)", () => {
+    const ir = IR();
+    const entry = (id: string, text: string) =>
+      ({ id, text, contentHash: "sha256:x", origin: "user_input" }) as const;
+    const ledgers = [
+      [],
+      [entry("a", "Never widen the scope")],
+      [entry("b", "Keep the public API stable")],
+      [entry("a", "Never widen the scope"), entry("b", "Keep the public API stable")],
+      [entry("c", ir.constraints[0]!.statement)],
+      // Same text, different storage key: identity is the text (RQ-R2), so
+      // this one MUST collide with the ledger above, and agree on every byte.
+      [entry("zz", ir.constraints[0]!.statement)],
+    ];
+    const byId = new Map<string, string[]>();
+    for (const profileId of ["claude-code", "kiro"]) {
+      const profile = PROFILES.get(profileId);
+      const result = compile(ir, profile, { taskSlug: "package" });
+      for (const ledger of ledgers) {
+        const p = assemblePackage({ ir, profile, result, ledger, generatedAt: "2026-01-01T00:00:00.000Z" });
+        const contents = p.files.map((f) => `${f.path}\n${f.content}`);
+        const seen = byId.get(p.semanticId);
+        if (seen) expect(contents, `two different packages share ${p.semanticId}`).toEqual(seen);
+        else byId.set(p.semanticId, contents);
+      }
+    }
+    // 2 profiles x 5 distinct contracts (the last two ledgers are one contract).
+    expect(byId.size).toBe(10);
   });
 });
 

@@ -88,18 +88,30 @@ function file(path: string, value: unknown): PackageFile {
 }
 
 /**
- * The §6.4 semantic input tuple, plus every artifact's content hash (`PK-R3`).
+ * The §6.4 semantic input tuple, the requirement manifest, and every
+ * artifact's content hash (`PK-R3`).
+ *
+ * `semantic_id` names the **Execution Contract**, not only the compilation. The
+ * manifest changes no artifact byte, but it is part of what the package claims,
+ * and V2-G binds evidence to this id (`EV-R2`): two contracts with different
+ * requirements sharing one id would let evidence for one bind to the other, and
+ * would make `INV-005` false of `requirements.json`. The compilation alone is
+ * still visible — `ir_semantic_hash` and `artifacts` below, and the artifact
+ * hashes in `package.json`.
  *
  * Written as an explicit ordered object rather than a concatenated string so a
  * reader can see exactly what identity covers — and, just as importantly, what
  * it does not: no timestamp, no latency, no model identity, no host metadata
- * (`INV-013`), and no requirement manifest, which is a record rather than an
- * input (`PK-R3`).
+ * (`INV-013`).
  */
 export function semanticIdInputs(input: AssembleInput): Record<string, unknown> {
   const { ir, profile, result, overlay } = input;
   return {
     ir_semantic_hash: semanticHash(ir),
+    // The manifest's value, not the ledger's: storage keys and pin times are
+    // not part of a requirement's identity (RQ-R2), so two ledgers holding the
+    // same text in the same order name the same contract.
+    requirement_manifest: contentHash(requirementManifest(ir, input.ledger ?? [])),
     strategy_semantic_hash: overlay ? contentHash(overlay) : null,
     profile: `${profile.id}@${profile.version}`,
     forge_compiler_version: FORGE_COMPILER_VERSION,

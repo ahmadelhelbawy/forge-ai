@@ -12,9 +12,11 @@
 >
 > **Status (2026-09-21).** Complete and verified: **P0, P1, P1.4, P1.5, P1.6,
 > P1.7, P2, P3, P4**, and the V2 sequence **V2-0 … V2-E** plus **V2-R** (product
-> convergence). Next, and not started: **V2-F** (Execution Contract + requirement
-> identity, absorbing P5). Then V2-G (evidence-based verification), V2-H
-> (requirement governance + code linkage), V2-I (productization). The reasoning
+> convergence) and **V2-F** (Execution Contract + requirement identity, absorbing
+> P5; closed after the 2026-09-21 closure audit that bound `semantic_id` to the
+> requirement manifest). Next, and **not started**: **V2-G** (evidence-based
+> verification). Then V2-H (requirement governance + code linkage), V2-I
+> (productization). The reasoning
 > behind that ordering — including the two phases struck because V2-R already did
 > the work — is in [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
 >
@@ -1436,7 +1438,7 @@ fix the product-value defects the audit found. Eleven commits, one per step.
 
 ---
 
-### V2-F · Execution Contract + requirement identity *(absorbs P5 — NEXT)*
+### V2-F · Execution Contract + requirement identity *(absorbs P5 — COMPLETE)*
 
 **Objective.** A portable Execution Package a developer or CI consumes with JSON
 parsing and the published schema alone, plus stable requirement identity that
@@ -1456,7 +1458,7 @@ model-reachable path can set its `origin` (`AC-044`).
 `forge history` (the workspace *is* the history UI since V2-C), no new
 representation of anything the IR already holds.
 
-### V2-G · Evidence-based verification
+### V2-G · Evidence-based verification *(NEXT — not started)*
 
 **Objective.** `VERIFIED` / `FAILED` / `UNVERIFIED` / `REVIEW_REQUIRED` per
 obligation, from an evidence file produced by the user, their agent, or CI.
@@ -1600,3 +1602,4 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-21 | V2-R | Added `STUB_UNREADABLE_SENTINEL` to `web/lib/turn/deps.ts`, a message marker that makes the stub answer with prose instead of an envelope. | R4 requires a turn that emits `FORGE-W003` to render it in the chat surface, and the stub always returned a well-formed envelope. Without the sentinel the only way to see a degraded turn is a live provider misbehaving, which no test can arrange. The sentinel drives the **real** degradation path in `pipeline.ts` rather than mocking it. |
 | 2026-09-21 | V2-R | Added `FR-051` and `FORGE-C103 redundant_line_suppressed` (info, deterministic) to `spec.md`, which the approved plan implied ("every suppression carries a diagnostic") but did not name. Specification changed first; the step-4 cross-check test then caught the registry lagging by one commit, which is what it was written for. | `INV-012` admits no silent removal and no existing code fit — `C011` is context-specific and `C061` is budget-specific. Inventing a workspace-local finding type instead would have rebuilt the parallel diagnostic system V2-A explicitly rejected. |
 | 2026-09-21 | V2-R | **Compaction's measured yield is 0.2%** (18,710 → 18,681 words across twelve eval IRs × three profiles; T04 615→615, T07 403→403, T12 557→557), against a 30% target. No guard was loosened and no category widened to raise it. | The target was declared a non-gate in advance, and the gap is a design consequence rather than an implementation shortfall: the audit had already established that most repetition is **model-authored paraphrase**, and the approved whitelist fires only on near-verbatim restatement. Widening it to catch paraphrase is exactly what would put R5 — no presence verdict may change — at risk. Carried into V2-I as bounded, gated prompt work. |
+| 2026-09-21 | V2-F | **`semantic_id` now covers the requirement manifest** (`PK-R3` amended, `AC-046` sharpened). Closure audit before V2-G. | The first V2-F text excluded `requirements.json` as "a record, not a compiler input". The acceptance run then showed a pinned workspace package and an unpinned CLI package for the same IR on `kiro` sharing one `semantic_id` while `requirements.json` and `package.json` differed. That breaks `INV-005` (one semantic input tuple, one set of semantic bytes), and it would have broken `EV-R2` in V2-G: evidence is bound by `semantic_id`, so evidence for one contract would bind silently to the other. The exclusion also made "tampering remains detectable" false: `package.json` is anchored by nothing, so rewriting `requirements.json` (for example, promoting `inferred` → `user_stated`, which `RQ-R3` forbids) and updating its listed hash left a self-consistent package under the same id. Fix: one field, `requirement_manifest` (the canonical hash of the manifest value, not the ledger, so storage keys never reach identity), added to `semanticIdInputs`. No layout, schema or format change. Every `semantic_id` changes value, including for unpinned packages; V2-F was unreleased, so `PACKAGE_FORMAT_VERSION` stays `1.0`, and `evals/v2f/example-package/` was regenerated. The test that asserted the old behaviour (`does not cover the requirement manifest`) was replaced by its inverse plus an `INV-005` property test (one id → one set of semantic bytes, across ledger variations). The parity suite gained a test with truly equal inputs: a pinned conversation, with its ledger handed verbatim to the CLI-side assembly, is byte-identical on every profile. |

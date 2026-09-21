@@ -542,7 +542,7 @@ artifact byte counts.
   package.json            # semantic manifest — hashed → semantic_id
   task-ir.json            # semantic Task IR
   strategy.json           # semantic strategy overlay
-  requirements.json       # requirement manifest (§22.9) — a RECORD, not a compiler input
+  requirements.json       # requirement manifest (§22.9) — not a compiler input, but hashed → semantic_id
   artifacts/…             # rendered files, at topology-declared paths
   trace.json              # spans + typed origins
   provenance.json         # semantic provenance graph
@@ -556,14 +556,26 @@ artifact byte counts.
 `compiler_version`, profile id and version, tokenizer id and version, the pinned
 repository commit and dirty flag, and the content hash of every other semantic file.
 
-**PK-R3.** `semantic_id` is computed over the semantic input tuple (§6.4) plus the
-content hash of every emitted artifact. `run.json` is excluded.
+**PK-R3.** `semantic_id` is computed over the semantic input tuple (§6.4), the
+canonical hash of the requirement manifest, and the content hash of every emitted
+artifact. `run.json` is excluded, and is the only file that is.
 
-`requirements.json` is excluded too, and deliberately: it is a **record of what was
-asked**, not an input the compiler consumed. Pinning a requirement changes no byte of
-any artifact, so folding it into `semantic_id` would make the id of a compilation
-depend on something that did not participate in it. Its content hash is listed in
-`package.json` like every other semantic file (PK-R2), so tampering is still detectable.
+Two identities are distinguished. **Compilation identity** — the §6.4 tuple and the
+artifact hashes — says the compiler consumed the same inputs and emitted the same
+bytes. **Package identity** — `semantic_id` — names the whole Execution Contract,
+and V2-G binds evidence to it (`EV-R2`). The requirement manifest changes no
+artifact byte, but it is part of what the package claims (who stated which
+requirement, `RQ-R3`). Two packages with different manifests are therefore
+different contracts and must have different ids; otherwise evidence produced
+against one would bind silently to the other, and `INV-005` would be false of
+`requirements.json` and `package.json`. The manifest is hashed as a value, not the
+ledger, so storage keys and pin times never reach identity (`RQ-R2`). Two packages
+of one compilation with different manifests share every artifact hash in
+`package.json`, which is how "same compilation, different contract" stays visible.
+
+> Corrected 2026-09-21 in the V2-F closure audit. The first V2-F text excluded the
+> manifest as "a record, not an input"; that let two packages with different
+> semantic files share one id, contradicting `INV-005`.
 
 **PK-R4.** `runtime-contract.json` declares required capabilities, required tools,
 network policy, filesystem scope, and the repository commit the package assumes.
@@ -1257,4 +1269,4 @@ is not an operation the system offers.
 | **AC-043** | Deterministic ledger results and advisory drift findings are distinguishable in every surface that renders them. | WS-R28 |
 | **AC-044** | A requirement's id is unchanged across prompt versions, and no model-reachable path can set or alter its `origin`. | FR-052, RQ-R1, RQ-R3 |
 | **AC-045** | An exported package validates against the published JSON Schemas and is readable with JSON parsing alone — asserted by a test that imports no FORGE module. | PK-R7, PK-R8 |
-| **AC-046** | A package built by the workspace and one built by the CLI from the same IR and profile are byte-identical except `run.json`. | INV-005, PK-R3 |
+| **AC-046** | A package built by the workspace and one built by the CLI from the same IR, profile and pinned requirements are byte-identical except `run.json`; with different pinned requirements they carry different `semantic_id`s. | INV-005, PK-R3 |

@@ -35,9 +35,10 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-21 at `e9b3c68` — **1078 tests passing (65 skipped)**,
-typecheck / `schema:check` / web build clean, the HTTP product suite green
-(`web/scripts/e2e.sh`, **64/64**), the frozen P1.6 manifest verifying, and the
+Verified 2026-09-21 at the V2-F closure commit — **1132 tests passing (71
+skipped)**, typecheck / `schema:check` (9 schemas) / web build clean, the HTTP
+product suite green (`web/scripts/e2e.sh`, **70/70**), the frozen P1.6 manifest
+verifying, and the
 opt-in live-provider smoke (`web/scripts/live-smoke.mjs`) covering streaming,
 requirement preservation and candidates.
 
@@ -52,7 +53,11 @@ append-only runs, derivable SQLite index, migration from flat JSON) · **V2-D**
 `FORGE-W005`, then opt-in judged semantic drift `FORGE-W006`) · **V2-E**
 (prompt candidates from the §9 archetypes, the `FORGE-W007` duplicate gate,
 deterministic block-union `MERGE`, explicit promotion with the choice recorded) ·
-**V2-R** (product convergence — see below).
+**V2-R** (product convergence — see below) · **V2-F** (Execution Package via
+`forge package` / Studio / `forge explain --package`; stable requirement identity,
+`RQ-R1`–`RQ-R3`; `semantic_id` covers the §6.4 tuple, the requirement manifest and
+every artifact hash, so one id means one Execution Contract — `PK-R3`, `INV-005`;
+`run.json` is the only volatile file).
 
 **V2-R, eleven commits, 2026-09-21.** OSS baseline and the root `exports` fix ·
 the renderer stopped asserting `"assumed, not stated"` about user-derived content
@@ -65,8 +70,8 @@ tests holding the bytes identical to the CLI's · attachments scanned and
 classified `semi_trusted` before storage · protocol-aware provider routing and
 parallel preservation extraction.
 
-**Not built:** **V2-F** (Execution Contract + stable requirement identity,
-absorbing P5) is **next and not started** · V2-G (evidence-based verification) ·
+**Not built:** **V2-G** (evidence-based verification, binding evidence to a
+package by `semantic_id`) is **next and not started** ·
 V2-H (requirement governance + code linkage) · V2-I (productization). The
 reasoning, the rejected alternatives and the two struck phases are in
 [`docs/roadmap-v2.md`](docs/roadmap-v2.md); the phase entries are in `plan.md`.

@@ -8,9 +8,10 @@
  *
  * The one input the workspace has that the CLI does not is the conversation's
  * **pinned ledger**, which becomes the `user_stated` half of the requirement
- * manifest (§22.9). It changes no byte of any artifact and is excluded from
- * `semantic_id` by `PK-R3`, so a package built here and one built by the CLI
- * from the same IR still share an identity.
+ * manifest (§22.9). It changes no byte of any artifact, but it is part of the
+ * contract and so of `semantic_id` (`PK-R3`): a pinned package built here and an
+ * unpinned one built by the CLI from the same IR share every artifact hash and
+ * differ in identity. Given the same ledger, the two are byte-identical.
  */
 import { assemblePackage, type ExecutionPackage } from "forge/dist/package/assemble.js";
 import { verifyRelocatable } from "forge/dist/package/export.js";
