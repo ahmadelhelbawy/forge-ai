@@ -36,7 +36,9 @@ import {
   type PreservationReport,
   type PromptCandidate,
   type PromptVersion,
+  type TargetInfo,
 } from "@/lib/api";
+import { CompilePanel } from "./CompilePanel";
 import { estimateTokens } from "@/lib/diff";
 
 interface Props {
@@ -54,6 +56,10 @@ interface Props {
   ledger: PinnedRequirement[];
   preservation: PreservationReport | null;
   proposals: string[];
+  /** Targets the compile tab may compile for (V2-R). */
+  targets: TargetInfo[];
+  /** The conversation's current target, used as the compile tab's default. */
+  target: string;
   onSaveEdit: (text: string) => Promise<void>;
   onRestore: (v: number) => Promise<void>;
   onPin: (text: string) => Promise<void>;
@@ -67,7 +73,7 @@ interface Props {
   onArtifactsChanged: () => Promise<void>;
 }
 
-type Tab = "prompt" | "history" | "requirements" | "candidates";
+type Tab = "prompt" | "history" | "requirements" | "candidates" | "compile";
 /** How much room the Studio takes. A prompt is the artifact, not a sidebar. */
 type Width = "docked" | "wide" | "focus";
 
@@ -177,6 +183,8 @@ export function PromptStudio({
   ledger,
   preservation,
   proposals,
+  targets,
+  target,
   onSaveEdit,
   onRestore,
   onPin,
@@ -559,6 +567,7 @@ export function PromptStudio({
           ["history", "History", versions.length],
           ["requirements", "Requirements", ledger.length],
           ["candidates", "Candidates", candidates.length],
+          ["compile", "Compile", null],
         ] as const).map(([key, label, count]) => (
           <button
             key={key}
@@ -1252,6 +1261,15 @@ export function PromptStudio({
               </div>
             ) : null}
           </div>
+        ) : null}
+
+        {tab === "compile" ? (
+          <CompilePanel
+            conversationId={conversationId}
+            targets={targets}
+            defaultTarget={target}
+            hasPrompt={Boolean(prompt)}
+          />
         ) : null}
       </div>
     </aside>

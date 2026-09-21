@@ -330,6 +330,44 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return body;
 }
 
+
+/** One artifact the compiler produced for a target (V2-R, FR-018). */
+export interface CompiledArtifact {
+  path: string;
+  content: string;
+  contentHash: string;
+  bytes: number;
+}
+
+/** A byte range and the origin that produced it (INV-010). */
+export interface CompiledSpan {
+  artifactPath: string;
+  start: number;
+  end: number;
+  origin: Record<string, unknown>;
+}
+
+/**
+ * The result of compiling the current prompt for a target.
+ *
+ * `refused` is not an error: a target that cannot do what the prompt requires
+ * SHOULD refuse (FORGE-C030), and the diagnostics say why. A client that
+ * rendered a refusal as a failure would be hiding the most useful answer the
+ * compiler gives.
+ */
+export interface CompileResponse {
+  v: number;
+  target: string;
+  profileId: string;
+  semanticHash: string;
+  extracted: boolean;
+  refused: boolean;
+  tokenizer: { id: string; version: string };
+  artifacts: CompiledArtifact[];
+  spans: CompiledSpan[];
+  diagnostics: DiagnosticWire[];
+}
+
 export const api = {
   health: () => request<{ ok: boolean; version: string; storage: string; providers: ProviderInfo[] }>("/api/health"),
   catalog: () =>
@@ -343,6 +381,11 @@ export const api = {
   createConversation: (input: { title?: string; target?: string; provider?: string; model?: string }) =>
     request<{ id: string }>("/api/conversations", { method: "POST", body: JSON.stringify(input) }),
   getConversation: (id: string) => request<ConversationDetail>(`/api/conversations/${id}`),
+  compileVersion: (id: string, input: { target?: string; v?: number } = {}) =>
+    request<CompileResponse>(`/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   deleteConversation: (id: string) => request<{ deleted: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
   sendMessage: (
     id: string,

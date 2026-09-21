@@ -6,6 +6,7 @@ against a mock.
 
 | File | What it shows |
 |---|---|
+| `step9-compile-kiro.png` | The workspace compiling its current prompt for `kiro` through the real compiler: the target's own three-file topology (`requirements.md`, `design.md`, `tasks.md`), the IR hash and tokenizer identity, and two compiler diagnostics the product could not previously show — `FORGE-C103` explaining a suppression and `FORGE-C001` at error severity for an uncovered goal. |
 | `step6-diagnostic-visible.png` | A degraded turn in the real workspace with `FORGE-W003` rendered beneath the reply — code, name, source, message and evidence — and the Studio still empty, because a response FORGE could not read never becomes a version. Captured against the standalone build with `FORGE_CHAT_STUB=1`. |
 
 Nothing here is thesis evidence. The stub provider is a stub; what these show

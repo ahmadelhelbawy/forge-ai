@@ -580,6 +580,8 @@ export function Workspace(): React.JSX.Element {
               ledger={ledger}
               preservation={preservation}
               proposals={proposals}
+              targets={targets}
+              target={target}
               onSaveEdit={saveEdit}
               onRestore={restore}
               onPin={pin}

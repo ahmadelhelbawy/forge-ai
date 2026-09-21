@@ -1270,3 +1270,106 @@ describe.skipIf(!WEB_E2E)("turn diagnostics reach the client (V2-R, R4)", () => 
     expect(turn.body["promptChanged"]).toBe(true);
   });
 });
+
+/**
+ * Compile-on-demand over HTTP (V2-R step 9, FR-018).
+ *
+ * The function-level parity proof lives in
+ * `tests/product/compile-parity.test.ts`. What is checked here is the route: a
+ * real request, a real response shape, and the three things a client depends on
+ * — that artifacts and spans arrive, that a refusal arrives as a refusal rather
+ * than as a 500, and that compiling never moves the prompt.
+ */
+describe.skipIf(!WEB_E2E)("compile-on-demand over HTTP (V2-R)", () => {
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  async function conversationWithPrompt(): Promise<string> {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        content: "Write a code review prompt. The agent must never approve a change that removes a test.",
+      }),
+    });
+    return id;
+  }
+
+  it("compiles the current prompt into artifacts with spans and diagnostics", async () => {
+    const id = await conversationWithPrompt();
+    const compiled = await api(BASE, `/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    expect(compiled.status).toBe(200);
+    expect(compiled.body["profileId"]).toBe("claude-code");
+    expect(compiled.body["refused"]).toBe(false);
+
+    const artifacts = compiled.body["artifacts"] as Array<Record<string, unknown>>;
+    expect(artifacts.length).toBeGreaterThan(0);
+    expect(String(artifacts[0]!["content"]).length).toBeGreaterThan(0);
+    expect(String(artifacts[0]!["contentHash"])).toMatch(/^sha256:[0-9a-f]{64}$/);
+
+    // INV-010's evidence has to reach the client, or the artifact arrives
+    // without the provenance that distinguishes it from any other text.
+    expect((compiled.body["spans"] as unknown[]).length).toBeGreaterThan(0);
+    expect(Array.isArray(compiled.body["diagnostics"])).toBe(true);
+  });
+
+  it("maps the 'generic' sentinel rather than failing on it", async () => {
+    const id = await conversationWithPrompt();
+    const compiled = await api(BASE, `/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify({ target: "generic" }),
+    });
+    expect(compiled.status).toBe(200);
+    expect(compiled.body["target"]).toBe("generic");
+    expect(compiled.body["profileId"]).toBe("claude-code");
+  });
+
+  it("writes no prompt version — compiling is a read (WS-R2)", async () => {
+    const id = await conversationWithPrompt();
+    const before = await api(BASE, `/api/conversations/${id}`);
+    await api(BASE, `/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify({ target: "kiro" }),
+    });
+    const after = await api(BASE, `/api/conversations/${id}`);
+    expect((after.body["promptVersions"] as unknown[]).length).toBe(
+      (before.body["promptVersions"] as unknown[]).length,
+    );
+    expect(after.body["prompt"]).toBe(before.body["prompt"]);
+  });
+
+  it("is byte-identical across two compilations of the same version", async () => {
+    const id = await conversationWithPrompt();
+    const body = JSON.stringify({ target: "claude-code" });
+    const first = await api(BASE, `/api/conversations/${id}/compile`, { method: "POST", body });
+    const second = await api(BASE, `/api/conversations/${id}/compile`, { method: "POST", body });
+    expect(second.body["artifacts"]).toEqual(first.body["artifacts"]);
+    // And the second one cost no extraction, because the IR was cached.
+    expect(first.body["extracted"]).toBe(true);
+    expect(second.body["extracted"]).toBe(false);
+  });
+
+  it("answers an unknown target with 400, not a 500", async () => {
+    const id = await conversationWithPrompt();
+    const compiled = await api(BASE, `/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify({ target: "not-a-real-target" }),
+    });
+    expect(compiled.status).toBe(400);
+    expect(String(compiled.body["error"])).toContain("not-a-real-target");
+  });
+
+  it("refuses to compile a conversation that has no prompt yet", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const compiled = await api(BASE, `/api/conversations/${created.body["id"] as string}/compile`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    expect(compiled.status).toBe(409);
+  });
+});
