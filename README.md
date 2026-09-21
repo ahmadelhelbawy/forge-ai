@@ -60,6 +60,7 @@ pnpm forge ir validate <ir.json>
 pnpm forge compile --ir <ir.json> --target claude-code --out ./out
 pnpm forge explain --ir <ir.json> --target claude-code   # where every byte came from
 pnpm forge package --ir <ir.json> --target claude-code --out ./pkg
+pnpm forge verify --package ./pkg --evidence evidence.json   # did an external run satisfy it?
 ```
 
 ### The Execution Package
@@ -92,6 +93,26 @@ could execute either (`INV-004`).
 
 `forge explain --package ./pkg` reads a package back — requirements, obligations,
 diagnostics and per-artifact span counts — using nothing but `JSON.parse`.
+
+### Verifying an external run
+
+Whoever executes the package — CI, Claude Code, Codex, a human — writes an
+evidence file (`schema/verify/evidence.schema.json`): per obligation, the exit
+code and **hashes** of stdout/stderr, never the raw output. `forge verify` then:
+
+1. validates the package by **rebuilding it from its own inputs** and requiring
+   every semantic byte to match, so an edited obligation cannot keep the old
+   `semantic_id`;
+2. ignores evidence recorded for any other package;
+3. gives every obligation exactly one verdict: `command`/`test` are `VERIFIED`,
+   `FAILED` or `UNVERIFIED` by exit code; `manual`/`review` are always
+   `REVIEW_REQUIRED`.
+
+It executes nothing. `VERIFIED` means *the supplied evidence, taken at its word,
+shows the expected exit code*; evidence is unsigned, and the report says so.
+`forge explain --package ./pkg --evidence evidence.json` shows obligation →
+evidence → verdict, and the Studio has the same check under the package result.
+`evals/v2g/` is a real run: a passing suite → `VERIFIED`, a genuinely broken one → `FAILED`.
 
 Turning natural language into an IR uses a model boundary, so it needs a provider:
 

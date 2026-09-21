@@ -1,0 +1,83 @@
+{
+  "report_format_version": "1.0",
+  "executed_by_forge": false,
+  "caveat": "VERIFIED means the supplied evidence, taken at its word, shows the expected exit code. Evidence is unsigned, so FORGE cannot detect a fabricated record whose hashes were recomputed. FORGE executed nothing to produce this report.",
+  "package_valid": true,
+  "package_semantic_id": "sha256:8e3f1558b47bf51e5873ad9b706fee78adec31ce0b582939b7e05d3c79d2590a",
+  "evidence_hash": "sha256:62936332712535400116d28763a6a6f4db12c1d06a060c3f8f864a8dc58c2f07",
+  "counts": {
+    "VERIFIED": 0,
+    "FAILED": 1,
+    "UNVERIFIED": 0,
+    "REVIEW_REQUIRED": 2
+  },
+  "verdicts": [
+    {
+      "obligation_id": "v1",
+      "kind": "test",
+      "spec": "node --test",
+      "satisfies": [
+        "g2"
+      ],
+      "degraded_from": null,
+      "expected_exit_code": 0,
+      "verdict": "FAILED",
+      "records": [
+        {
+          "index": 0,
+          "runner": "ci",
+          "exit_code": 1,
+          "stdout_hash": "sha256:11ee3eb3c67bfc6a03ec6657fd7b63a15d33374dabe2d0e053a245065f04ba50",
+          "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "repo_commit": "85d826cd7d288313c53f9f5b927d2502c74ad2c3"
+        }
+      ]
+    },
+    {
+      "obligation_id": "v2",
+      "kind": "review",
+      "spec": "The diff touches no file outside scope.include",
+      "satisfies": [
+        "g2"
+      ],
+      "degraded_from": null,
+      "expected_exit_code": null,
+      "verdict": "REVIEW_REQUIRED",
+      "records": []
+    },
+    {
+      "obligation_id": "v3",
+      "kind": "manual",
+      "spec": "The root-cause explanation names the failing code path",
+      "satisfies": [
+        "g1"
+      ],
+      "degraded_from": null,
+      "expected_exit_code": null,
+      "verdict": "REVIEW_REQUIRED",
+      "records": []
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "FORGE-V002",
+      "name": "obligation_failed",
+      "severity": "error",
+      "source": "deterministic",
+      "message": "v1 (test) failed: evidence record #0 (runner ci) reports exit 1, expected 0.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "v1"
+        },
+        {
+          "kind": "measure",
+          "label": "exit code, evidence record #0",
+          "value": 1,
+          "unit": "exit code"
+        }
+      ]
+    }
+  ]
+}
+[ELIFECYCLE] Command failed with exit code 1.

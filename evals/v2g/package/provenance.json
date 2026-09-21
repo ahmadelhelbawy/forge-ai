@@ -1,0 +1,102 @@
+{
+  "nodes": [
+    {
+      "node_id": "objective",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "scope",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a1",
+      "source_ref": "forge_derived"
+    },
+    {
+      "node_id": "q1",
+      "source_ref": "forge_derived"
+    },
+    {
+      "node_id": "v1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v2",
+      "source_ref": "forge_derived"
+    },
+    {
+      "node_id": "v3",
+      "source_ref": "forge_derived"
+    },
+    {
+      "node_id": "d1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "d2",
+      "source_ref": "user_input"
+    }
+  ],
+  "context_refs": [
+    {
+      "ref_id": "ctx1",
+      "content_hash": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809",
+      "trust": "semi_trusted",
+      "justifies": [
+        "g1",
+        "c1"
+      ]
+    },
+    {
+      "ref_id": "ctx2",
+      "content_hash": "sha256:77de8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d",
+      "trust": "semi_trusted",
+      "justifies": [
+        "g1"
+      ]
+    },
+    {
+      "ref_id": "ctx3",
+      "content_hash": "sha256:0099aabbccddeeff00112233445566778899aabbccddeeff0011223344556677",
+      "trust": "semi_trusted",
+      "justifies": [
+        "c3"
+      ]
+    }
+  ],
+  "materialization": {
+    "ctx1": "by_reference",
+    "ctx2": "by_reference",
+    "ctx3": "by_reference"
+  },
+  "dropped_context": [],
+  "topology_gaps": []
+}

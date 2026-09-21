@@ -1,0 +1,67 @@
+{
+  "requirements": [
+    {
+      "id": "req-4c3fcf561a3d",
+      "text": "Identify the root cause of session loss during token refresh",
+      "origin": "inferred",
+      "node_id": "g1",
+      "kind": "goal"
+    },
+    {
+      "id": "req-f5ad4fded736",
+      "text": "Apply a fix that does not alter the session provider's public interface",
+      "origin": "inferred",
+      "node_id": "g2",
+      "kind": "goal"
+    },
+    {
+      "id": "req-bb4053ef4b97",
+      "text": "Do not change the session provider's public interface or the session storage strategy",
+      "origin": "inferred",
+      "node_id": "c1",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-12461247244a",
+      "text": "Do not refactor modules unrelated to the defect",
+      "origin": "inferred",
+      "node_id": "c2",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-5dd4065ce7be",
+      "text": "Follow the error-handling convention already used in the shared error module",
+      "origin": "inferred",
+      "node_id": "c3",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-6dda396b71d6",
+      "text": "Migrating away from the current session store",
+      "origin": "inferred",
+      "node_id": "n1",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-4cf2b3d0b485",
+      "text": "General performance optimization of the authentication path",
+      "origin": "inferred",
+      "node_id": "n2",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-e5a18432a567",
+      "text": "Root-cause writeup naming the failing code path",
+      "origin": "inferred",
+      "node_id": "d1",
+      "kind": "deliverable"
+    },
+    {
+      "id": "req-b006b85d0956",
+      "text": "Minimal fix within the authentication module",
+      "origin": "inferred",
+      "node_id": "d2",
+      "kind": "deliverable"
+    }
+  ]
+}

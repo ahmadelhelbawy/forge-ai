@@ -1,0 +1,16 @@
+{
+  "records": [
+    {
+      "obligation_id": "v1",
+      "kind": "test",
+      "exit_code": 0,
+      "stdout_hash": "sha256:2f95c2fd79c65ca8b4b5f99b738ec5e807bd9bc0ab52db9ba63852a56e03d6f2",
+      "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_at": "2026-09-21T13:10:21Z",
+      "duration_ms": 67,
+      "runner": "ci",
+      "repo_commit": "cf3830cb96c50a28e55ec3195663008c30aca181",
+      "package_semantic_id": "sha256:8e3f1558b47bf51e5873ad9b706fee78adec31ce0b582939b7e05d3c79d2590a"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+package    sha256:8e3f1558b47bf51e5873ad9b706fee78adec31ce0b582939b7e05d3c79d2590a  (validated: rebuilt byte-for-byte from its own inputs)
+
+=== obligation → evidence → verdict ===
+  [v1] test: node --test
+      → record #0 (ci, exit 1)
+      → FAILED
+  [v2] review: The diff touches no file outside scope.include
+      → no accepted evidence
+      → REVIEW_REQUIRED
+  [v3] manual: The root-cause explanation names the failing code path
+      → no accepted evidence
+      → REVIEW_REQUIRED
+
+VERIFIED 0 · FAILED 1 · UNVERIFIED 0 · REVIEW_REQUIRED 2
+
+=== diagnostics ===
+  error[FORGE-V002] v1 (test) failed: evidence record #0 (runner ci) reports exit 1, expected 0.
+
+VERIFIED means the supplied evidence, taken at its word, shows the expected exit code. Evidence is unsigned, so FORGE cannot detect a fabricated record whose hashes were recomputed. FORGE executed nothing to produce this report.
+[ELIFECYCLE] Command failed with exit code 1.

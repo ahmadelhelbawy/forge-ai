@@ -1809,6 +1809,45 @@ instead of removing it, and a browser would still give up. Determinism under
 concurrency is asserted offline rather than assumed, with a transport that
 answers in a deliberately awkward order.
 
+
+### 23.7 Verification as built *(V2-G, 2026-09-21)*
+
+```
+package dir ──read (safeJoin, regular files only)──▶ files: Map<path, bytes>
+                                                          │
+                              src/verify/contract.ts  validatePackage
+                              schemas → listed hashes → REBUILD from own inputs
+                              (IR, strategy, pinned reqs, named profile) → every
+                              semantic byte equal?  ──no──▶ FORGE-V004, no verdicts
+                                                          │ yes: semantic_id is now trusted
+evidence file ──src/verify/evidence.ts (strict schema, hashes only)──┐
+                                                          ▼
+                              src/verify/verdict.ts   per record: other package → V003;
+                              unknown / wrong kind / no exit code / log hash ≠ → V005;
+                              per obligation: manual|review → REVIEW_REQUIRED,
+                              none → UNVERIFIED (V001), any unexpected exit → FAILED (V002),
+                              else VERIFIED
+```
+
+**Why a rebuild and not a hash check.** `semantic_id` covers the compiler's
+inputs and the artifacts; `verification.json`, `trace.json` and the other
+derived files are fixed by those inputs but not hashed into the id, and
+`package.json` is anchored by nothing. Re-listing an edited file's hash is
+therefore undetectable by hashes alone. `INV-005` makes the rebuild a
+complete check: one input tuple has one set of semantic bytes. It costs one
+deterministic compile and runs nothing (`INV-004`).
+
+**One implementation, three surfaces.** `forge verify`, `forge explain
+--package --evidence` and the Studio's Verify box (via `web/lib/verify.ts`)
+all call `verifyPackage`. `tests/contract/verify-boundaries.test.ts` asserts
+nothing else imports `src/verify/` — in particular nothing a model boundary
+reaches (`EV-R1`) — and `tests/contract/no-execution.test.ts` covers every new
+module.
+
+**What it cannot do.** Evidence is unsigned. A fabricator who recomputes hashes
+is undetectable, and `VERIFIED` is stated as exactly what it is: the supplied
+evidence, taken at its word, shows the expected exit code.
+
 ---
 
 ## 23. Revision changelog

@@ -1,0 +1,33 @@
+{
+  "deterministic": [
+    {
+      "code": "FORGE-C031",
+      "name": "capability_degraded",
+      "severity": "info",
+      "source": "deterministic",
+      "message": "Capability \"shell\" is conditional on Claude Code (gated by the session's permission mode) and gates an executable verification step. The step is preserved; the dependency is recorded in the runtime contract.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "shell"
+        }
+      ]
+    },
+    {
+      "code": "FORGE-C020",
+      "name": "unverifiable_goal",
+      "severity": "warning",
+      "source": "deterministic",
+      "message": "Goal \"g1\" is verified only by manual review. Nothing here can be checked mechanically.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "g1"
+        }
+      ]
+    }
+  ],
+  "judged": [],
+  "deterministic_hash": "sha256:1df37bfe115e589bcd2b3f863ac709b18110bc4bcd4709123368d0c9eb23884c",
+  "refused": false
+}

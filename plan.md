@@ -14,8 +14,8 @@
 > P1.7, P2, P3, P4**, and the V2 sequence **V2-0 … V2-E** plus **V2-R** (product
 > convergence) and **V2-F** (Execution Contract + requirement identity, absorbing
 > P5; closed after the 2026-09-21 closure audit that bound `semantic_id` to the
-> requirement manifest). Next, and **not started**: **V2-G** (evidence-based
-> verification). Then V2-H (requirement governance + code linkage), V2-I
+> requirement manifest) and **V2-G** (evidence-based verification). Next, and
+> **not started**: **V2-H** (requirement governance + code linkage). Then V2-I
 > (productization). The reasoning
 > behind that ordering — including the two phases struck because V2-R already did
 > the work — is in [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
@@ -1458,7 +1458,7 @@ model-reachable path can set its `origin` (`AC-044`).
 `forge history` (the workspace *is* the history UI since V2-C), no new
 representation of anything the IR already holds.
 
-### V2-G · Evidence-based verification *(NEXT — not started)*
+### V2-G · Evidence-based verification *(COMPLETE)*
 
 **Objective.** `VERIFIED` / `FAILED` / `UNVERIFIED` / `REVIEW_REQUIRED` per
 obligation, from an evidence file produced by the user, their agent, or CI.
@@ -1470,8 +1470,13 @@ command string.
 checkable, `manual`/`review` are `REVIEW_REQUIRED` **by construction**.
 **New spec rules.** `EV-R1` (evidence is never model-authored), `EV-R2` (evidence
 binds to a package by `semantic_id`), and codes `FORGE-V001`–`V003`.
+**As built (2026-09-21).** `src/verify/` — `contract.ts` (package validation),
+`evidence.ts` (schema, parsing, log-path jail), `obligations.ts`, `verdict.ts`;
+`forge verify`, `forge explain --package --evidence`, `web/lib/verify.ts` + route,
+and a Verify box under the Studio's package result. Spec: `FR-053`, `FR-054`,
+`EV-R1`–`EV-R6` (§11.1), `FORGE-V001`–`V005`, `AC-047`–`AC-050`. Deviations below.
 
-### V2-H · Requirement governance + code linkage
+### V2-H · Requirement governance + code linkage *(NEXT — not started)*
 
 **Objective.** Lifecycle (`origin` immutable and FORGE-assigned, orthogonal to
 `status`), repository binding through `WorkspaceGuard`, and the traceability
@@ -1603,3 +1608,8 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-21 | V2-R | Added `FR-051` and `FORGE-C103 redundant_line_suppressed` (info, deterministic) to `spec.md`, which the approved plan implied ("every suppression carries a diagnostic") but did not name. Specification changed first; the step-4 cross-check test then caught the registry lagging by one commit, which is what it was written for. | `INV-012` admits no silent removal and no existing code fit — `C011` is context-specific and `C061` is budget-specific. Inventing a workspace-local finding type instead would have rebuilt the parallel diagnostic system V2-A explicitly rejected. |
 | 2026-09-21 | V2-R | **Compaction's measured yield is 0.2%** (18,710 → 18,681 words across twelve eval IRs × three profiles; T04 615→615, T07 403→403, T12 557→557), against a 30% target. No guard was loosened and no category widened to raise it. | The target was declared a non-gate in advance, and the gap is a design consequence rather than an implementation shortfall: the audit had already established that most repetition is **model-authored paraphrase**, and the approved whitelist fires only on near-verbatim restatement. Widening it to catch paraphrase is exactly what would put R5 — no presence verdict may change — at risk. Carried into V2-I as bounded, gated prompt work. |
 | 2026-09-21 | V2-F | **`semantic_id` now covers the requirement manifest** (`PK-R3` amended, `AC-046` sharpened). Closure audit before V2-G. | The first V2-F text excluded `requirements.json` as "a record, not a compiler input". The acceptance run then showed a pinned workspace package and an unpinned CLI package for the same IR on `kiro` sharing one `semantic_id` while `requirements.json` and `package.json` differed. That breaks `INV-005` (one semantic input tuple, one set of semantic bytes), and it would have broken `EV-R2` in V2-G: evidence is bound by `semantic_id`, so evidence for one contract would bind silently to the other. The exclusion also made "tampering remains detectable" false: `package.json` is anchored by nothing, so rewriting `requirements.json` (for example, promoting `inferred` → `user_stated`, which `RQ-R3` forbids) and updating its listed hash left a self-consistent package under the same id. Fix: one field, `requirement_manifest` (the canonical hash of the manifest value, not the ledger, so storage keys never reach identity), added to `semanticIdInputs`. No layout, schema or format change. Every `semantic_id` changes value, including for unpinned packages; V2-F was unreleased, so `PACKAGE_FORMAT_VERSION` stays `1.0`, and `evals/v2f/example-package/` was regenerated. The test that asserted the old behaviour (`does not cover the requirement manifest`) was replaced by its inverse plus an `INV-005` property test (one id → one set of semantic bytes, across ledger variations). The parity suite gained a test with truly equal inputs: a pinned conversation, with its ledger handed verbatim to the CLI-side assembly, is byte-identical on every profile. |
+| 2026-09-21 | V2-G | **Package validation rebuilds the package** (`EV-R3`, `FR-054`, new) rather than trusting `package.json`. | The roadmap bound evidence to `semantic_id` but did not say how that id earns trust. `semantic_id` hashes the compiler's inputs and the artifacts, not derived files such as `verification.json`, and nothing anchors `package.json`: an obligation edited from `manual` to `command` with its listed hash updated passes `sha256sum` and keeps the old id. Validation therefore rebuilds the package from its own inputs (IR, strategy, pinned requirements, the named profile) and requires every semantic byte to match. Recompiling is the same pure function `forge package` runs and executes nothing (`INV-004`). A package built by another compiler version, or for a profile this FORGE lacks, is reported unverifiable rather than guessed. |
+| 2026-09-21 | V2-G | Two codes beyond the roadmap's three: `FORGE-V004 package_unverifiable` (error) and `FORGE-V005 evidence_record_rejected` (warning). | `INV-012` admits no silent drop: a rejected package and a rejected evidence record (unknown obligation, kind mismatch, missing exit code, log hash mismatch, unsafe log path) each needed a code, and none of V001–V003 means either. The catalogue test's row parser was widened from `[CW]` to `[CWV]` so the new codes are held to §10.2 like the rest. |
+| 2026-09-21 | V2-G | The expected exit code is `N` when `expected` is exactly `exit N`, otherwise `0`; several records per obligation are allowed and any failure makes it `FAILED`. | `expected` is free text for humans ("matches", "present"); interpreting it further would be judgement. Letting one pass outvote a recorded failure would let a flaky rerun hide the failure. |
+| 2026-09-21 | V2-G | Evidence carries hashes only: the schema is strict, so a record with inline output is rejected, and optional log files are checked against the recorded hashes. There is no excerpt field. | The brief allowed a secret-scanned excerpt. Having no excerpt is strictly safer and costs nothing verification needs. Without signatures a fabricator who recomputes hashes is undetectable; every report says so (`EV-R5`). |
+| 2026-09-21 | V2-G | The HTTP verify tests run against the stub provider, whose extracted IR has no verification entries, so over HTTP they prove routing, mismatch, malformed-input and determinism behaviour but exercise zero obligations. | The verdict table is proven exhaustively against real assembled packages (`tests/property/verify-verdict.test.ts`) and through the real CLI binary (`tests/contract/cli-verify.test.ts`), both of which call the same `src/verify/` the route calls. Changing the stub's extraction to add obligations would change shared test infrastructure outside this phase. |

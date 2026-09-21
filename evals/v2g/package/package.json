@@ -1,0 +1,64 @@
+{
+  "package_format_version": "1.0",
+  "semantic_id": "sha256:8e3f1558b47bf51e5873ad9b706fee78adec31ce0b582939b7e05d3c79d2590a",
+  "forge_version": "0.1.0-alpha.0",
+  "ir_version": "1.0",
+  "compiler_version": "0.1.0-alpha.0",
+  "profile": {
+    "id": "claude-code",
+    "version": "2026.9.1",
+    "fidelity": "native_topology"
+  },
+  "tokenizer": {
+    "id": "gpt-tokenizer/o200k_base",
+    "version": "4.0.0"
+  },
+  "strategy": null,
+  "repository": {
+    "commit": null,
+    "dirty": null
+  },
+  "refused": false,
+  "files": [
+    {
+      "path": "task-ir.json",
+      "content_hash": "sha256:f6b231a317c86fbd3c78675576111541740a6a4ac95f2037aabf721a7b7797df"
+    },
+    {
+      "path": "strategy.json",
+      "content_hash": "sha256:38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+    },
+    {
+      "path": "requirements.json",
+      "content_hash": "sha256:fc47a17a7efc0bde631db46ef177155762cf97a47070216a2816a884db5f74b8"
+    },
+    {
+      "path": "trace.json",
+      "content_hash": "sha256:1c7109e96d570d4f8010050194afdb962b5c88b8cc58e735850826ab389eece8"
+    },
+    {
+      "path": "provenance.json",
+      "content_hash": "sha256:f0d17cb1cb25a5a95455d557d17966a7ae7963b7af9de3397edc2479ed92e86d"
+    },
+    {
+      "path": "runtime-contract.json",
+      "content_hash": "sha256:00ea79e20b1055d934c3551f4e02562e5d2391d85f6bc9a8bac6bff62d09c066"
+    },
+    {
+      "path": "verification.json",
+      "content_hash": "sha256:9145b6b1985faf0bb4e1097908189dd69562db81c9c0e27d916acbf5ee95c916"
+    },
+    {
+      "path": "diagnostics.json",
+      "content_hash": "sha256:226926b2c9cc189434ef3efc91bdbc824c9b221700bfee10f3d32b0f152a131b"
+    },
+    {
+      "path": "artifacts/PROMPT.md",
+      "content_hash": "sha256:7b1434e1460709312e67935349ef59c3aceb973bd41dcb7aca9b859118412931"
+    },
+    {
+      "path": "artifacts/CLAUDE.md",
+      "content_hash": "sha256:0f25a37f68b3669f41528ee98a4f6ad6983bd6c665693e76c7f5f45993a724d2"
+    }
+  ]
+}

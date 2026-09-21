@@ -57,7 +57,11 @@ deterministic block-union `MERGE`, explicit promotion with the choice recorded) 
 `forge package` / Studio / `forge explain --package`; stable requirement identity,
 `RQ-R1`–`RQ-R3`; `semantic_id` covers the §6.4 tuple, the requirement manifest and
 every artifact hash, so one id means one Execution Contract — `PK-R3`, `INV-005`;
-`run.json` is the only volatile file).
+`run.json` is the only volatile file) · **V2-G** (evidence-based verification:
+`forge verify`, Studio Verify box, `forge explain --package --evidence`; the
+package is validated by a byte-for-byte rebuild before any evidence is read;
+`VERIFIED`/`FAILED`/`UNVERIFIED`/`REVIEW_REQUIRED` by a fixed table, `EV-R1`–`EV-R6`;
+FORGE executes nothing and keeps output hashes only).
 
 **V2-R, eleven commits, 2026-09-21.** OSS baseline and the root `exports` fix ·
 the renderer stopped asserting `"assumed, not stated"` about user-derived content
@@ -70,9 +74,8 @@ tests holding the bytes identical to the CLI's · attachments scanned and
 classified `semi_trusted` before storage · protocol-aware provider routing and
 parallel preservation extraction.
 
-**Not built:** **V2-G** (evidence-based verification, binding evidence to a
-package by `semantic_id`) is **next and not started** ·
-V2-H (requirement governance + code linkage) · V2-I (productization). The
+**Not built:** **V2-H** (requirement governance + code linkage) is **next and
+not started** · V2-I (productization). The
 reasoning, the rejected alternatives and the two struck phases are in
 [`docs/roadmap-v2.md`](docs/roadmap-v2.md); the phase entries are in `plan.md`.
 P6's judged diagnostics (`C040`, `C041`, `C051`) stay **catalogued but
@@ -208,6 +211,9 @@ pnpm forge task "<text>" --target <profile>
 pnpm forge context resolve --ir <path> --workspace <dir>
 pnpm forge strategies --ir <path> [--target <profile>]
 pnpm forge explain --ir <path> --target <profile> [--json]
+pnpm forge explain --package <dir> [--evidence <file>]
+pnpm forge package --ir <path> --target <profile> --out <dir>
+pnpm forge verify --package <dir> --evidence <file> [--json]
 pnpm forge ir validate|hash|show <path>
 pnpm --dir web build  # builds the core first, then Next
 pnpm --dir web dev    # local workspace

@@ -1,0 +1,38 @@
+{
+  "executed_by_forge": false,
+  "entries": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "node --test",
+      "expected": "exit 0",
+      "satisfies": [
+        "g2"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "The diff touches no file outside scope.include",
+      "expected": "true",
+      "satisfies": [
+        "g2"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "The root-cause explanation names the failing code path",
+      "expected": "present",
+      "satisfies": [
+        "g1"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    }
+  ]
+}
