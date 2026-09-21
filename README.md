@@ -58,7 +58,40 @@ The deterministic path needs no API key and no network:
 pnpm forge agents                                   # list target profiles
 pnpm forge ir validate <ir.json>
 pnpm forge compile --ir <ir.json> --target claude-code --out ./out
+pnpm forge explain --ir <ir.json> --target claude-code   # where every byte came from
+pnpm forge package --ir <ir.json> --target claude-code --out ./pkg
 ```
+
+### The Execution Package
+
+`forge package` emits the object FORGE is for: a directory you hand to a coding
+agent or a CI job.
+
+```
+pkg/
+  package.json            # identity, versions, and the hash of every other file
+  task-ir.json            # the canonical task
+  requirements.json       # every requirement, with a stable id and its origin
+  artifacts/…             # the rendered instructions, at the target's own paths
+  trace.json              # which bytes came from which node, rule or template
+  provenance.json         # what each node was derived from, and its trust
+  runtime-contract.json   # what an executor would need — declared, never granted
+  verification.json       # how to check the work — data FORGE does not run
+  diagnostics.json        # findings, deterministic and judged kept apart
+  run.json                # the one volatile file; excluded from the identity
+```
+
+Reading one needs **JSON parsing and the published schemas under `schema/`** —
+no FORGE. Every `content_hash` is `sha256` over the file's bytes, so a recipient
+can verify the package with `sha256sum` alone. Two packages built from the same
+IR and profile are byte-identical except `run.json`, whatever the clock says.
+
+**FORGE runs none of it.** `verification.json` lists commands as data and the
+runtime contract grants nothing; a static test asserts no code path in the core
+could execute either (`INV-004`).
+
+`forge explain --package ./pkg` reads a package back — requirements, obligations,
+diagnostics and per-artifact span counts — using nothing but `JSON.parse`.
 
 Turning natural language into an IR uses a model boundary, so it needs a provider:
 

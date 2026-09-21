@@ -1,0 +1,1401 @@
+{
+  "spans": [
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 0,
+      "end": 12,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "objective",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 14,
+      "end": 108,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "objective"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 110,
+      "end": 126,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "objective",
+        "slot": "label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 126,
+      "end": 219,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "objective"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 221,
+      "end": 227,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "objective",
+        "slot": "label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 227,
+      "end": 232,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "objective"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 235,
+      "end": 243,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "goals",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 245,
+      "end": 252,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "goals",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 252,
+      "end": 312,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 312,
+      "end": 319,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "goals",
+        "slot": "priority"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 320,
+      "end": 327,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "goals",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 327,
+      "end": 398,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 398,
+      "end": 405,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "goals",
+        "slot": "priority"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 408,
+      "end": 430,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 432,
+      "end": 435,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "group_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 436,
+      "end": 440,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 440,
+      "end": 513,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 514,
+      "end": 518,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 518,
+      "end": 596,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 597,
+      "end": 600,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "group_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 601,
+      "end": 605,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 605,
+      "end": 649,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 650,
+      "end": 654,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "acceptance",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 654,
+      "end": 688,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "g2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 691,
+      "end": 705,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 707,
+      "end": 755,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "hard_intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 756,
+      "end": 763,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 763,
+      "end": 848,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 848,
+      "end": 864,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "kind"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 865,
+      "end": 872,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 872,
+      "end": 919,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 919,
+      "end": 927,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "kind"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 929,
+      "end": 984,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "soft_intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 985,
+      "end": 992,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 992,
+      "end": 1068,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c3"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1068,
+      "end": 1078,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "constraints",
+        "slot": "kind"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1081,
+      "end": 1096,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "non_goals",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1098,
+      "end": 1156,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "non_goals",
+        "slot": "intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1157,
+      "end": 1164,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "non_goals",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1164,
+      "end": 1209,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "n1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1210,
+      "end": 1217,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "non_goals",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1217,
+      "end": 1276,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "n2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1279,
+      "end": 1287,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1289,
+      "end": 1313,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "include_intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1314,
+      "end": 1316,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1316,
+      "end": 1327,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1328,
+      "end": 1330,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1330,
+      "end": 1348,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1350,
+      "end": 1363,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "exclude_intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1364,
+      "end": 1366,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1366,
+      "end": 1375,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1376,
+      "end": 1378,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1378,
+      "end": 1385,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1387,
+      "end": 1401,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "scope",
+        "slot": "label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1401,
+      "end": 1407,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1410,
+      "end": 1426,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1428,
+      "end": 1561,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1562,
+      "end": 1564,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1564,
+      "end": 1606,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx1",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1606,
+      "end": 1611,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "separator"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1611,
+      "end": 1621,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx1",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1621,
+      "end": 1627,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "justifies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1627,
+      "end": 1633,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx1",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1634,
+      "end": 1636,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1636,
+      "end": 1656,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx2",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1656,
+      "end": 1661,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "separator"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1661,
+      "end": 1671,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx2",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1671,
+      "end": 1677,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "justifies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1677,
+      "end": 1679,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx2",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1680,
+      "end": 1682,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1682,
+      "end": 1712,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx3",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1712,
+      "end": 1717,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "separator"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1717,
+      "end": 1734,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx3",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1734,
+      "end": 1740,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "context_plan",
+        "slot": "justifies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1740,
+      "end": 1742,
+      "origin": {
+        "kind": "context_ref",
+        "ref_id": "ctx3",
+        "materialization": "by_reference"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1745,
+      "end": 1759,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "assumptions",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1761,
+      "end": 1834,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "assumptions",
+        "slot": "intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1835,
+      "end": 1842,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "assumptions",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1842,
+      "end": 1927,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "a1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1927,
+      "end": 1948,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "assumptions",
+        "slot": "confidence"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1951,
+      "end": 1968,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "open_questions",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1970,
+      "end": 1977,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "open_questions",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 1977,
+      "end": 2050,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "q1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2051,
+      "end": 2062,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "open_questions",
+        "slot": "options_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2062,
+      "end": 2080,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "q1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2081,
+      "end": 2100,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "open_questions",
+        "slot": "default_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2100,
+      "end": 2102,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "q1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2102,
+      "end": 2125,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "open_questions",
+        "slot": "default_suffix"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2128,
+      "end": 2143,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2145,
+      "end": 2152,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2152,
+      "end": 2157,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "kind_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2157,
+      "end": 2175,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2176,
+      "end": 2186,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "expect_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2186,
+      "end": 2192,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2193,
+      "end": 2206,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "satisfies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2206,
+      "end": 2208,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2209,
+      "end": 2216,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2216,
+      "end": 2224,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "kind_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2224,
+      "end": 2270,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2271,
+      "end": 2281,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "expect_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2281,
+      "end": 2285,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2286,
+      "end": 2299,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "satisfies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2299,
+      "end": 2301,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2302,
+      "end": 2309,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2309,
+      "end": 2324,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "kind_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2324,
+      "end": 2378,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v3"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2379,
+      "end": 2389,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "expect_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2389,
+      "end": 2396,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v3"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2397,
+      "end": 2410,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "verification",
+        "slot": "satisfies_label"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2410,
+      "end": 2412,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "v3"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2415,
+      "end": 2430,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "stop_conditions",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2432,
+      "end": 2497,
+      "origin": {
+        "kind": "agent_profile",
+        "profile_id": "claude-code",
+        "profile_path": "autonomy.default"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2498,
+      "end": 2535,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "stop_conditions",
+        "slot": "stop_prefix"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2535,
+      "end": 2625,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2626,
+      "end": 2663,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "stop_conditions",
+        "slot": "stop_prefix"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2663,
+      "end": 2715,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2716,
+      "end": 2749,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "stop_conditions",
+        "slot": "stop_prefix"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2749,
+      "end": 2780,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "scope"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2783,
+      "end": 2798,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "deliverables",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2800,
+      "end": 2807,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "deliverables",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2807,
+      "end": 2854,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "d1"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2854,
+      "end": 2865,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "deliverables",
+        "slot": "kind"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2866,
+      "end": 2873,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "deliverables",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2873,
+      "end": 2917,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "d2"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2917,
+      "end": 2931,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "deliverables",
+        "slot": "kind"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2934,
+      "end": 2954,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "capability_notes",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 2956,
+      "end": 3005,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "capability_notes",
+        "slot": "conditional_intro"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 3006,
+      "end": 3008,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "capability_notes",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 3008,
+      "end": 3013,
+      "origin": {
+        "kind": "agent_profile",
+        "profile_id": "claude-code",
+        "profile_path": "capabilities.shell"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 3013,
+      "end": 3018,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "capability_notes",
+        "slot": "separator"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 3018,
+      "end": 3056,
+      "origin": {
+        "kind": "agent_profile",
+        "profile_id": "claude-code",
+        "profile_path": "capabilities.shell.note"
+      }
+    },
+    {
+      "artifact_path": "PROMPT.md",
+      "start": 3056,
+      "end": 3094,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "capability_notes",
+        "slot": "gates_marker"
+      }
+    },
+    {
+      "artifact_path": "CLAUDE.md",
+      "start": 0,
+      "end": 22,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "project_conventions",
+        "slot": "heading"
+      }
+    },
+    {
+      "artifact_path": "CLAUDE.md",
+      "start": 24,
+      "end": 31,
+      "origin": {
+        "kind": "renderer_template",
+        "renderer_id": "generic",
+        "section_key": "project_conventions",
+        "slot": "bullet_marker"
+      }
+    },
+    {
+      "artifact_path": "CLAUDE.md",
+      "start": 31,
+      "end": 107,
+      "origin": {
+        "kind": "ir_node",
+        "node_id": "c3"
+      }
+    }
+  ]
+}

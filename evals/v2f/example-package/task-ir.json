@@ -1,0 +1,193 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Diagnose and fix the intermittent authentication session drop that occurs during token refresh",
+    "kind": "debug",
+    "success_definition": "Sessions survive token refresh, with no change to the authentication module's public boundary",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Identify the root cause of session loss during token refresh",
+      "priority": "must",
+      "acceptance": [
+        "A written root-cause explanation naming the specific code path that fails",
+        "The explanation distinguishes the refresh path from unrelated network failures"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Apply a fix that does not alter the session provider's public interface",
+      "priority": "must",
+      "acceptance": [
+        "The exported provider signature is unchanged",
+        "Existing authentication tests pass"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "architectural",
+      "hardness": "hard",
+      "statement": "Do not change the session provider's public interface or the session storage strategy",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not refactor modules unrelated to the defect",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "process",
+      "hardness": "soft",
+      "statement": "Follow the error-handling convention already used in the shared error module",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Migrating away from the current session store",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n2",
+      "statement": "General performance optimization of the authentication path",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "src/auth/**",
+      "src/lib/session/**"
+    ],
+    "exclude": [
+      "**/*.snap",
+      "dist/**"
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell",
+    "run_tests",
+    "git_history"
+  ],
+  "context_refs": [
+    {
+      "id": "ctx1",
+      "uri": "forge://repo/src/auth/provider.ts#L40-L118",
+      "role": "definition",
+      "trust": "semi_trusted",
+      "justifies": [
+        "g1",
+        "c1"
+      ],
+      "content_hash": "sha256:1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809"
+    },
+    {
+      "id": "ctx2",
+      "uri": "git://commit/8f21ab3",
+      "role": "background",
+      "trust": "semi_trusted",
+      "justifies": [
+        "g1"
+      ],
+      "content_hash": "sha256:77de8091a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d"
+    },
+    {
+      "id": "ctx3",
+      "uri": "forge://repo/src/lib/errors.ts",
+      "role": "constraint_source",
+      "trust": "semi_trusted",
+      "justifies": [
+        "c3"
+      ],
+      "content_hash": "sha256:0099aabbccddeeff00112233445566778899aabbccddeeff0011223344556677"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "\"Intermittent\" refers to the token-refresh path rather than general network flakiness",
+      "confidence": "medium",
+      "source_ref": "forge_derived"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Should the fix cover the server-rendered path as well as the client path?",
+      "options": [
+        "client only",
+        "both"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": false,
+      "source_ref": "forge_derived"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "command",
+      "spec": "pnpm test src/auth",
+      "expected": "exit 0",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "The diff touches no file outside scope.include",
+      "expected": "true",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "forge_derived"
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "The root-cause explanation names the failing code path",
+      "expected": "present",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "forge_derived"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "analysis",
+      "description": "Root-cause writeup naming the failing code path",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "code_change",
+      "description": "Minimal fix within the authentication module",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "touches authentication",
+      "no reproduction test exists yet"
+    ]
+  }
+}
