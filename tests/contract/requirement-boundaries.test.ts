@@ -19,6 +19,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /** Every importer of the core layers, each with its reason. */
 const ALLOWED_CORE_IMPORTERS: ReadonlyMap<string, string> = new Map([
+  ["src/cli/explain.ts", "`forge explain --package`: renders the matrix from files the user named"],
   ["web/lib/requirements.ts", "the workspace's single entry point, behind user-action routes"],
 ]);
 
@@ -91,6 +92,11 @@ describe("RG-R6 — no model-reachable path into governance, linkage or traceabi
       expect(CORE_IMPORT.test(source), `${rel} imports the governance/linkage layer`).toBe(false);
       expect(WEB_IMPORT.test(source), `${rel} imports web/lib/requirements`).toBe(false);
     }
+  });
+
+  it("keeps forge explain free of anything model-facing (TM-R4: explain adds no model call)", () => {
+    const source = readFileSync(join(ROOT, "src", "cli", "explain.ts"), "utf8");
+    expect(source).not.toMatch(/from\s+["'][^"']*\/(model|conversation|intent|candidate)\//);
   });
 
   it("keeps the layers themselves free of anything model-facing", () => {

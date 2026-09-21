@@ -8,6 +8,12 @@
  * call) and prints where each byte came from, which constraints reached which
  * sections, and what the compiler decided along the way.
  *
+ * With `--package` it also renders the requirement traceability chain (V2-H,
+ * §22.10 TM-R4) through the same `buildTraceabilityMatrix` the Studio uses —
+ * one explanation engine, not two. `--workspace` reads a repository only
+ * through `WorkspaceGuard`; `--governance` applies human decisions by the same
+ * rules as the workspace. Still no model call.
+ *
  * It is pure presentation of facts `CompileResult` already carries. It infers
  * nothing, scores nothing (INV-008) and recomputes nothing the compiler did not
  * already compute. If a line here is not backed by a field of `CompileResult`,
@@ -31,9 +37,21 @@ import { semanticHash } from "../ir/projection.js";
 import type { TaskIR } from "../ir/schema.js";
 import { BUILTIN_PROFILE_DIR, builtinProfiles, loadProfilesFrom } from "../profile/registry.js";
 import type { Span, TraceOrigin } from "../trace/span.js";
+import { WorkspaceGuard } from "../context/workspace.js";
+import type { LedgerEntry } from "../critic/deterministic/ledger.js";
+import { contentHash } from "../ir/canonical.js";
+import { parseTaskIR } from "../ir/schema.js";
+import { governRequirements, parseGovernanceFile, recordDecisions, type GovernanceRecord } from "../requirement/governance.js";
+import { linkRequirements, type AuthoritativeLink } from "../requirement/linkage.js";
+import {
+  buildTraceabilityMatrix,
+  type MatrixObligation,
+  type MatrixSpan,
+  type TraceabilityMatrix,
+} from "../requirement/traceability.js";
 import { EXIT, fatal } from "./errors.js";
 import { readIr } from "./ir.js";
-import { verifyDirectory, writeVerdicts } from "./verify.js";
+import { REPORT_CAVEAT, verifyDirectory, writeVerdicts, type VerdictReport } from "./verify.js";
 
 /** One line per origin kind, in the vocabulary the trace itself uses. */
 function describeOrigin(origin: TraceOrigin): string {
@@ -217,6 +235,168 @@ function explainPackage(root: string, out: NodeJS.WriteStream): void {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Traceability (V2-H, spec.md §22.10 TM-R4)                                   */
+/* -------------------------------------------------------------------------- */
+
+/** A refused explain input — a bad governance file or an unreadable workspace. Exit 2. */
+class ExplainInputError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ExplainInputError";
+  }
+}
+
+interface TraceOptions {
+  readonly workspace?: string;
+  readonly governance?: string;
+  readonly report?: VerdictReport;
+}
+
+/**
+ * The matrix for an exported package: the SAME `buildTraceabilityMatrix` the
+ * Studio calls, over the package's own files. `--workspace` is the user's
+ * explicit, invocation-scoped binding (RB-R2) and is read only through
+ * `WorkspaceGuard`; `--governance` is a file of human decisions, applied in
+ * order with the same checks as a click in the workspace. No model, and no
+ * fact the inputs do not hold.
+ */
+function packageMatrix(root: string, options: TraceOptions): TraceabilityMatrix {
+  const read = <T>(name: string): T => JSON.parse(readFileSync(join(root, name), "utf8")) as T;
+  const manifest = read<{ semantic_id: string }>("package.json");
+  const requirements = read<{ requirements: Array<{ text: string; kind: string }> }>("requirements.json").requirements;
+  // The pinned half of the manifest is the ledger it was built from (EV-R3 uses the same reading).
+  const ledger: LedgerEntry[] = requirements
+    .filter((r) => r.kind === "pinned")
+    .map((r, i) => ({ id: `pinned-${i + 1}`, text: r.text, contentHash: contentHash(r.text), origin: "user_input" as const }));
+  const ir = parseTaskIR(read<unknown>("task-ir.json"));
+
+  let log: GovernanceRecord[] = [];
+  if (options.governance !== undefined) {
+    try {
+      log = recordDecisions({ ledger, ir }, parseGovernanceFile(readFileSync(resolve(options.governance), "utf8")));
+    } catch (error) {
+      throw new ExplainInputError(`--governance refused: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  let linkage = null;
+  if (options.workspace !== undefined) {
+    let guard: WorkspaceGuard;
+    try {
+      guard = WorkspaceGuard.open(options.workspace);
+    } catch (error) {
+      throw new ExplainInputError(`--workspace refused: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    const rows = governRequirements({ ledger, ir, log }).requirements;
+    linkage = linkRequirements(
+      rows.map((r) => ({ id: r.id, text: r.text })),
+      guard,
+      { scope: { include: ir.scope.include, exclude: ir.scope.exclude } },
+    );
+  }
+
+  const report = options.report;
+  return buildTraceabilityMatrix({
+    ledger,
+    ir,
+    log,
+    package_semantic_id: manifest.semantic_id,
+    spans: read<{ spans: MatrixSpan[] }>("trace.json").spans,
+    obligations: read<{ entries: MatrixObligation[] }>("verification.json").entries,
+    verdicts:
+      report === undefined
+        ? null
+        : {
+            package_valid: report.package_valid,
+            package_semantic_id: report.package_semantic_id,
+            caveat: REPORT_CAVEAT,
+            verdicts: report.verdicts,
+          },
+    linkage,
+    // The CLI has no source of advisory links; the absence is printed, not hidden.
+    advisory: [],
+  });
+}
+
+function describeLink(link: AuthoritativeLink): string {
+  const evidence = link.evidence.map((e) => {
+    switch (e.type) {
+      case "rg_term":
+        return `rg_term ${e.matched}/${e.of} [${e.matched_terms.join(", ")}]`;
+      case "test_naming":
+        return `test_naming [${e.matched_terms.join(", ")}]`;
+      case "scope_glob":
+        return `scope_glob ${e.glob}`;
+      case "git_history":
+        return `git_history #${e.commit_position}`;
+    }
+  });
+  return `${link.path} ← ${evidence.join(" · ")}`;
+}
+
+/** Human rendering of the matrix: one block per requirement, in chain order. */
+function writeMatrix(matrix: TraceabilityMatrix, out: NodeJS.WritableStream, only?: string): void {
+  const rows = only === undefined ? matrix.rows : matrix.rows.filter((r) => r.id === only);
+  out.write(`\n=== requirement traceability (${rows.length} of ${matrix.rows.length}) ===\n`);
+  out.write(
+    `repository   ${matrix.repository_bound ? "bound — links are deterministic evidence only" : "not bound — no file or test links"}\n`,
+  );
+  out.write(
+    `verdicts     ${matrix.verdicts_rejected ? "package REJECTED — none shown" : matrix.verdicts_supplied ? "joined from the supplied evidence" : "no evidence supplied"}\n`,
+  );
+  const pad = "             ";
+  const list = (label: string, items: readonly string[], empty: string): void => {
+    if (items.length === 0) {
+      out.write(`    ${label.padEnd(12)} ${empty}\n`);
+      return;
+    }
+    items.forEach((item, i) => out.write(`    ${i === 0 ? label.padEnd(12) : pad.slice(0, 12)} ${item}\n`));
+  };
+  for (const r of rows) {
+    out.write(`\n  [${r.id}] "${quote(r.text, 96)}"\n`);
+    const sources = r.sources.map((s) =>
+      s.kind === "ledger" ? "ledger (pinned verbatim)" : `IR ${s.node_kind} ${s.node_id}`,
+    );
+    out.write(`    provenance   ${r.origin} · ${sources.length > 0 ? sources.join(" · ") : "in no current version"}\n`);
+    const lifecycle = [
+      r.status,
+      ...(r.pinned ? ["pinned"] : []),
+      ...(r.superseded_by ? [`superseded by ${r.superseded_by}`] : []),
+      ...(r.conflicts_with.length > 0 ? [`conflicts with ${r.conflicts_with.join(", ")}`] : []),
+      ...(r.active ? [] : ["inactive"]),
+    ];
+    out.write(`    lifecycle    ${lifecycle.join(" · ")}\n`);
+    list(
+      "IR node",
+      r.sources.flatMap((s) => (s.kind === "ir_node" ? [`${s.node_id} (${s.node_kind})`] : [])),
+      "(none — not in the IR)",
+    );
+    list("artifact", r.artifact_spans.map((s) => `${s.artifact_path}:${s.start}–${s.end} (${s.node_id})`), "(no span)");
+    const noRepo = "(no repository bound)";
+    list("files", r.files.map(describeLink), matrix.repository_bound ? "(none — no deterministic evidence)" : noRepo);
+    list("tests", r.tests.map(describeLink), matrix.repository_bound ? "(none — no deterministic evidence)" : noRepo);
+    // LK-R4: never among the authoritative lines, and always labelled.
+    list(
+      "ADVISORY",
+      r.advisory_links.map((l) => `${l.path} (${l.source}) — asserted, not evidence`),
+      "(none supplied)",
+    );
+    list(
+      "obligation",
+      r.obligations.map(
+        (o) => `[${o.id}] ${o.kind}: ${quote(o.spec, 56)} → ${o.accepted_records} record(s) → ${o.verdict ?? "no verdict"}`,
+      ),
+      "(no obligation satisfies it)",
+    );
+  }
+  if (matrix.diagnostics.length > 0) {
+    out.write(`\n`);
+    for (const d of matrix.diagnostics) out.write(`  ${d.severity}[${d.code}] ${d.message}\n`);
+  }
+  if (matrix.caveat !== null) out.write(`\n${matrix.caveat}\n`);
+}
+
 export function registerExplainCommand(program: Command): void {
   program
     .command("explain")
@@ -225,29 +405,63 @@ export function registerExplainCommand(program: Command): void {
     .option("--target <profile>", "agent profile to compile for")
     .option("--package <dir>", "an exported Execution Package to explain instead of recompiling")
     .option("--evidence <file>", "with --package: show obligation → evidence → verdict (V2-G)")
+    .option("--workspace <dir>", "with --package: link requirements to this repository's files and tests (V2-H)")
+    .option("--governance <file>", "with --package: apply these human governance decisions (V2-H)")
+    .option("--requirement <id>", "with --package: explain only this requirement's chain")
     .option("--profile-dir <dir>", "additional directory of profile YAML files")
     .option("--json", "machine-readable output")
     .action(
-      (opts: { ir?: string; target?: string; package?: string; evidence?: string; profileDir?: string; json?: boolean }) => {
+      (opts: {
+        ir?: string;
+        target?: string;
+        package?: string;
+        evidence?: string;
+        workspace?: string;
+        governance?: string;
+        requirement?: string;
+        profileDir?: string;
+        json?: boolean;
+      }) => {
       try {
         if (opts.package !== undefined) {
+          let report: VerdictReport | undefined;
           if (opts.evidence !== undefined) {
             // The verdict chain needs a VALIDATED package (EV-R3), so this path
             // rebuilds it; plain `--package` stays a JSON.parse-only read (PK-R8).
             const registry = opts.profileDir
               ? loadProfilesFrom(BUILTIN_PROFILE_DIR, resolve(opts.profileDir))
               : builtinProfiles();
-            const report = verifyDirectory(opts.package, opts.evidence, registry);
+            report = verifyDirectory(opts.package, opts.evidence, registry);
             if (!report.package_valid) {
               writeVerdicts(report, process.stdout);
               process.exit(EXIT.refused);
             }
-            explainPackage(opts.package, process.stdout);
-            process.stdout.write("\n");
-            writeVerdicts(report, process.stdout);
+          }
+          let matrix: TraceabilityMatrix;
+          try {
+            matrix = packageMatrix(opts.package, {
+              ...(opts.workspace !== undefined ? { workspace: opts.workspace } : {}),
+              ...(opts.governance !== undefined ? { governance: opts.governance } : {}),
+              ...(report !== undefined ? { report } : {}),
+            });
+          } catch (error) {
+            if (error instanceof ExplainInputError) {
+              process.stderr.write(`${error.message}\n`);
+              process.exit(EXIT.usage);
+            }
+            throw error;
+          }
+          if (opts.json) {
+            // The matrix's canonical JSON: byte-identical for identical inputs (TM-R3).
+            process.stdout.write(matrix.json);
             process.exit(EXIT.ok);
           }
           explainPackage(opts.package, process.stdout);
+          if (report !== undefined) {
+            process.stdout.write("\n");
+            writeVerdicts(report, process.stdout);
+          }
+          writeMatrix(matrix, process.stdout, opts.requirement);
           process.exit(EXIT.ok);
         }
         if (opts.ir === undefined || opts.target === undefined) {

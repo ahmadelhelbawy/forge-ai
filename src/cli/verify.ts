@@ -148,3 +148,6 @@ export function registerVerifyCommand(program: Command): void {
       }
     });
 }
+
+/** Re-exported for `forge explain`'s traceability section, so the verification layer keeps one CLI importer (AC-050). */
+export { REPORT_CAVEAT, type VerdictReport } from "../verify/verdict.js";

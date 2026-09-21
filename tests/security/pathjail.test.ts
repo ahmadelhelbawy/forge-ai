@@ -126,7 +126,9 @@ describe("filesystem gateway scan (AC-011, INV-011)", () => {
     // because artifact paths come from profile topologies, which are editable
     // repository data (PS-R5).
     "src/package/export.ts": "writes an Execution Package under --out, behind its own path jail",
-    "src/cli/explain.ts": "reads an already-exported package with JSON.parse (PK-R8)",
+    // V2-H adds a user-supplied --governance file. --workspace is NOT read here:
+    // it goes through WorkspaceGuard via src/requirement/linkage.ts (INV-011).
+    "src/cli/explain.ts": "reads an already-exported package (PK-R8) and a user-supplied --governance file",
     // V2-G. Reads a received package and an evidence file the user supplied.
     // Both are untrusted, so every read goes through export.ts's `safeJoin`
     // and must be a regular file (no symlink out) — never a context read.
