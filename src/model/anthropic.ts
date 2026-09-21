@@ -27,11 +27,27 @@ export class AnthropicProvider implements ModelProvider {
   readonly defaultModel: string;
   private readonly client: Anthropic;
 
-  constructor(apiKey: string, defaultModel?: string) {
+  /**
+   * `baseURL` names an alternative host that speaks the anthropic-messages
+   * protocol — a gateway, not a different vendor.
+   *
+   * It is optional, and its absence was a real defect rather than a missing
+   * convenience. Without it there was no core transport that could reach a
+   * gateway's `/messages` path, so `intent.extract` had only the
+   * OpenAI-compatible provider to fall back to and sent anthropic-messages
+   * models to `/chat/completions`, where they returned HTTP 503 with an empty
+   * body. Counted on the OpenCode Go table, that stranded 8 of 29 models
+   * (V2-R step 11).
+   *
+   * This adds no vendor knowledge to the core. The protocol is Anthropic's
+   * either way; who is serving it is transport, and transport is exactly what
+   * a base URL is.
+   */
+  constructor(apiKey: string, defaultModel?: string, baseURL?: string) {
     if (!apiKey) {
       throw new ProviderError("ANTHROPIC_API_KEY is empty — cannot create the client.", "anthropic");
     }
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({ apiKey, ...(baseURL ? { baseURL } : {}) });
     this.defaultModel = defaultModel ?? process.env["FORGE_MODEL"] ?? ANTHROPIC_DEFAULT_MODEL;
   }
 

@@ -226,3 +226,118 @@ describe("every path that calls a model honours the model's protocol", () => {
     expect(urls.every((u) => u.includes("/messages"))).toBe(true);
   });
 });
+
+/**
+ * V2-R step 11: `irForVersion` is the last path that picked its transport from
+ * the PROVIDER's kind instead of the MODEL's protocol.
+ *
+ * The defect was measured on a live run: `intent.extract` sent an OpenCode Go
+ * `anthropic-messages` model to `/chat/completions` and got `HTTP 503` with an
+ * empty body — three attempts, 183 seconds, no usable error. Counted rather
+ * than estimated, it made **12 of the 29 documented OpenCode Go models**
+ * unreachable through this path: the 8 that speak `anthropic-messages` and the
+ * 4 that speak `responses`. The 17 `chat-completions` models worked by
+ * coincidence.
+ *
+ * V2-E fixed it for candidates and recorded that it could not fix it here,
+ * because `extractIntent` needs a core `ModelProvider` and core's
+ * `AnthropicProvider` accepted no base URL — so no core transport could reach
+ * that gateway path at all. V2-R's plan authorises the core change.
+ */
+describe("irForVersion honours the model's protocol (V2-R step 11)", () => {
+  const anthropicModel = "qwen3.8-flash";
+  const responsesModel = openCodeModels().find((m) => m.protocol === "responses")?.id;
+
+  it("routes an anthropic-messages model to /messages, not /chat/completions", async () => {
+    const { irForVersion } = await import("../../web/lib/preservation");
+    const { addPromptVersion, newConversation, saveConversation } = await import("../../web/lib/store");
+
+    const convo = newConversation({ title: "extract-routing", target: "generic" });
+    addPromptVersion(convo, "Build an agent. It must use PostgreSQL.", "model", {
+      action: "CREATE",
+      turnId: "t1",
+    });
+    saveConversation(convo);
+    convo.provider = "opencode-go";
+    convo.model = anthropicModel;
+
+    const draft = {
+      objective: {
+        statement: "Build an agent",
+        kind: "feature",
+        success_definition: "The agent runs",
+        derived_from: "s1",
+      },
+      goals: [
+        { id: "g1", statement: "Build an agent", priority: "must", acceptance: ["It runs"], derived_from: "s1" },
+      ],
+      constraints: [
+        { id: "c1", kind: "architectural", hardness: "hard", statement: "It must use PostgreSQL", derived_from: "s1" },
+      ],
+      non_goals: [],
+      scope: { include: ["**/*"], exclude: [], blast_radius: "module", derived_from: "s1" },
+      required_capabilities: [],
+      assumptions: [],
+      open_questions: [],
+      verification: [],
+      deliverables: [{ id: "d1", kind: "code_change", description: "the agent", derived_from: "s1" }],
+      risk: { level: "low", factors: [] },
+    };
+
+    const urls: string[] = [];
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown) => {
+      urls.push(String(input instanceof Request ? input.url : input));
+      return new Response(
+        JSON.stringify({
+          id: "msg_1",
+          type: "message",
+          role: "assistant",
+          model: anthropicModel,
+          content: [{ type: "text", text: JSON.stringify(draft) }],
+          stop_reason: "end_turn",
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof globalThis.fetch;
+
+    const stub = process.env["FORGE_CHAT_STUB"];
+    delete process.env["FORGE_CHAT_STUB"];
+    let thrown: unknown = null;
+    try {
+      await irForVersion(convo, convo.currentV, { provider: "opencode-go", model: anthropicModel });
+    } catch (error) {
+      thrown = error;
+    } finally {
+      globalThis.fetch = realFetch;
+      if (stub === undefined) delete process.env["FORGE_CHAT_STUB"];
+      else process.env["FORGE_CHAT_STUB"] = stub;
+    }
+
+    expect(thrown).toBeNull();
+    expect(urls.length).toBeGreaterThan(0);
+    expect(urls.filter((u) => u.includes("/chat/completions"))).toEqual([]);
+    expect(urls.every((u) => u.includes("/messages"))).toBe(true);
+  });
+
+  /**
+   * The four `responses` models. Core has no Responses-protocol provider, so
+   * the honest outcome is a refusal that names the reason — not the old
+   * behaviour of sending them to `/chat/completions` and reporting whatever
+   * empty-bodied 503 came back. No silent fallbacks: a hard error beats a
+   * plausible wrong answer.
+   */
+  it("refuses a responses-protocol model with a reason instead of mis-routing it", async () => {
+    expect(responsesModel, "the model table no longer has a responses model").toBeDefined();
+    const { getEffectiveProvider } = await import("../../web/lib/forge");
+    expect(() => getEffectiveProvider("opencode-go", responsesModel!)).toThrow(/responses/i);
+  });
+
+  it("still routes a chat-completions model to /chat/completions", async () => {
+    const { getEffectiveProvider } = await import("../../web/lib/forge");
+    const resolved = getEffectiveProvider("opencode-go", "kimi-k3");
+    expect(resolved.model).toBe("kimi-k3");
+    expect(resolved.providerId).toBe("opencode-go");
+  });
+});

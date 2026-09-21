@@ -189,3 +189,93 @@ describe("the two layers are computed together and stay apart (WS-R27, WS-R28)",
     }
   });
 });
+
+/**
+ * V2-R step 11: the two extractions a drift check needs are independent, so
+ * they must not be serialised.
+ *
+ * Measured before the fix: 205 seconds on a live run, and on a slow reasoning
+ * model a client aborted the request with `UND_ERR_HEADERS_TIMEOUT` after five
+ * minutes — the advisory layer failing not because it was wrong but because it
+ * took too long to answer. V2-E hit the same wall in candidate generation and
+ * fixed it there by dispatching the independent calls together; it recorded
+ * that the identical fix applied here and was outside its scope. This is that
+ * fix.
+ *
+ * Concurrency is asserted by observation, not by timing: the test counts how
+ * many extractions are in flight at once. A wall-clock assertion would be
+ * flaky on a loaded machine and would prove less.
+ */
+describe("the two extractions a drift check needs run together (V2-R)", () => {
+  beforeEach(isolated);
+
+  it("dispatches both version extractions concurrently", async () => {
+    const { preservationFor } = await import("../../web/lib/preservation");
+    const { addPromptVersion, newConversation, saveConversation } = await import("../../web/lib/store");
+
+    const convo = newConversation({ title: "concurrency", target: "generic" });
+    addPromptVersion(convo, "Build an agent. It must use PostgreSQL.", "model", {
+      action: "CREATE",
+      turnId: "t1",
+    });
+    addPromptVersion(convo, "Build an agent. It must use PostgreSQL and never log credentials.", "model", {
+      action: "REVISE",
+      turnId: "t2",
+    });
+    saveConversation(convo);
+    // A real provider is needed for this path: the stub returns without ever
+    // reaching fetch, which is exactly what must not be measured here.
+    const { saveProvider } = await import("../../web/lib/providers");
+    process.env["FORGE_APP_SECRET"] = "test-secret-at-least-16-chars";
+    saveProvider("opencode-go", { apiKey: "test-key", enabled: true });
+
+    let inFlight = 0;
+    let peak = 0;
+    const realFetch = globalThis.fetch;
+    const draft = (statement: string): string =>
+      JSON.stringify({
+        objective: { statement, kind: "feature", success_definition: "It runs", derived_from: "s1" },
+        goals: [{ id: "g1", statement, priority: "must", acceptance: ["It runs"], derived_from: "s1" }],
+        constraints: [],
+        non_goals: [],
+        scope: { include: ["**/*"], exclude: [], blast_radius: "module", derived_from: "s1" },
+        required_capabilities: [],
+        assumptions: [],
+        open_questions: [],
+        verification: [],
+        deliverables: [{ id: "d1", kind: "code_change", description: "the agent", derived_from: "s1" }],
+        risk: { level: "low", factors: [] },
+      });
+
+    globalThis.fetch = (async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      // Long enough that a serialised pair cannot overlap by accident, short
+      // enough to keep the suite fast.
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      inFlight -= 1;
+      return new Response(
+        JSON.stringify({
+          id: "chatcmpl-1",
+          object: "chat.completion",
+          model: "kimi-k3",
+          choices: [{ index: 0, message: { role: "assistant", content: draft("Build an agent") }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as typeof globalThis.fetch;
+
+    const stub = process.env["FORGE_CHAT_STUB"];
+    delete process.env["FORGE_CHAT_STUB"];
+    try {
+      await preservationFor(convo, { from: 1, to: 2 }, { provider: "opencode-go", model: "kimi-k3" });
+    } finally {
+      globalThis.fetch = realFetch;
+      if (stub === undefined) delete process.env["FORGE_CHAT_STUB"];
+      else process.env["FORGE_CHAT_STUB"] = stub;
+    }
+
+    expect(peak, "the two extractions were serialised").toBeGreaterThan(1);
+  });
+});

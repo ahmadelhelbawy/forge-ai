@@ -153,8 +153,32 @@ export async function preservationFor(
     return { result: preservationResult(ledger, null), drift: null, citations: {}, extractedCalls: 0 };
   }
 
-  const from = await irForVersion(convo, pair.from, options);
-  const to = await irForVersion(convo, pair.to, options);
+  /**
+   * The two extractions are independent, so they are dispatched together
+   * (V2-R step 11).
+   *
+   * Serialised, this was measured at 205s on a live run, and on a slow
+   * reasoning model a client aborted it with `UND_ERR_HEADERS_TIMEOUT` after
+   * five minutes — the advisory layer failing not because it was wrong but
+   * because it took too long to answer. V2-E hit the same wall in candidate
+   * generation and fixed it the same way.
+   *
+   * Concurrency is safe here because the two calls touch different versions:
+   * `recordVersionIr` appends one record per `v`, and the same `v` twice would
+   * write the record twice, so that case is taken sequentially rather than
+   * assumed away. Both paths still record every call (WS-R14).
+   */
+  let from: Awaited<ReturnType<typeof irForVersion>>;
+  let to: Awaited<ReturnType<typeof irForVersion>>;
+  if (pair.from === pair.to) {
+    from = await irForVersion(convo, pair.from, options);
+    to = from;
+  } else {
+    [from, to] = await Promise.all([
+      irForVersion(convo, pair.from, options),
+      irForVersion(convo, pair.to, options),
+    ]);
+  }
   const drift = compareVersionIrs(
     { v: pair.from, ir: from.ir },
     { v: pair.to, ir: to.ir },

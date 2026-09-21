@@ -220,10 +220,40 @@ export function getEffectiveProvider(providerId: string, model?: string): Resolv
     );
   }
   const useModel = model && model.length > 0 ? model : eff.defaultModel;
-  const provider: ModelProvider =
-    eff.kind === "anthropic"
-      ? new AnthropicProvider(eff.apiKey, useModel)
-      : new OpenAiCompatProvider(eff.apiKey, eff.baseURL ?? undefined, useModel);
+
+  /**
+   * Transport comes from the MODEL's protocol, not the provider's kind
+   * (V2-R step 11).
+   *
+   * This line used to read `eff.kind === "anthropic"`, which is a statement
+   * about who sells the key, not about what the endpoint speaks. On a gateway
+   * serving three protocols it sent every anthropic-messages model to
+   * `/chat/completions`, where it got HTTP 503 with an empty body: 8 of the 29
+   * documented OpenCode Go models unreachable, measured at 183s of retries
+   * before failing incomprehensibly. `resolveCall` has resolved the protocol
+   * correctly for the chat path since V2-E; this is the same resolution, now
+   * used by the one path that still guessed.
+   */
+  const call = resolveCall(providerId, useModel);
+  let provider: ModelProvider;
+  if (call.protocol === "anthropic-messages") {
+    provider = new AnthropicProvider(eff.apiKey, useModel, eff.baseURL ?? undefined);
+  } else if (call.protocol === "chat-completions") {
+    provider = new OpenAiCompatProvider(eff.apiKey, eff.baseURL ?? undefined, useModel);
+  } else {
+    // The `responses` protocol. The core has no provider that speaks it, and
+    // the previous behaviour — send it to /chat/completions and report the
+    // empty-bodied 503 that came back — is precisely the silent-wrong-answer
+    // the no-fallback rule exists to prevent. Refusing with the reason turns
+    // an unexplained failure into an actionable one.
+    throw new ProviderError(
+      `Model "${useModel}" speaks the "responses" protocol, which FORGE's extraction path ` +
+        `does not support yet — the request would be sent to the wrong endpoint and fail without ` +
+        `a usable error. Choose a chat-completions or anthropic-messages model for this operation.`,
+      providerId,
+      { model: useModel },
+    );
+  }
   return { provider, providerId: eff.id, model: useModel, sessionHeader: eff.sessionHeader, extraHeaders: eff.headers };
 }
 
