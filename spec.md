@@ -240,6 +240,8 @@ change requiring an update to this document, not a bug fix.
 | ~~**FR-045**~~ | ~~Provide `forge history` and `forge diff <a> <b>` over stored IRs and packages.~~ **Dropped 2026-09-21.** The workspace has been the history and diff surface since V2-C, and a second CLI surface over the same store is duplicate product, not portability. Package-to-package comparison is covered by `AC-005`, which any `diff -r` satisfies. | ~~P5~~ |
 | **FR-046** | Provide `forge export` producing a self-contained, relocatable package directory. | V2-F |
 | **FR-052** | Assign every requirement a stable, conversation-scoped identity with a FORGE-assigned immutable `origin`, per §22.9. | V2-F |
+| **FR-053** | Evaluate externally produced verification evidence against a **validated** Execution Package and give every obligation exactly one verdict — `VERIFIED`, `FAILED`, `UNVERIFIED` or `REVIEW_REQUIRED` — per §11.1. FORGE ingests evidence; it never produces it and never executes anything to obtain it (`INV-004`). | V2-G |
+| **FR-054** | Validate an Execution Package before any evidence is evaluated against it: schemas, file hashes, and a byte-for-byte rebuild from the package's own inputs (`EV-R3`). An invalid package yields no verdicts. | V2-G |
 
 ### 4.9 Model provider
 
@@ -499,6 +501,11 @@ with the same evidence requirement (INV-007).
 | `FORGE-W006` | `semantic_drift` | warning | judged | A statement in one version's Task IR vanished or changed meaning in another's, and no pinned entry covers it; cites both versions' statements (WS-R26) |
 | `FORGE-W007` | `candidate_duplicate_rejected` | warning | deterministic | A generated alternative's prose is token-identical to another candidate or to the base it was derived from; the alternative is rejected rather than offered as a choice that is not one (WS-R8, ST-R5) |
 | `FORGE-W008` | `stated_requirement_demoted` | warning | deterministic | A requirement expressed in the user's own input reaches the artifact only as an assumption or an open question, never as a goal, constraint, non-goal or deliverable; cites the user's wording and the node that carries it (INV-016) |
+| `FORGE-V001` | `obligation_unverified` | info | deterministic | An executable obligation has no accepted evidence record; its verdict is `UNVERIFIED` (EV-R4) |
+| `FORGE-V002` | `obligation_failed` | error | deterministic | An accepted evidence record for an executable obligation reports an exit code other than the expected one; cites the obligation, the exit code and the record (EV-R4) |
+| `FORGE-V003` | `evidence_package_mismatch` | warning | deterministic | An evidence record names a `package_semantic_id` other than the validated package's; the record is ignored and can never make an obligation `VERIFIED` (EV-R2) |
+| `FORGE-V004` | `package_unverifiable` | error | deterministic | The package failed validation — a schema, a file hash, or the rebuild from its own inputs disagrees with what it contains; no evidence is evaluated (EV-R3) |
+| `FORGE-V005` | `evidence_record_rejected` | warning | deterministic | An evidence record is unusable — unknown obligation, a kind that differs from the obligation's, or a supplied log whose hash differs from the recorded one; the record counts as absent (EV-R5) |
 
 ¹ `FORGE-C102` is `error` — refusing compilation — when the unrenderable class is
 instruction-bearing or carries nodes demoted to advisory by the trust model. It is
@@ -596,6 +603,72 @@ path discloses a username and a directory layout to whoever receives the package
 
 **PK-R8.** Consuming a package requires only JSON parsing and the published JSON Schema.
 No FORGE runtime is needed to read one.
+
+### 11.1 Evidence and verification (EV-R)
+
+Verification answers one question: *did an external execution satisfy the
+obligations of this Execution Contract?* FORGE never runs anything to find out
+(`INV-004`). Execution belongs to Claude Code, Codex, CI, a human, or any other
+executor; FORGE ingests what they report and applies fixed rules to it.
+
+**EV-R1 — Evidence is never model-authored.** No model boundary may emit an evidence
+record, and no evidence field may be filled from a model response. Evidence enters
+only as a file or request body the user supplies. No module reachable from a model
+boundary imports the verification layer.
+
+**EV-R2 — Evidence binds to a validated package by `semantic_id`.** A record whose
+`package_semantic_id` differs from the **validated** package's id is ignored with
+`FORGE-V003` and can never make an obligation `VERIFIED`. The id is trusted only
+after `EV-R3` passes; the value written in `package.json` carries no authority of
+its own.
+
+**EV-R3 — The package is validated before any evidence is read.** Validation parses
+every file against the published schemas, checks every file's byte hash against
+`package.json`, then **rebuilds the package from its own inputs** — `task-ir.json`,
+`strategy.json`, the pinned entries of `requirements.json`, and the profile named in
+`package.json` — with the pinned compiler, and requires every semantic file,
+`package.json` included, to be byte-identical to the one supplied. The rebuild is
+required because `semantic_id` does not hash derived files such as
+`verification.json` directly: an edited obligation with an updated listed hash would
+otherwise keep the old id. Any failure emits `FORGE-V004` and yields **no verdicts**.
+A package built by a different compiler version, or for a profile this FORGE does
+not have, is unverifiable here — reported, never guessed.
+
+**EV-R4 — Exactly one verdict per obligation, by fixed rules.**
+
+| Obligation kind | Accepted evidence | Verdict |
+|---|---|---|
+| `manual`, `review` (including a step degraded to one) | any, or none | `REVIEW_REQUIRED` — by construction |
+| `command`, `test` | none | `UNVERIFIED` (`FORGE-V001`) |
+| `command`, `test` | at least one record with an unexpected exit code | `FAILED` (`FORGE-V002`) |
+| `command`, `test` | every record has the expected exit code | `VERIFIED` |
+
+The expected exit code is `N` when `expected` is exactly `exit N`, otherwise `0`;
+`expected` is not otherwise interpreted. Several records for one obligation are
+allowed; one failure makes it `FAILED`, so a flaky pass cannot mask a recorded
+failure. No evidence can make a `manual` or `review` obligation `VERIFIED`. There is
+no score (`INV-008`).
+
+**EV-R5 — Evidence is untrusted input.** A malformed evidence file is rejected as a
+whole. A record is rejected with `FORGE-V005`, and counts as absent, when it names an
+obligation the package does not declare, carries a `kind` other than the
+obligation's, or references a log file (inside the evidence directory — absolute
+paths and `..` are refused) whose sha256 differs from the recorded hash. FORGE keeps
+output **hashes**, never raw output. Without a signature FORGE cannot detect a
+fabricator who recomputes hashes, so `VERIFIED` means exactly: *the supplied
+evidence, taken at its word, shows the expected exit code.* Every report says so.
+
+**EV-R6 — Verdicts are deterministic.** For fixed package bytes and evidence bytes
+the verdict report is byte-identical. It adds no timestamp, host or run value of its
+own.
+
+Evidence format (`schema/verify/evidence.schema.json`):
+
+```
+{ "records": [ { obligation_id, kind, exit_code, stdout_hash, stderr_hash,
+                 started_at, duration_ms, runner, repo_commit, package_semantic_id,
+                 logs?: { stdout?, stderr? } } ] }
+```
 
 ---
 
@@ -1270,3 +1343,7 @@ is not an operation the system offers.
 | **AC-044** | A requirement's id is unchanged across prompt versions, and no model-reachable path can set or alter its `origin`. | FR-052, RQ-R1, RQ-R3 |
 | **AC-045** | An exported package validates against the published JSON Schemas and is readable with JSON parsing alone — asserted by a test that imports no FORGE module. | PK-R7, PK-R8 |
 | **AC-046** | A package built by the workspace and one built by the CLI from the same IR, profile and pinned requirements are byte-identical except `run.json`; with different pinned requirements they carry different `semantic_id`s. | INV-005, PK-R3 |
+| **AC-047** | Every obligation of a validated package receives exactly one verdict; no `manual` or `review` obligation is ever `VERIFIED`, whatever evidence is supplied; a `FAILED` verdict cites the exit code and the record. Asserted over the full kind × evidence × exit-code matrix. | FR-053, EV-R4 |
+| **AC-048** | A package whose semantic files were edited — hashes updated or not — is rejected before evidence is read, and evidence naming a different `semantic_id` never yields `VERIFIED`. | FR-054, EV-R2, EV-R3 |
+| **AC-049** | The verdict report is byte-identical across runs for fixed package and evidence bytes, and `AC-020` still passes with the verification layer in the tree. | EV-R6, INV-004 |
+| **AC-050** | No module reachable from a model boundary imports the verification layer. | EV-R1 |
