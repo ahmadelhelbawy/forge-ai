@@ -100,6 +100,12 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   "FORGE-V003": { code: "FORGE-V003", name: "evidence_package_mismatch", severity: "warning", source: "deterministic" },
   "FORGE-V004": { code: "FORGE-V004", name: "package_unverifiable", severity: "error", source: "deterministic" },
   "FORGE-V005": { code: "FORGE-V005", name: "evidence_record_rejected", severity: "warning", source: "deterministic" },
+  // Requirement governance and linkage (spec.md §22.10, V2-H). Deterministic:
+  // a conflict is surfaced by a published rule or a human declaration, and a
+  // linkage exclusion is a fact about WorkspaceGuard, never a judgement.
+  "FORGE-R001": { code: "FORGE-R001", name: "requirement_conflict", severity: "warning", source: "deterministic" },
+  "FORGE-R002": { code: "FORGE-R002", name: "superseded_requirement_asserted", severity: "warning", source: "deterministic" },
+  "FORGE-R003": { code: "FORGE-R003", name: "linkage_read_excluded", severity: "info", source: "deterministic" },
 } as const satisfies Record<string, DiagnosticDefinition>);
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_REGISTRY;

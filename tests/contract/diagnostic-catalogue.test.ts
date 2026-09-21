@@ -46,7 +46,7 @@ interface SpecRow {
 function specRows(): SpecRow[] {
   const spec = readFileSync(join(REPO_ROOT, "spec.md"), "utf8");
   const rows: SpecRow[] = [];
-  const pattern = /^\|\s*`(FORGE-[CWV]\d+)`\s*\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm;
+  const pattern = /^\|\s*`(FORGE-[CWVR]\d+)`\s*\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm;
   for (const m of spec.matchAll(pattern)) {
     rows.push({
       code: m[1]!,

@@ -242,6 +242,10 @@ change requiring an update to this document, not a bug fix.
 | **FR-052** | Assign every requirement a stable, conversation-scoped identity with a FORGE-assigned immutable `origin`, per §22.9. | V2-F |
 | **FR-053** | Evaluate externally produced verification evidence against a **validated** Execution Package and give every obligation exactly one verdict — `VERIFIED`, `FAILED`, `UNVERIFIED` or `REVIEW_REQUIRED` — per §11.1. FORGE ingests evidence; it never produces it and never executes anything to obtain it (`INV-004`). | V2-G |
 | **FR-054** | Validate an Execution Package before any evidence is evaluated against it: schemas, file hashes, and a byte-for-byte rebuild from the package's own inputs (`EV-R3`). An invalid package yields no verdicts. | V2-G |
+| **FR-055** | Govern requirements over time per §22.10: a derived lifecycle `status` orthogonal to `origin` and `pinned`, recorded only from explicit human decisions in an append-only log, with traceable supersession and surfaced — never resolved — conflicts. | V2-H |
+| **FR-056** | Let a conversation explicitly bind one local repository from an operator allowlist, revocably, with every read through `WorkspaceGuard` (`RB-R1`–`RB-R3`). | V2-H |
+| **FR-057** | Link requirements to repository files and tests by deterministic evidence only, keeping advisory links in a separate collection (`LK-R1`–`LK-R4`). | V2-H |
+| **FR-058** | Produce a deterministic requirement traceability matrix — requirement × provenance × lifecycle × files × tests × obligations × evidence × verdict — in the Studio and through `forge explain`, by joining existing data with no model call (`TM-R1`–`TM-R4`). | V2-H |
 
 ### 4.9 Model provider
 
@@ -506,6 +510,9 @@ with the same evidence requirement (INV-007).
 | `FORGE-V003` | `evidence_package_mismatch` | warning | deterministic | An evidence record names a `package_semantic_id` other than the validated package's; the record is ignored and can never make an obligation `VERIFIED` (EV-R2) |
 | `FORGE-V004` | `package_unverifiable` | error | deterministic | The package failed validation — a schema, a file hash, or the rebuild from its own inputs disagrees with what it contains; no evidence is evaluated (EV-R3) |
 | `FORGE-V005` | `evidence_record_rejected` | warning | deterministic | An evidence record is unusable — unknown obligation, a kind that differs from the obligation's, or a supplied log whose hash differs from the recorded one; the record counts as absent (EV-R5) |
+| `FORGE-R001` | `requirement_conflict` | warning | deterministic | Two requirements conflict — a human declared it, or a non-goal's token sequence occurs contiguously in a goal, constraint, deliverable or pinned requirement; both are `conflicted` until a human supersedes one, and FORGE resolves nothing (RG-R5) |
+| `FORGE-R002` | `superseded_requirement_asserted` | warning | deterministic | A superseded requirement is still pinned, or still present in the current version's IR; cites it and its successor. Reported, never unpinned (RG-R4) |
+| `FORGE-R003` | `linkage_read_excluded` | info | deterministic | A repository file considered for linkage was refused by `WorkspaceGuard`, or linked with content the secret scanner redacted; names the path and the reason or rule, never a value (LK-R3) |
 
 ¹ `FORGE-C102` is `error` — refusing compilation — when the unrenderable class is
 instruction-bearing or carries nodes demoted to advisory by the trust model. It is
@@ -1314,10 +1321,169 @@ is reserved for text the user wrote. A requirement may never be promoted from
 `inferred` to `user_stated` by any path, model or deterministic — the promotion
 is not an operation the system offers.
 
-> The lifecycle above `origin` — `status`, supersession, conflict — is **V2-H**,
-> not this section. Recording identity without a workflow is deliberate: an id
-> and an immutable origin are what the Execution Package needs, and states
-> nobody has yet used would be invented workflow.
+> The lifecycle above `origin` — `status`, supersession, conflict — is §22.10
+> (V2-H). It is recorded **beside** the conversation and never inside the
+> package: a human accepting a requirement changes no byte of `requirements.json`
+> and therefore no `semantic_id`, so evidence already bound to a package stays
+> bound (`EV-R2`).
+
+### 22.10 Requirement governance, repository binding and traceability (V2-H)
+
+Identity (§22.9) says *which* requirement. Governance says *what became of it*:
+whether a human accepted it, replaced it, or found it in conflict with another —
+and linkage says *where it lives* in a repository. The traceability matrix joins
+those facts with the Execution Package (§11) and its verdicts (§11.1). Nothing in
+this section asks a model anything.
+
+#### Governance (RG-R)
+
+**RG-R1 — Three orthogonal facts.** Every requirement carries exactly one `origin`
+(§22.9, `RQ-R3`), exactly one lifecycle `status ∈ {open, accepted, superseded,
+conflicted}`, and a `pinned` flag. `pinned` is the preservation policy of §22.8 —
+whether Layer 1 checks it — and is **not** a lifecycle state. A superseded
+requirement names its successor in `superseded_by`; every other requirement has
+`superseded_by: null`.
+
+**RG-R2 — Status is derived, by one precedence rule.** Status is a pure fold of the
+conversation's governance log over the current requirements, evaluated in this
+order: **superseded** when a `supersede` decision names it; else **conflicted** when
+it is one side of a conflict (RG-R5) whose other side is not superseded; else
+**accepted** when an `accept` decision names it, or it is pinned — pinning has
+always been a user's acceptance, and V2-H records that rather than changing it;
+else **open**. An inferred requirement therefore starts `open`, and a pinned one
+starts `accepted`.
+
+**RG-R3 — Decisions are human, explicit and append-only.** The governance log holds
+exactly three decisions: `accept {requirement_id}`, `supersede {requirement_id,
+successor_id}` and `conflict {requirement_ids: [a, b]}`. Each is recorded only from
+an explicit user request; no model boundary, no turn and no background process
+records one. A decision is never edited or removed — a later decision may change
+the derived status, never the record of an earlier one. Each recorded decision
+carries a FORGE-made snapshot `{id, text, origin}` of every requirement it names,
+which is how a requirement that later vanishes from every version stays readable.
+
+Transitions a decision may perform — anything else is refused and records nothing:
+
+| Decision | Legal when | Refused when |
+|---|---|---|
+| `accept` | the requirement is `open` | it is `accepted`, `superseded` or `conflicted` — a conflict is resolved by supersession, not by accepting through it |
+| `supersede` | both ids are known, differ, the requirement is not already superseded, and the successor is not superseded | self-supersession · re-pointing an existing supersession (history is not rewritten) · a superseded successor · any decision that would make the successor chain cycle |
+| `conflict` | both ids are known, differ, and neither is superseded | otherwise |
+
+**RG-R4 — Supersession is traceable, never destructive.** The superseded
+requirement keeps its id, text and origin, remains in the traceability matrix
+with `status: superseded` and `superseded_by` set, and remains readable after it
+has left every version. A superseded requirement that is still pinned, or still
+present in the current version's IR, is **reported** with `FORGE-R002` and left
+alone: FORGE does not unpin it, because unpinning is a user action (`WS-R27.4`).
+
+**RG-R5 — Conflicts are surfaced, never resolved.** A conflict exists when a human
+declares one, or deterministically when the token sequence of a `non_goal` (§22.8's
+published normalization, at least three tokens) occurs contiguously in the token
+sequence of a goal, constraint, deliverable or pinned requirement — the IR both
+excludes and requires the same statement. Each conflict emits `FORGE-R001` citing
+both requirements. Both sides are `conflicted` until a human supersedes one of
+them; FORGE never picks a side.
+
+**RG-R6 — No path promotes an origin.** A decision carries no `origin` field and
+none is read from a request: the snapshot's origin is copied from FORGE's own
+requirement record. Pinning a requirement's verbatim text is the user *stating*
+it, and the pinned source is shown beside the inferred one (TM-R2); no operation
+turns an inferred record into a stated one. No module reachable from a model
+boundary imports the governance layer, and the turn pipeline refuses to complete a
+turn during which the governance log changed.
+
+#### Repository binding (RB-R)
+
+**RB-R1 — Explicit, per conversation, revocable.** A conversation may be bound to at
+most one local repository by an explicit user request, and unbound the same way.
+The binding is persisted in the conversation's event log. Nothing binds a
+repository implicitly, and a conversation with no binding works exactly as it did
+before V2-H, with an empty linkage set.
+
+**RB-R2 — Bindable roots are an operator allowlist.** The served workspace binds
+only directories whose real path lies inside a root listed in `FORGE_REPO_ROOTS`
+(path-delimiter separated). With the variable unset, binding is refused. The
+requested path must be absolute; it is resolved through symlinks once, and a
+resolved path outside every allowed root is refused. The check is repeated
+whenever a bound repository is used, so narrowing the allowlist revokes access.
+The CLI's `--workspace` is the invoking user's own explicit binding and needs no
+allowlist.
+
+**RB-R3 — Every read is a guarded context read.** All filesystem access reachable
+from a binding goes through `WorkspaceGuard` (`INV-011`): path jail, symlink-escape
+check, ignore files, deny globs, and `scanSecrets` before content is representable.
+A repository file never reaches a model, a package, a traceability matrix, a
+diagnostic or an API response — only its repository-relative path and the
+requirement terms that matched it do. The bound root, an absolute host path,
+never enters a package (`PK-R7`) or a matrix.
+
+#### Linkage (LK-R)
+
+**LK-R1 — Authoritative links are deterministic evidence.** A link
+`{requirement_id, path, kind: file | test, evidence[]}` is authoritative only when
+it carries `rg_term` or `test_naming` evidence:
+
+- **`rg_term`** — the requirement's terms are its context query terms (§8,
+  `FR-025`), each reduced by the published suffix rule (strip the first of `ing`,
+  `ed`, `es`, `s` that leaves at least three characters). A file links when the
+  guarded, redacted content, tokenized and reduced the same way, contains at least
+  `max(min(2, n), ⌈0.6·n⌉)` of the requirement's `n` terms. The evidence lists the
+  matched terms and both counts.
+- **`test_naming`** — a test path (`isTestPath`) whose path tokens contain at least
+  `min(2, n)` of the requirement's reduced terms.
+
+`scope_glob` (the path is under the IR's `scope.include`) and `git_history` (the path
+was touched by one of the last 50 commits in scope, with its position) are
+**corroborating** evidence: they are attached to a link that already exists and
+never create one, because scope is admissibility, not relevance (the P2 rule).
+Absence of evidence produces no link.
+
+**LK-R2 — Linkage is reproducible.** For a fixed repository state and fixed
+requirements the linkage result is byte-identical; links are ordered by
+requirement, then path. At most 25 links are kept per requirement, and any excess
+is recorded, not silently cut.
+
+**LK-R3 — Nothing is excluded silently.** A candidate file the guard refuses, and a
+linked file whose content the secret scanner redacted, emits `FORGE-R003` naming
+the path and the reason or rule — never a value (`INV-012`, `SC-R6`).
+
+**LK-R4 — Advisory links are a separate collection.** A link that is not backed by
+deterministic evidence — a link a user asserts, and any link a model might ever
+propose — is **advisory**. Advisory links are stored, returned and rendered in a
+collection of their own, never as a flagged member of the authoritative one, and
+every advisory link carries `advisory: true` while every authoritative one carries
+`advisory: false`. In V2-H the only producer is a user assertion, whose path must
+pass the guard of the bound repository; no model boundary produces one.
+
+#### Traceability matrix (TM-R)
+
+**TM-R1 — The matrix is a join, not an inference.** It is computed from the current
+requirement manifest (§22.9), the governance log, the version's Task IR and trace
+spans, the package's `verification.json`, a V2-G verdict report when evidence is
+supplied, the authoritative linkage of the bound repository, and the advisory
+links. It makes no model call and derives no fact those inputs do not already hold;
+a version whose IR has not been extracted yields a matrix of its pinned
+requirements with that absence stated, rather than an extraction.
+
+**TM-R2 — One row per requirement.** A row carries: id, text, origin, status,
+pinned, `superseded_by`, whether the requirement is **active** (present in the
+current version and not superseded), its sources (the ledger, and each IR node
+whose requirement id matches — recomputed per `RQ-R1`), the artifact spans those
+nodes produced, the authoritative file and test links, the advisory links (in their
+own field), and each verification obligation whose `satisfies` names one of its
+nodes, with that obligation's verdict and accepted-record count. Superseded
+requirements keep their rows. A requirement with no node, no obligation or no link
+shows the absence; it is never filled in.
+
+**TM-R3 — The matrix is deterministic.** For fixed inputs its canonical JSON is
+byte-identical. It adds no timestamp, host value or absolute path, and it repeats
+the `EV-R5` caveat whenever it shows a verdict.
+
+**TM-R4 — One explanation engine.** `forge explain --package` renders the same chain
+for each requirement — provenance, lifecycle, IR node, artifact spans, file and test
+links, obligations, evidence, verdict — from the same matrix function the Studio
+uses, and marks advisory links as advisory. It adds no model call.
 
 ---
 
@@ -1347,3 +1513,10 @@ is not an operation the system offers.
 | **AC-048** | A package whose semantic files were edited — hashes updated or not — is rejected before evidence is read, and evidence naming a different `semantic_id` never yields `VERIFIED`. | FR-054, EV-R2, EV-R3 |
 | **AC-049** | The verdict report is byte-identical across runs for fixed package and evidence bytes, and `AC-020` still passes with the verification layer in the tree. | EV-R6, INV-004 |
 | **AC-050** | No module reachable from a model boundary imports the verification layer. | EV-R1 |
+| **AC-051** | Every requirement has exactly one `origin` and one `status`; `open → accepted` happens only through an explicit human decision; every illegal transition in the RG-R3 table is refused and records nothing; a supersession cycle is refused. | FR-055, RG-R1–RG-R3 |
+| **AC-052** | A superseded requirement remains readable, with its successor named, after it has left every version; a detected or declared conflict emits `FORGE-R001` and is never resolved without a human decision. | RG-R4, RG-R5 |
+| **AC-053** | No module reachable from a model boundary imports the governance, linkage or traceability layer, and no decision can carry or alter an `origin`. | RG-R6, RQ-R3 |
+| **AC-054** | A repository binding outside the allowlist, a `..` escape and a symlink escape are refused; ignored and denied files are never linked; a planted credential in a bound repository appears in no API response, event, package, matrix or `forge explain` output. | RB-R1–RB-R3, INV-011 |
+| **AC-055** | Linkage over a fixed repository is byte-identical across runs; every authoritative link carries `rg_term` or `test_naming` evidence; a requirement with no evidence has no authoritative link. | LK-R1, LK-R2 |
+| **AC-056** | Advisory links are never members of the authoritative collection in the API, the matrix or `forge explain`, and every surface labels them advisory. | LK-R4, TM-R2 |
+| **AC-057** | The traceability matrix is byte-identical for fixed inputs, makes no model call, keeps superseded rows, and joins each V2-G verdict to the requirements whose IR nodes its obligation `satisfies`. | TM-R1–TM-R4 |

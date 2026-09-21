@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/requirement/1/governance.json",
+  "title": "FORGE requirement governance decisions",
+  "description": "Explicit human decisions — accept, supersede, conflict — applied in order to a requirement manifest (spec.md §22.10, RG-R3). Names requirement ids only.",
+  "type": "object",
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "accept"
+              },
+              "requirement_id": {
+                "type": "string",
+                "pattern": "^req-[0-9a-f]{12}$"
+              }
+            },
+            "required": [
+              "kind",
+              "requirement_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "supersede"
+              },
+              "requirement_id": {
+                "type": "string",
+                "pattern": "^req-[0-9a-f]{12}$"
+              },
+              "successor_id": {
+                "type": "string",
+                "pattern": "^req-[0-9a-f]{12}$"
+              }
+            },
+            "required": [
+              "kind",
+              "requirement_id",
+              "successor_id"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "conflict"
+              },
+              "requirement_ids": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "string",
+                    "pattern": "^req-[0-9a-f]{12}$"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^req-[0-9a-f]{12}$"
+                  }
+                ],
+                "items": false,
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "kind",
+              "requirement_ids"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "decisions"
+  ],
+  "additionalProperties": false
+}

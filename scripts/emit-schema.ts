@@ -23,6 +23,7 @@ import { IR_VERSION } from "../src/ir/version.js";
 import { PACKAGE_SCHEMAS } from "../src/package/schema.js";
 import { PACKAGE_FORMAT_VERSION } from "../src/package/assemble.js";
 import { EVIDENCE_FORMAT_VERSION, EvidenceFileSchema } from "../src/verify/evidence.js";
+import { GovernanceFileSchema } from "../src/requirement/governance.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -82,6 +83,19 @@ const OUTPUTS: ReadonlyArray<{ readonly file: string; readonly content: string }
       "FORGE verification evidence",
       "Records of an external execution of an Execution Package's obligations (spec.md §11.1). " +
         "Hashes only — never raw output. FORGE ingests this; it never produces it (EV-R1).",
+    ),
+  },
+  {
+    // V2-H (spec.md §22.10). The human decisions `forge explain --governance`
+    // folds over a package's requirement manifest. Ids only: a decision can
+    // never carry an origin or a status (RG-R6).
+    file: join("schema", "requirement", "governance.schema.json"),
+    content: document(
+      GovernanceFileSchema,
+      "https://forge.dev/schema/requirement/1/governance.json",
+      "FORGE requirement governance decisions",
+      "Explicit human decisions — accept, supersede, conflict — applied in order to a " +
+        "requirement manifest (spec.md §22.10, RG-R3). Names requirement ids only.",
     ),
   },
 ];
