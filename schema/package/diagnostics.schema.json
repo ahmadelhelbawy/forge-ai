@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/diagnostics.json",
+  "title": "FORGE Execution Package — diagnostics.json",
+  "description": "Published contract for diagnostics.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "deterministic": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "judged"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "evidence": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "severity",
+          "source",
+          "message",
+          "evidence"
+        ]
+      }
+    },
+    "judged": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "deterministic",
+              "judged"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "evidence": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "severity",
+          "source",
+          "message",
+          "evidence"
+        ]
+      }
+    },
+    "deterministic_hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "refused": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "deterministic",
+    "judged",
+    "deterministic_hash",
+    "refused"
+  ]
+}

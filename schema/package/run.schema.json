@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/run.json",
+  "title": "FORGE Execution Package — run.json",
+  "description": "Published contract for run.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "generated_at": {
+      "type": "string"
+    },
+    "forge_version": {
+      "type": "string"
+    },
+    "volatile": {
+      "type": "boolean",
+      "const": true
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "generated_at",
+    "forge_version",
+    "volatile",
+    "note"
+  ]
+}

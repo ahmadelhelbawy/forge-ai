@@ -118,6 +118,15 @@ describe("filesystem gateway scan (AC-011, INV-011)", () => {
     "src/store/objects.ts": "writes/reads content-addressed objects in the store",
     "src/store/runlog.ts": "appends to the store's own run log",
     "src/store/index-store.ts": "builds the derivable index file",
+    // V2-F package export (PK-R7). Writes to a user-supplied `--out` and reads
+    // back an already-exported package; never a context read, so INV-011's
+    // gateway does not apply. `export.ts` carries its own path jail
+    // (`safeJoin`) that refuses absolute paths, drive letters and `..`
+    // traversal BEFORE creating anything — stricter than the CLI entries above,
+    // because artifact paths come from profile topologies, which are editable
+    // repository data (PS-R5).
+    "src/package/export.ts": "writes an Execution Package under --out, behind its own path jail",
+    "src/cli/explain.ts": "reads an already-exported package with JSON.parse (PK-R8)",
   };
 
   function tsFiles(dir: string): string[] {

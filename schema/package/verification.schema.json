@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/verification.json",
+  "title": "FORGE Execution Package — verification.json",
+  "description": "Published contract for verification.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "executed_by_forge": {
+      "type": "boolean",
+      "const": false
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "command",
+              "test",
+              "manual",
+              "review"
+            ]
+          },
+          "spec": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "string"
+          },
+          "satisfies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "degraded_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "command",
+                  "test",
+                  "manual",
+                  "review"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "degraded_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "spec",
+          "expected",
+          "satisfies",
+          "degraded_from",
+          "degraded_by"
+        ]
+      }
+    }
+  },
+  "required": [
+    "executed_by_forge",
+    "entries"
+  ]
+}

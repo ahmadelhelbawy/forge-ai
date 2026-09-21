@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/runtime-contract.json",
+  "title": "FORGE Execution Package — runtime-contract.json",
+  "description": "Published contract for runtime-contract.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "declares_only": {
+      "type": "boolean",
+      "const": true
+    },
+    "grants": {
+      "type": "null"
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "autonomy": {
+          "type": "string"
+        },
+        "permission_model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "tools",
+        "autonomy",
+        "permission_model"
+      ]
+    },
+    "network_policy": {
+      "type": "string"
+    },
+    "filesystem_scope": {
+      "type": "object",
+      "properties": {
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "include",
+        "exclude"
+      ]
+    },
+    "blast_radius": {
+      "type": "string"
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dirty": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "commit",
+        "dirty"
+      ]
+    },
+    "degradations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rule_id": {
+            "type": "string"
+          },
+          "capability": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "effect": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "capability",
+          "reason",
+          "effect"
+        ]
+      }
+    }
+  },
+  "required": [
+    "declares_only",
+    "grants",
+    "required_capabilities",
+    "target",
+    "network_policy",
+    "filesystem_scope",
+    "blast_radius",
+    "repository",
+    "degradations"
+  ]
+}

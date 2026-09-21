@@ -20,7 +20,8 @@
  * with its heading, which is a `renderer_template` span, so in practice this is
  * exact — but it is a derivation, and a reader should know that.
  */
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 
 import type { Command } from "commander";
 
@@ -134,16 +135,106 @@ function explainConstraints(ir: TaskIR, result: CompileResult, out: NodeJS.Write
   }
 }
 
+/**
+ * Explain an already-exported package (V2-F).
+ *
+ * A package is a finished record, so this is a pure READ of it — no
+ * recompilation, no model, and deliberately no FORGE-specific parsing beyond
+ * `JSON.parse`, which is the same contract `PK-R8` offers a stranger. If this
+ * needed anything a third party could not do, the package would not be portable.
+ */
+function explainPackage(root: string, out: NodeJS.WriteStream): void {
+  const read = <T>(name: string): T =>
+    JSON.parse(readFileSync(join(root, name), "utf8")) as T;
+
+  const manifest = read<{
+    semantic_id: string;
+    forge_version: string;
+    ir_version: string;
+    profile: { id: string; version: string; fidelity: string };
+    tokenizer: { id: string; version: string };
+    strategy: { archetype: string; version: number } | null;
+    refused: boolean;
+    files: Array<{ path: string; content_hash: string }>;
+  }>("package.json");
+
+  out.write(`package    ${resolve(root)}\n`);
+  out.write(`semantic   ${manifest.semantic_id}\n`);
+  out.write(`target     ${manifest.profile.id}@${manifest.profile.version} (${manifest.profile.fidelity})\n`);
+  out.write(`tokenizer  ${manifest.tokenizer.id}@${manifest.tokenizer.version}\n`);
+  out.write(
+    `strategy   ${manifest.strategy ? `${manifest.strategy.archetype} v${manifest.strategy.version}` : "(identity)"}\n`,
+  );
+  if (manifest.refused) out.write(`\nCOMPILATION WAS REFUSED — this package carries no artifacts.\n`);
+
+  const requirements = read<{
+    requirements: Array<{ id: string; text: string; origin: string; node_id: string | null; kind: string }>;
+  }>("requirements.json").requirements;
+  out.write(`\n=== requirements (${requirements.length}) ===\n`);
+  for (const r of requirements) {
+    out.write(
+      `  ${r.id}  ${r.origin.padEnd(11)} ${r.kind.padEnd(11)} ${r.node_id ?? "-"}\n` +
+        `      ${quote(r.text, 88)}\n`,
+    );
+  }
+
+  const verification = read<{
+    executed_by_forge: boolean;
+    entries: Array<{ id: string; kind: string; spec: string; expected: string; satisfies: string[] }>;
+  }>("verification.json");
+  out.write(`\n=== verification obligations (${verification.entries.length}) ===\n`);
+  // Stated rather than assumed: a reader must not have to infer that these
+  // were not run (PK-R5, INV-004).
+  out.write(`  FORGE executed none of these: executed_by_forge=${verification.executed_by_forge}\n`);
+  for (const v of verification.entries) {
+    out.write(`  [${v.id}] ${v.kind}: ${quote(v.spec, 72)}\n      expect ${quote(v.expected, 72)}\n`);
+  }
+
+  const diagnostics = read<{
+    deterministic: Array<{ code: string; severity: string; message: string }>;
+    judged: Array<{ code: string; severity: string; message: string }>;
+    deterministic_hash: string;
+  }>("diagnostics.json");
+  out.write(`\n=== diagnostics ===\n`);
+  if (diagnostics.deterministic.length + diagnostics.judged.length === 0) out.write("  (none)\n");
+  for (const d of diagnostics.deterministic) out.write(`  ${d.severity}[${d.code}] ${d.message}\n`);
+  for (const d of diagnostics.judged) out.write(`  judged ${d.severity}[${d.code}] ${d.message}\n`);
+  out.write(`  deterministic_hash ${diagnostics.deterministic_hash}\n`);
+
+  const trace = read<{ spans: Array<{ artifact_path: string }> }>("trace.json");
+  const byArtifact = new Map<string, number>();
+  for (const span of trace.spans) {
+    byArtifact.set(span.artifact_path, (byArtifact.get(span.artifact_path) ?? 0) + 1);
+  }
+  out.write(`\n=== artifacts ===\n`);
+  for (const entry of manifest.files.filter((f) => f.path.startsWith("artifacts/"))) {
+    const artifactPath = entry.path.slice("artifacts/".length);
+    out.write(`  ${entry.path}  ${byArtifact.get(artifactPath) ?? 0} spans  ${entry.content_hash}\n`);
+  }
+  out.write(
+    `\nevery content hash above is sha256 over the file's bytes — verifiable with sha256sum (PK-R8)\n`,
+  );
+}
+
 export function registerExplainCommand(program: Command): void {
   program
     .command("explain")
     .description("Show how an artifact was built: byte ranges, origins, constraints, decisions.")
-    .requiredOption("--ir <path>", "path to a Task IR JSON file")
-    .requiredOption("--target <profile>", "agent profile to compile for")
+    .option("--ir <path>", "path to a Task IR JSON file")
+    .option("--target <profile>", "agent profile to compile for")
+    .option("--package <dir>", "an exported Execution Package to explain instead of recompiling")
     .option("--profile-dir <dir>", "additional directory of profile YAML files")
     .option("--json", "machine-readable output")
-    .action((opts: { ir: string; target: string; profileDir?: string; json?: boolean }) => {
+    .action((opts: { ir?: string; target?: string; package?: string; profileDir?: string; json?: boolean }) => {
       try {
+        if (opts.package !== undefined) {
+          explainPackage(opts.package, process.stdout);
+          process.exit(EXIT.ok);
+        }
+        if (opts.ir === undefined || opts.target === undefined) {
+          process.stderr.write("explain needs either --package <dir>, or both --ir <path> and --target <profile>.\n");
+          process.exit(EXIT.usage);
+        }
         const ir = readIr(opts.ir);
         const registry = opts.profileDir
           ? loadProfilesFrom(BUILTIN_PROFILE_DIR, resolve(opts.profileDir))

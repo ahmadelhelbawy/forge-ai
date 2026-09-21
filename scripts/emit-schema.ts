@@ -20,48 +20,85 @@ import { z } from "zod";
 
 import { TaskIRSchema } from "../src/ir/schema.js";
 import { IR_VERSION } from "../src/ir/version.js";
+import { PACKAGE_SCHEMAS } from "../src/package/schema.js";
+import { PACKAGE_FORMAT_VERSION } from "../src/package/assemble.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
-const outPath = join(repoRoot, "schema", "task-ir.schema.json");
 
-function build(): string {
-  const jsonSchema = z.toJSONSchema(TaskIRSchema, { io: "input" });
-  const document = {
+function document(schema: z.ZodType, id: string, title: string, description: string): string {
+  const body = {
     $schema: "https://json-schema.org/draft/2020-12/schema",
-    $id: `https://forge.dev/schema/task-ir/${IR_VERSION}.json`,
-    title: "FORGE Task IR",
-    description:
-      "Canonical, provider-independent representation of an engineering task. " +
-      "Semantic layer only: no timestamps, scores, or compile-time decisions.",
-    ...jsonSchema,
+    $id: id,
+    title,
+    description,
+    ...z.toJSONSchema(schema, { io: "input" }),
   };
-  return `${JSON.stringify(document, null, 2)}\n`;
+  return `${JSON.stringify(body, null, 2)}\n`;
 }
 
+/**
+ * Everything published under `schema/`.
+ *
+ * The Task IR schema is what a contributor validates a hand-authored IR
+ * against; the package schemas are what makes `PK-R8` true — a third party
+ * reads an Execution Package with JSON parsing and these files, and no FORGE
+ * runtime at all.
+ */
+const OUTPUTS: ReadonlyArray<{ readonly file: string; readonly content: string }> = [
+  {
+    file: join("schema", "task-ir.schema.json"),
+    content: document(
+      TaskIRSchema,
+      `https://forge.dev/schema/task-ir/${IR_VERSION}.json`,
+      "FORGE Task IR",
+      "Canonical, provider-independent representation of an engineering task. " +
+        "Semantic layer only: no timestamps, scores, or compile-time decisions.",
+    ),
+  },
+  ...Object.entries(PACKAGE_SCHEMAS).map(([name, schema]) => {
+    const stem = name.replace(/\.json$/, "");
+    return {
+      file: join("schema", "package", `${stem}.schema.json`),
+      content: document(
+        schema,
+        `https://forge.dev/schema/package/${PACKAGE_FORMAT_VERSION}/${stem}.json`,
+        `FORGE Execution Package — ${name}`,
+        `Published contract for ${name} inside an Execution Package (spec.md §11). ` +
+          "Consuming a package requires only JSON parsing and this schema (PK-R8).",
+      ),
+    };
+  }),
+];
+
 const isCheck = process.argv.includes("--check");
-const generated = build();
+let failed = false;
+
+for (const { file, content } of OUTPUTS) {
+  const outPath = join(repoRoot, file);
+  if (isCheck) {
+    let existing: string;
+    try {
+      existing = readFileSync(outPath, "utf8");
+    } catch {
+      console.error(`schema:check FAILED — ${file} does not exist.\nRun: pnpm schema:emit`);
+      failed = true;
+      continue;
+    }
+    if (existing !== content) {
+      console.error(
+        `schema:check FAILED — ${file} is stale relative to the Zod source.\nRun: pnpm schema:emit`,
+      );
+      failed = true;
+    }
+  } else {
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, content, "utf8");
+    console.log(`schema:emit wrote ${file} (${content.length} bytes)`);
+  }
+}
 
 if (isCheck) {
-  let existing: string;
-  try {
-    existing = readFileSync(outPath, "utf8");
-  } catch {
-    console.error(
-      `schema:check FAILED — ${outPath} does not exist.\nRun: pnpm schema:emit`,
-    );
-    process.exit(1);
-  }
-  if (existing !== generated) {
-    console.error(
-      `schema:check FAILED — the committed JSON Schema is stale relative to the Zod source.\n` +
-        `Run: pnpm schema:emit`,
-    );
-    process.exit(1);
-  }
-  console.log(`schema:check OK — ${outPath} matches the Zod source.`);
-} else {
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, generated, "utf8");
-  console.log(`schema:emit wrote ${outPath} (${generated.length} bytes)`);
+  if (failed) process.exit(1);
+  console.log(`schema:check OK — ${OUTPUTS.length} published schema(s) match the Zod source.`);
 }

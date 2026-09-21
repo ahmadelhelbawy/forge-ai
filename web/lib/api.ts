@@ -372,6 +372,25 @@ export interface CompileResponse {
   diagnostics: DiagnosticWire[];
 }
 
+
+/** One file of an Execution Package, with the bytes to write (PK-R1). */
+export interface PackageFileWire {
+  path: string;
+  content: string;
+  contentHash: string;
+  bytes: number;
+}
+
+export interface PackageResponse {
+  v: number;
+  target: string;
+  profileId: string;
+  semanticId: string;
+  refused: boolean;
+  extracted: boolean;
+  files: PackageFileWire[];
+}
+
 export const api = {
   health: () => request<{ ok: boolean; version: string; storage: string; providers: ProviderInfo[] }>("/api/health"),
   catalog: () =>
@@ -385,6 +404,11 @@ export const api = {
   createConversation: (input: { title?: string; target?: string; provider?: string; model?: string }) =>
     request<{ id: string }>("/api/conversations", { method: "POST", body: JSON.stringify(input) }),
   getConversation: (id: string) => request<ConversationDetail>(`/api/conversations/${id}`),
+  packageVersion: (id: string, input: { target?: string; v?: number } = {}) =>
+    request<PackageResponse>(`/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   compileVersion: (id: string, input: { target?: string; v?: number } = {}) =>
     request<CompileResponse>(`/api/conversations/${id}/compile`, {
       method: "POST",

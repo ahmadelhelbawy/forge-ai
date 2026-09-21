@@ -86,6 +86,9 @@ export function compile(
     degradations: [],
     droppedContext: [],
     topologyGaps: [],
+    // A refusal may happen before legalization runs, so the honest default is
+    // "no verification was established" rather than the IR's un-legalized list.
+    verification: [],
     tokenizer,
     strategy,
     refused: true,
@@ -214,6 +217,7 @@ export function compile(
     materialization: Object.fromEntries(materialization),
     degradations: legal.degradations,
     droppedContext: budget.dropped,
+    verification: legal.verification,
     topologyGaps: coverage.gaps satisfies readonly TopologyGap[],
     tokenizer,
     strategy,

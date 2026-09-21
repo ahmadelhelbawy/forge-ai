@@ -147,6 +147,15 @@ export interface CompileResult {
   readonly tokenizer: TokenizerIdentity;
   /** The strategy overlay applied, if any (P4). Null means identity. */
   readonly strategy: { readonly archetype: string; readonly version: number } | null;
+  /**
+   * Verification after legalization (`FR-042`, `PK-R5`).
+   *
+   * The LEGALIZED list, not the IR's, because legalization is what decides
+   * whether a `command` step survives as a command on this target or is
+   * recorded for a human to run. A package publishing the pre-legalization
+   * kind would tell an executor to run something the target cannot run.
+   */
+  readonly verification: readonly LegalizedVerification[];
   /** Set when compilation was refused (FORGE-C030 or another error-severity gate). */
   readonly refused: boolean;
 }

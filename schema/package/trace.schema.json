@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/trace.json",
+  "title": "FORGE Execution Package — trace.json",
+  "description": "Published contract for trace.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "spans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "artifact_path": {
+            "type": "string"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "origin": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "artifact_path",
+          "start",
+          "end",
+          "origin"
+        ]
+      }
+    }
+  },
+  "required": [
+    "spans"
+  ]
+}

@@ -542,6 +542,7 @@ artifact byte counts.
   package.json            # semantic manifest — hashed → semantic_id
   task-ir.json            # semantic Task IR
   strategy.json           # semantic strategy overlay
+  requirements.json       # requirement manifest (§22.9) — a RECORD, not a compiler input
   artifacts/…             # rendered files, at topology-declared paths
   trace.json              # spans + typed origins
   provenance.json         # semantic provenance graph
@@ -557,6 +558,12 @@ repository commit and dirty flag, and the content hash of every other semantic f
 
 **PK-R3.** `semantic_id` is computed over the semantic input tuple (§6.4) plus the
 content hash of every emitted artifact. `run.json` is excluded.
+
+`requirements.json` is excluded too, and deliberately: it is a **record of what was
+asked**, not an input the compiler consumed. Pinning a requirement changes no byte of
+any artifact, so folding it into `semantic_id` would make the id of a compilation
+depend on something that did not participate in it. Its content hash is listed in
+`package.json` like every other semantic file (PK-R2), so tampering is still detectable.
 
 **PK-R4.** `runtime-contract.json` declares required capabilities, required tools,
 network policy, filesystem scope, and the repository commit the package assumes.

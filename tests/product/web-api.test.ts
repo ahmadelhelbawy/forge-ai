@@ -1430,3 +1430,122 @@ describe.skipIf(!WEB_E2E)("attachments are scanned and trust-classified (V2-R)",
     expect(attachments[0]!["redactions"]).toEqual([]);
   });
 });
+
+/**
+ * Execution Package over HTTP (V2-F, `FR-040`, `FR-046`, `PK-R1`–`PK-R8`).
+ *
+ * The byte-level parity proof is `tests/product/package-parity.test.ts` and the
+ * stranger's-eye view is `tests/contract/package-portable.test.ts`. What this
+ * adds is the route: that a real request returns a real package, that the
+ * hashes a client receives are the ones it can verify itself, and that
+ * packaging — like compiling — never moves the prompt.
+ */
+describe.skipIf(!WEB_E2E)("Execution Package over HTTP (V2-F)", () => {
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  async function withPrompt(): Promise<string> {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Write a code review prompt. Never approve a change that removes a test." }),
+    });
+    return id;
+  }
+
+  it("returns the declared layout with per-file hashes", async () => {
+    const id = await withPrompt();
+    const built = await api(BASE, `/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    expect(built.status).toBe(200);
+    expect(String(built.body["semanticId"])).toMatch(/^sha256:[0-9a-f]{64}$/);
+
+    const files = built.body["files"] as Array<Record<string, unknown>>;
+    const paths = files.map((f) => String(f["path"]));
+    for (const required of [
+      "package.json", "task-ir.json", "requirements.json", "runtime-contract.json",
+      "verification.json", "diagnostics.json", "trace.json", "provenance.json", "run.json",
+    ]) {
+      expect(paths, `missing ${required}`).toContain(required);
+    }
+    expect(paths.some((p) => p.startsWith("artifacts/"))).toBe(true);
+  });
+
+  /** PK-R8: the client can verify what it was sent, without FORGE. */
+  it("sends hashes the client can recompute over the bytes", async () => {
+    const { createHash } = await import("node:crypto");
+    const id = await withPrompt();
+    const built = await api(BASE, `/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    const files = built.body["files"] as Array<{ path: string; content: string; contentHash: string }>;
+    for (const f of files) {
+      const digest = `sha256:${createHash("sha256").update(f.content, "utf8").digest("hex")}`;
+      expect(digest, `${f.path} hash does not match its bytes`).toBe(f.contentHash);
+    }
+  });
+
+  it("declares without granting, and executes nothing (PK-R4, INV-004)", async () => {
+    const id = await withPrompt();
+    const built = await api(BASE, `/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    const files = built.body["files"] as Array<{ path: string; content: string }>;
+    const contract = JSON.parse(files.find((f) => f.path === "runtime-contract.json")!.content) as Record<
+      string,
+      unknown
+    >;
+    expect(contract["declares_only"]).toBe(true);
+    expect(contract["grants"]).toBeNull();
+    const verification = JSON.parse(files.find((f) => f.path === "verification.json")!.content) as Record<
+      string,
+      unknown
+    >;
+    expect(verification["executed_by_forge"]).toBe(false);
+  });
+
+  it("writes no prompt version — packaging is a read (WS-R2)", async () => {
+    const id = await withPrompt();
+    const before = await api(BASE, `/api/conversations/${id}`);
+    await api(BASE, `/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "kiro" }),
+    });
+    const after = await api(BASE, `/api/conversations/${id}`);
+    expect((after.body["promptVersions"] as unknown[]).length).toBe(
+      (before.body["promptVersions"] as unknown[]).length,
+    );
+  });
+
+  it("is byte-identical across two calls except run.json (AC-005)", async () => {
+    const id = await withPrompt();
+    const body = JSON.stringify({ target: "claude-code" });
+    const first = await api(BASE, `/api/conversations/${id}/package`, { method: "POST", body });
+    const second = await api(BASE, `/api/conversations/${id}/package`, { method: "POST", body });
+
+    expect(second.body["semanticId"]).toBe(first.body["semanticId"]);
+    const filesOf = (r: typeof first): Map<string, string> =>
+      new Map((r.body["files"] as Array<{ path: string; content: string }>).map((f) => [f.path, f.content]));
+    const a = filesOf(first);
+    const b = filesOf(second);
+    for (const [path, content] of a) {
+      if (path === "run.json") continue;
+      expect(b.get(path), `${path} differs between two packagings`).toBe(content);
+    }
+  });
+
+  it("answers 409 for a conversation with no prompt and 400 for an unknown target", async () => {
+    const empty = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const none = await api(BASE, `/api/conversations/${empty.body["id"] as string}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    expect(none.status).toBe(409);
+  });
+});

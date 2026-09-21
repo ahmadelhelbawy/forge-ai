@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/package/1.0/package.json",
+  "title": "FORGE Execution Package — package.json",
+  "description": "Published contract for package.json inside an Execution Package (spec.md §11). Consuming a package requires only JSON parsing and this schema (PK-R8).",
+  "type": "object",
+  "properties": {
+    "package_format_version": {
+      "type": "string"
+    },
+    "semantic_id": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "forge_version": {
+      "type": "string"
+    },
+    "ir_version": {
+      "type": "string"
+    },
+    "compiler_version": {
+      "type": "string"
+    },
+    "profile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "fidelity": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "fidelity"
+      ]
+    },
+    "tokenizer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ]
+    },
+    "strategy": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "archetype": {
+              "type": "string"
+            },
+            "version": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "archetype",
+            "version"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dirty": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "commit",
+        "dirty"
+      ]
+    },
+    "refused": {
+      "type": "boolean"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "content_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "required": [
+          "path",
+          "content_hash"
+        ]
+      }
+    }
+  },
+  "required": [
+    "package_format_version",
+    "semantic_id",
+    "forge_version",
+    "ir_version",
+    "compiler_version",
+    "profile",
+    "tokenizer",
+    "strategy",
+    "repository",
+    "refused",
+    "files"
+  ]
+}
