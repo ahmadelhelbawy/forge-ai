@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forge.dev/schema/verify/1.0/evidence.json",
+  "title": "FORGE verification evidence",
+  "description": "Records of an external execution of an Execution Package's obligations (spec.md §11.1). Hashes only — never raw output. FORGE ingests this; it never produces it (EV-R1).",
+  "type": "object",
+  "properties": {
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "obligation_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "command",
+              "test",
+              "manual",
+              "review"
+            ]
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stdout_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stderr_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "type": "string",
+            "minLength": 1
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repo_commit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "package_semantic_id": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "logs": {
+            "type": "object",
+            "properties": {
+              "stdout": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stderr": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "obligation_id",
+          "kind",
+          "exit_code",
+          "stdout_hash",
+          "stderr_hash",
+          "started_at",
+          "duration_ms",
+          "runner",
+          "repo_commit",
+          "package_semantic_id"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "records"
+  ],
+  "additionalProperties": false
+}

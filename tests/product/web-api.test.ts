@@ -1549,3 +1549,102 @@ describe.skipIf(!WEB_E2E)("Execution Package over HTTP (V2-F)", () => {
     expect(none.status).toBe(409);
   });
 });
+
+/**
+ * Evidence-based verification over HTTP (V2-G, `FR-053`, `spec.md` §11.1).
+ *
+ * The verdict table is proven exhaustively in
+ * `tests/property/verify-verdict.test.ts`; this proves the route: that pasted
+ * evidence is evaluated against the version's validated package, that
+ * mismatched and malformed evidence never verify, and that verifying moves no
+ * prompt and runs nothing.
+ */
+describe.skipIf(!WEB_E2E)("Evidence-based verification over HTTP (V2-G)", () => {
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  async function packaged(): Promise<{ id: string; semanticId: string; obligations: Array<{ id: string; kind: string }> }> {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Write a code review prompt. Run the test suite before approving." }),
+    });
+    const built = await api(BASE, `/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code" }),
+    });
+    const files = built.body["files"] as Array<{ path: string; content: string }>;
+    const verification = JSON.parse(files.find((f) => f.path === "verification.json")!.content) as {
+      entries: Array<{ id: string; kind: string }>;
+    };
+    return { id, semanticId: String(built.body["semanticId"]), obligations: verification.entries };
+  }
+
+  const rec = (obligation_id: string, kind: string, exit_code: number, package_semantic_id: string) => ({
+    obligation_id,
+    kind,
+    exit_code,
+    stdout_hash: null,
+    stderr_hash: null,
+    started_at: "2026-09-21T10:00:00Z",
+    duration_ms: 10,
+    runner: "ci",
+    repo_commit: null,
+    package_semantic_id,
+  });
+
+  it("gives every obligation one verdict; executable ones VERIFIED on passing evidence", async () => {
+    const { id, semanticId, obligations } = await packaged();
+    const evidence = JSON.stringify({ records: obligations.map((o) => rec(o.id, o.kind, 0, semanticId)) });
+    const r = await api(BASE, `/api/conversations/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code", evidence }),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body["packageValid"]).toBe(true);
+    expect(r.body["semanticId"]).toBe(semanticId);
+    const verdicts = r.body["verdicts"] as Array<{ obligation_id: string; kind: string; verdict: string }>;
+    expect(verdicts.map((v) => v.obligation_id)).toEqual(obligations.map((o) => o.id));
+    for (const v of verdicts) {
+      expect(v.verdict, v.obligation_id).toBe(["command", "test"].includes(v.kind) ? "VERIFIED" : "REVIEW_REQUIRED");
+    }
+    expect(JSON.parse(String(r.body["json"]))["executed_by_forge"]).toBe(false);
+  });
+
+  it("never verifies evidence recorded for a different package (EV-R2)", async () => {
+    const { id, obligations } = await packaged();
+    const other = `sha256:${"0".repeat(64)}`;
+    const evidence = JSON.stringify({ records: obligations.map((o) => rec(o.id, o.kind, 0, other)) });
+    const r = await api(BASE, `/api/conversations/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ target: "claude-code", evidence }),
+    });
+    const verdicts = r.body["verdicts"] as Array<{ verdict: string }>;
+    expect(verdicts.some((v) => v.verdict === "VERIFIED")).toBe(false);
+  });
+
+  it("answers 400 for malformed evidence, and verifying writes no prompt version", async () => {
+    const { id } = await packaged();
+    const before = await api(BASE, `/api/conversations/${id}`);
+    const bad = await api(BASE, `/api/conversations/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ evidence: '{"records":[{"stdout":"raw output"}]}' }),
+    });
+    expect(bad.status).toBe(400);
+    const after = await api(BASE, `/api/conversations/${id}`);
+    expect((after.body["promptVersions"] as unknown[]).length).toBe(
+      (before.body["promptVersions"] as unknown[]).length,
+    );
+  });
+
+  it("returns a byte-identical report for the same evidence (EV-R6)", async () => {
+    const { id, semanticId, obligations } = await packaged();
+    const evidence = JSON.stringify({ records: obligations.map((o) => rec(o.id, o.kind, 1, semanticId)) });
+    const body = JSON.stringify({ target: "claude-code", evidence });
+    const a = await api(BASE, `/api/conversations/${id}/verify`, { method: "POST", body });
+    const b = await api(BASE, `/api/conversations/${id}/verify`, { method: "POST", body });
+    expect(a.body["json"]).toBe(b.body["json"]);
+  });
+});

@@ -90,6 +90,16 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   // FORGE loss in the P1.6 gate was over-blocking. Promote once the
   // false-positive rate has been measured rather than assumed.
   "FORGE-W008": { code: "FORGE-W008", name: "stated_requirement_demoted", severity: "warning", source: "deterministic" },
+  // Evidence-based verification (spec.md §11.1, V2-G). All deterministic: the
+  // verification layer has no judgement in it and no model boundary (EV-R1).
+  // V001 is `info` because a package with no evidence yet is a legitimate,
+  // useful state, not a defect; V002 is `error` because a recorded failure is
+  // the one finding a pipeline must not miss.
+  "FORGE-V001": { code: "FORGE-V001", name: "obligation_unverified", severity: "info", source: "deterministic" },
+  "FORGE-V002": { code: "FORGE-V002", name: "obligation_failed", severity: "error", source: "deterministic" },
+  "FORGE-V003": { code: "FORGE-V003", name: "evidence_package_mismatch", severity: "warning", source: "deterministic" },
+  "FORGE-V004": { code: "FORGE-V004", name: "package_unverifiable", severity: "error", source: "deterministic" },
+  "FORGE-V005": { code: "FORGE-V005", name: "evidence_record_rejected", severity: "warning", source: "deterministic" },
 } as const satisfies Record<string, DiagnosticDefinition>);
 
 export type DiagnosticCode = keyof typeof DIAGNOSTIC_REGISTRY;

@@ -46,7 +46,7 @@ interface SpecRow {
 function specRows(): SpecRow[] {
   const spec = readFileSync(join(REPO_ROOT, "spec.md"), "utf8");
   const rows: SpecRow[] = [];
-  const pattern = /^\|\s*`(FORGE-[CW]\d+)`\s*\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm;
+  const pattern = /^\|\s*`(FORGE-[CWV]\d+)`\s*\|\s*`([a-z0-9_]+)`\s*\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/gm;
   for (const m of spec.matchAll(pattern)) {
     rows.push({
       code: m[1]!,
@@ -66,6 +66,7 @@ describe("the diagnostic registry transcribes spec.md §10.2", () => {
     expect(rows.length).toBeGreaterThan(20);
     expect(rows.map((r) => r.code)).toContain("FORGE-C001");
     expect(rows.map((r) => r.code)).toContain("FORGE-W001");
+    expect(rows.map((r) => r.code)).toContain("FORGE-V001");
   });
 
   it("declares every code the registry implements", () => {

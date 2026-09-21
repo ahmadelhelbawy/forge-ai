@@ -34,8 +34,14 @@ export class UnsafePackagePathError extends Error {
   }
 }
 
-/** Absolute paths, drive letters, and `..` traversal are all refused. */
-function safeJoin(root: string, relative: string): string {
+/**
+ * Absolute paths, drive letters, and `..` traversal are all refused.
+ *
+ * Exported because reading a package back (`forge verify`, V2-G) faces the same
+ * hazard from the other side: the paths listed in a received `package.json`
+ * are untrusted, and one naming `../../.ssh/id_rsa` must not be read.
+ */
+export function safeJoin(root: string, relative: string): string {
   if (relative.startsWith("/") || /^[a-zA-Z]:/.test(relative)) throw new UnsafePackagePathError(relative);
   const target = resolve(root, relative);
   if (target !== root && !target.startsWith(root + sep)) throw new UnsafePackagePathError(relative);

@@ -4,7 +4,7 @@ import { Download, Hammer, Package } from "lucide-react";
 import { useState } from "react";
 
 import { DiagnosticList } from "./DiagnosticList";
-import { api, type CompileResponse, type PackageResponse, type TargetInfo } from "@/lib/api";
+import { api, type CompileResponse, type PackageResponse, type TargetInfo, type VerifyResponse } from "@/lib/api";
 
 /**
  * The compile surface (V2-R step 9).
@@ -42,6 +42,11 @@ export function CompilePanel({
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [pkg, setPkg] = useState<PackageResponse | null>(null);
+  // V2-G: pasted evidence and the verdicts it produced. FORGE runs nothing;
+  // this only evaluates what an external executor reported.
+  const [evidence, setEvidence] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verdicts, setVerdicts] = useState<VerifyResponse | null>(null);
   const [packaging, setPackaging] = useState(false);
 
   const run = async (): Promise<void> => {
@@ -79,6 +84,20 @@ export function CompilePanel({
       setPkg(null);
     } finally {
       setPackaging(false);
+    }
+  };
+
+  const verify = async (): Promise<void> => {
+    if (!conversationId || verifying || evidence.trim() === "") return;
+    setVerifying(true);
+    setError(null);
+    try {
+      setVerdicts(await api.verifyVersion(conversationId, { target, evidence }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setVerdicts(null);
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -170,6 +189,65 @@ export function CompilePanel({
               </li>
             ))}
           </ul>
+          <div className="space-y-1.5 border-t border-ink-800 pt-2">
+            <div className="text-[11px] text-slate-500">
+              Verify an external run — paste the evidence file your CI or agent produced. FORGE
+              executes nothing; it checks the package, then reads what was reported.
+            </div>
+            <textarea
+              value={evidence}
+              onChange={(e) => setEvidence(e.target.value)}
+              data-testid="verify-evidence"
+              rows={3}
+              placeholder='{ "records": [ { "obligation_id": "v1", "kind": "command", "exit_code": 0, … } ] }'
+              className="w-full rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 font-mono text-[11px] text-slate-200 focus:border-accent-500 focus:outline-none"
+            />
+            <button
+              onClick={() => void verify()}
+              disabled={verifying || evidence.trim() === ""}
+              data-testid="verify-run"
+              className="rounded-md border border-ink-700 bg-ink-900 px-3 py-1 text-[12px] text-slate-300 transition-colors hover:border-ink-600 hover:text-slate-100 disabled:opacity-40"
+            >
+              {verifying ? "Verifying…" : "Verify evidence"}
+            </button>
+            {verdicts ? (
+              <div data-testid="verify-result" className="space-y-1">
+                {verdicts.packageValid ? (
+                  <ul className="space-y-0.5">
+                    {verdicts.verdicts.map((v) => (
+                      <li key={v.obligation_id} className="flex items-start justify-between gap-2 font-mono text-[11px]">
+                        <span className="truncate text-slate-400" title={v.spec}>
+                          [{v.obligation_id}] {v.kind}: {v.spec}
+                          {v.records.length > 0
+                            ? ` ← ${v.records.map((r) => `#${r.index} ${r.runner} exit ${r.exit_code ?? "-"}`).join(", ")}`
+                            : ""}
+                        </span>
+                        <span
+                          data-testid={`verdict-${v.obligation_id}`}
+                          className={`shrink-0 ${
+                            v.verdict === "VERIFIED"
+                              ? "text-emerald-400"
+                              : v.verdict === "FAILED"
+                                ? "text-red-400"
+                                : v.verdict === "REVIEW_REQUIRED"
+                                  ? "text-amber-300"
+                                  : "text-slate-500"
+                          }`}
+                        >
+                          {v.verdict}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-[12px] text-red-300">
+                    Package rejected before any evidence was read — it does not rebuild from its own inputs.
+                  </div>
+                )}
+                <DiagnosticList diagnostics={verdicts.diagnostics} />
+              </div>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

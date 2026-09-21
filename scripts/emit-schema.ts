@@ -22,6 +22,7 @@ import { TaskIRSchema } from "../src/ir/schema.js";
 import { IR_VERSION } from "../src/ir/version.js";
 import { PACKAGE_SCHEMAS } from "../src/package/schema.js";
 import { PACKAGE_FORMAT_VERSION } from "../src/package/assemble.js";
+import { EVIDENCE_FORMAT_VERSION, EvidenceFileSchema } from "../src/verify/evidence.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "..");
@@ -69,6 +70,20 @@ const OUTPUTS: ReadonlyArray<{ readonly file: string; readonly content: string }
       ),
     };
   }),
+  {
+    // V2-G (spec.md §11.1). What an external executor writes so FORGE can
+    // evaluate a run it did not perform. Published for the same reason the
+    // package schemas are: CI must be able to produce valid evidence without
+    // FORGE installed.
+    file: join("schema", "verify", "evidence.schema.json"),
+    content: document(
+      EvidenceFileSchema,
+      `https://forge.dev/schema/verify/${EVIDENCE_FORMAT_VERSION}/evidence.json`,
+      "FORGE verification evidence",
+      "Records of an external execution of an Execution Package's obligations (spec.md §11.1). " +
+        "Hashes only — never raw output. FORGE ingests this; it never produces it (EV-R1).",
+    ),
+  },
 ];
 
 const isCheck = process.argv.includes("--check");

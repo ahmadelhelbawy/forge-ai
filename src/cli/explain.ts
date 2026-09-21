@@ -33,6 +33,7 @@ import { BUILTIN_PROFILE_DIR, builtinProfiles, loadProfilesFrom } from "../profi
 import type { Span, TraceOrigin } from "../trace/span.js";
 import { EXIT, fatal } from "./errors.js";
 import { readIr } from "./ir.js";
+import { verifyDirectory, writeVerdicts } from "./verify.js";
 
 /** One line per origin kind, in the vocabulary the trace itself uses. */
 function describeOrigin(origin: TraceOrigin): string {
@@ -223,11 +224,29 @@ export function registerExplainCommand(program: Command): void {
     .option("--ir <path>", "path to a Task IR JSON file")
     .option("--target <profile>", "agent profile to compile for")
     .option("--package <dir>", "an exported Execution Package to explain instead of recompiling")
+    .option("--evidence <file>", "with --package: show obligation → evidence → verdict (V2-G)")
     .option("--profile-dir <dir>", "additional directory of profile YAML files")
     .option("--json", "machine-readable output")
-    .action((opts: { ir?: string; target?: string; package?: string; profileDir?: string; json?: boolean }) => {
+    .action(
+      (opts: { ir?: string; target?: string; package?: string; evidence?: string; profileDir?: string; json?: boolean }) => {
       try {
         if (opts.package !== undefined) {
+          if (opts.evidence !== undefined) {
+            // The verdict chain needs a VALIDATED package (EV-R3), so this path
+            // rebuilds it; plain `--package` stays a JSON.parse-only read (PK-R8).
+            const registry = opts.profileDir
+              ? loadProfilesFrom(BUILTIN_PROFILE_DIR, resolve(opts.profileDir))
+              : builtinProfiles();
+            const report = verifyDirectory(opts.package, opts.evidence, registry);
+            if (!report.package_valid) {
+              writeVerdicts(report, process.stdout);
+              process.exit(EXIT.refused);
+            }
+            explainPackage(opts.package, process.stdout);
+            process.stdout.write("\n");
+            writeVerdicts(report, process.stdout);
+            process.exit(EXIT.ok);
+          }
           explainPackage(opts.package, process.stdout);
           process.exit(EXIT.ok);
         }

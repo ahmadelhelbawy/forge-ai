@@ -26,6 +26,7 @@ import { registerExplainCommand } from "./explain.js";
 import { registerPackageCommand } from "./package.js";
 import { registerStrategiesCommand } from "./strategies.js";
 import { registerTaskCommand } from "./task.js";
+import { registerVerifyCommand } from "./verify.js";
 
 function registryFor(profileDir?: string) {
   return profileDir ? loadProfilesFrom(BUILTIN_PROFILE_DIR, resolve(profileDir)) : builtinProfiles();
@@ -217,6 +218,7 @@ registerStrategiesCommand(program);
 registerExplainCommand(program);
 registerPackageCommand(program);
 registerTaskCommand(program);
+registerVerifyCommand(program);
 
 // `parseAsync`, not `parse`: a synchronous try/catch cannot observe a rejected promise
 // from an async action handler, so an async command (`forge task`, P1.5) would escape

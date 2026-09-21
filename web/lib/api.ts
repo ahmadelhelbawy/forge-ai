@@ -391,6 +391,28 @@ export interface PackageResponse {
   files: PackageFileWire[];
 }
 
+/** One obligation's verdict (V2-G, spec.md §11.1). Mirrors `ObligationVerdict`. */
+export interface ObligationVerdictWire {
+  obligation_id: string;
+  kind: string;
+  spec: string;
+  satisfies: string[];
+  degraded_from: string | null;
+  expected_exit_code: number | null;
+  verdict: "VERIFIED" | "FAILED" | "UNVERIFIED" | "REVIEW_REQUIRED";
+  records: Array<{ index: number; runner: string; exit_code: number | null }>;
+}
+
+export interface VerifyResponse {
+  v: number;
+  profileId: string;
+  packageValid: boolean;
+  semanticId: string | null;
+  verdicts: ObligationVerdictWire[];
+  diagnostics: DiagnosticWire[];
+  json: string;
+}
+
 export const api = {
   health: () => request<{ ok: boolean; version: string; storage: string; providers: ProviderInfo[] }>("/api/health"),
   catalog: () =>
@@ -406,6 +428,11 @@ export const api = {
   getConversation: (id: string) => request<ConversationDetail>(`/api/conversations/${id}`),
   packageVersion: (id: string, input: { target?: string; v?: number } = {}) =>
     request<PackageResponse>(`/api/conversations/${id}/package`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  verifyVersion: (id: string, input: { evidence: string; target?: string; v?: number }) =>
+    request<VerifyResponse>(`/api/conversations/${id}/verify`, {
       method: "POST",
       body: JSON.stringify(input),
     }),

@@ -112,8 +112,24 @@ describe("FORGE cannot execute what it emits (INV-004, AC-020)", () => {
       "package/schema.ts",
       "cli/package.ts",
       "cli/explain.ts",
+      // V2-G: verification ingests evidence; it never produces it (EV-R1,
+      // INV-004). These hold every command string an executor would run AND
+      // decide what a run proved, so they are the likeliest place for "just
+      // run it and see" to appear.
+      "verify/contract.ts",
+      "verify/evidence.ts",
+      "verify/obligations.ts",
+      "verify/verdict.ts",
+      "cli/verify.ts",
     ]) {
       const source = readFileSync(join(SRC, rel), "utf8");
+      expect(SPAWN_PATTERN.test(source), `${rel} can spawn a process`).toBe(false);
+    }
+  });
+
+  it("keeps the workspace's verification surface free of execution too", () => {
+    for (const rel of ["web/lib/verify.ts", "web/app/api/conversations/[id]/verify/route.ts"]) {
+      const source = readFileSync(join(REPO_ROOT, rel), "utf8");
       expect(SPAWN_PATTERN.test(source), `${rel} can spawn a process`).toBe(false);
     }
   });

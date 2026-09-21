@@ -32,6 +32,7 @@ export const USAGE_ERROR_NAMES: ReadonlySet<string> = new Set([
   "SyntaxError", // JSON.parse on the user's file
   "CommanderError",
   "BoundaryError", // unusable boundary input, e.g. empty task text
+  "EvidenceShapeError", // a malformed evidence file the user supplied (EV-R5)
 ]);
 
 export function exitCodeFor(error: unknown): number {
