@@ -232,13 +232,14 @@ change requiring an update to this document, not a bug fix.
 
 | ID | Requirement | Phase |
 |---|---|---|
-| **FR-040** | Emit an Execution Package conforming to the contract in §11. | P5 |
-| **FR-041** | Emit a `runtime-contract.json` declaring required tools, permissions, network policy, and the pinned repository commit. It **declares**; it never grants. | P5 |
-| **FR-042** | Emit a `verification.json` of executable command specifications with expected outcomes, as data. | P5 |
-| **FR-043** | Implement `forge explain` as a pure provenance lookup over the trace and provenance graph. It must never invoke a model. | P5 |
-| **FR-044** | Persist objects in a content-addressed store, runs in an append-only log, and an index for query. No server or daemon. | P5 |
-| **FR-045** | Provide `forge history` and `forge diff <a> <b>` over stored IRs and packages. | P5 |
-| **FR-046** | Provide `forge export` producing a self-contained, relocatable package directory. | P5 |
+| **FR-040** | Emit an Execution Package conforming to the contract in §11. | V2-F |
+| **FR-041** | Emit a `runtime-contract.json` declaring required tools, permissions, network policy, and the pinned repository commit. It **declares**; it never grants. | V2-F |
+| **FR-042** | Emit a `verification.json` of executable command specifications with expected outcomes, as data. | V2-F |
+| **FR-043** | Implement `forge explain` as a pure provenance lookup over the trace and provenance graph. It must never invoke a model. | V2-F |
+| **FR-044** | Persist objects in a content-addressed store, runs in an append-only log, and an index for query. No server or daemon. | V2-F |
+| ~~**FR-045**~~ | ~~Provide `forge history` and `forge diff <a> <b>` over stored IRs and packages.~~ **Dropped 2026-09-21.** The workspace has been the history and diff surface since V2-C, and a second CLI surface over the same store is duplicate product, not portability. Package-to-package comparison is covered by `AC-005`, which any `diff -r` satisfies. | ~~P5~~ |
+| **FR-046** | Provide `forge export` producing a self-contained, relocatable package directory. | V2-F |
+| **FR-052** | Assign every requirement a stable, conversation-scoped identity with a FORGE-assigned immutable `origin`, per §22.9. | V2-F |
 
 ### 4.9 Model provider
 
@@ -569,7 +570,10 @@ data only. FORGE never executes them.
 a `deterministic_hash` so the reproducible portion is checkable independently.
 
 **PK-R7.** A package is relocatable: `forge export` produces a directory with no absolute
-paths and no dependency on the originating `.forge/` store.
+paths and no dependency on the originating object store (`.forge/` in PS-R1's CLI
+layout; `FORGE_DATA_DIR` in the served workspace — see the 2026-09-17 V2-C deviation).
+"No absolute paths" is a privacy requirement as much as a portability one: an absolute
+path discloses a username and a directory layout to whoever receives the package.
 
 **PK-R8.** Consuming a package requires only JSON parsing and the published JSON Schema.
 No FORGE runtime is needed to read one.
@@ -1192,6 +1196,37 @@ is a guarantee.
 (`WS-R13`). Layer 1, being deterministic and cheap, runs on every version that
 has a non-empty ledger.
 
+### 22.9 Requirement identity (RQ-R)
+
+Preservation (§22.8) answers *did this survive?* for one version. Identity
+answers *is this the same requirement?* across all of them. The two are
+separable, and this section owns only the second.
+
+**RQ-R1 — Identity is conversation-scoped, never IR-scoped.** A requirement's
+id is stable for the life of the conversation. It may not be a Task IR node id:
+the IR is re-extracted per version, so `g1` in version 3 and `g1` in version 7
+are unrelated. A requirement that must be traceable from version 3 to version 7
+therefore cannot live in the IR, and identity is recorded beside the
+conversation instead. A resolution from a requirement to the IR nodes of one
+version is **derived and recomputed**, never stored as truth.
+
+**RQ-R2 — The id is deterministic and model-free.** It is derived from
+FORGE-held facts by a published rule, reproducibly (`INV-005`). No model
+boundary proposes, returns, or influences an id.
+
+**RQ-R3 — `origin` is FORGE-assigned and immutable.** Every requirement carries
+`origin ∈ {user_stated, inferred}`. FORGE sets it from how the requirement was
+obtained; **no model boundary output may carry or alter it**, which is
+`INV-016`'s rule applied to requirements rather than to IR nodes. `user_stated`
+is reserved for text the user wrote. A requirement may never be promoted from
+`inferred` to `user_stated` by any path, model or deterministic — the promotion
+is not an operation the system offers.
+
+> The lifecycle above `origin` — `status`, supersession, conflict — is **V2-H**,
+> not this section. Recording identity without a workflow is deliberate: an id
+> and an immutable origin are what the Execution Package needs, and states
+> nobody has yet used would be invented workflow.
+
 ---
 
 ## 23. Workspace Acceptance Criteria
@@ -1213,3 +1248,6 @@ has a non-empty ledger.
 | **AC-041** | No judged finding can suppress, downgrade or resolve a Layer 1 diagnostic; asserted adversarially with a drift finding that contradicts a ledger miss. | WS-R27.1, WS-R27.2 |
 | **AC-042** | No model-originated path can add, edit, remove or unpin a ledger entry. | WS-R24, WS-R27.4 |
 | **AC-043** | Deterministic ledger results and advisory drift findings are distinguishable in every surface that renders them. | WS-R28 |
+| **AC-044** | A requirement's id is unchanged across prompt versions, and no model-reachable path can set or alter its `origin`. | FR-052, RQ-R1, RQ-R3 |
+| **AC-045** | An exported package validates against the published JSON Schemas and is readable with JSON parsing alone — asserted by a test that imports no FORGE module. | PK-R7, PK-R8 |
+| **AC-046** | A package built by the workspace and one built by the CLI from the same IR and profile are byte-identical except `run.json`. | INV-005, PK-R3 |

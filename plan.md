@@ -999,7 +999,7 @@ is code is ceremony, not capability.
 | V2-D2 | `WS-R9`, `WS-R26`–`WS-R29`, `DG-R3`–`DG-R4` | `AC-041`, `AC-043` |
 | V2-E | `WS-R8`, `ST-R1`–`ST-R7` | — |
 | V2-R | `FR-051`, `WS-R15`, `WS-R20`, `WS-R21`, `SC-R2`, `SC-R6`, `INV-012`, `INV-016` | `AC-033`, `AC-034`, `AC-035`, `AC-037` |
-| V2-F | `FR-040`–`FR-044`, `FR-046`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`, `INV-004`, `INV-005`, `INV-013`, `INV-015` | `AC-005`, `AC-020` |
+| V2-F | `FR-040`–`FR-044`, `FR-046`, `FR-052`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`, `RQ-R1`–`RQ-R3`, `INV-004`, `INV-005`, `INV-013`, `INV-015` | `AC-005`, `AC-020`, `AC-044`, `AC-045`, `AC-046` |
 | V2-G | `EV-R1`, `EV-R2` *(new in V2-G)* | new — `FORGE-V001`–`V003` |
 | V2-H | `INV-002`, `INV-011`, `FR-025`–`FR-030` *(reused)* | new |
 | V2-I | `NFR-011`, `TS-R6` | `AC-038` |
@@ -1441,14 +1441,17 @@ fix the product-value defects the audit found. Eleven commits, one per step.
 **Objective.** A portable Execution Package a developer or CI consumes with JSON
 parsing and the published schema alone, plus stable requirement identity that
 survives version churn.
-**Requirements.** `FR-040`–`FR-044`, `FR-046`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`,
-`INV-004`, `INV-005`, `INV-013`, `INV-015`.
+**Requirements.** `FR-040`–`FR-044`, `FR-046`, `FR-052`, `PK-R1`–`PK-R8`,
+`PV-R1`–`PV-R5`, `RQ-R1`–`RQ-R3` (§22.9, new), `INV-004`, `INV-005`, `INV-013`,
+`INV-015`. **`FR-045` (`forge history`) is dropped**, not deferred.
 **Reasoning and rejected alternatives.** [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
 **Exit gate.** `AC-005` (two compilations `diff -r` identical except `run.json`,
 **no frozen clock** — `TS-R3`) · `AC-020` (static: no code path executes a command
 derived from an IR or package) · `PK-R1`–`PK-R8` · a package built by the web
 route and by the CLI for the same IR and profile is byte-identical except
-`run.json` · a package parses against the published schema with no FORGE import.
+`run.json` (`AC-046`) · a package parses against the published schema with no
+FORGE import (`AC-045`) · a requirement id survives version churn and no
+model-reachable path can set its `origin` (`AC-044`).
 **Must NOT be done.** No execution, no orchestration, no daemon, no
 `forge history` (the workspace *is* the history UI since V2-C), no new
 representation of anything the IR already holds.
