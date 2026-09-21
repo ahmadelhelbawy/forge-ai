@@ -213,11 +213,33 @@ export function ChatPanel({
       <div className="border-t border-ink-800 px-6 py-3">
         {attachments.length > 0 ? (
           <div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-1.5">
-            {attachments.map((a) => (
-              <span key={a.name} className="rounded-md border border-ink-700 bg-ink-900 px-2 py-1 font-mono text-[11px] text-slate-400">
-                {a.name}
-              </span>
-            ))}
+            {attachments.map((a) => {
+              // A redaction the user is not told about is a silent one
+              // (INV-012), and this is the only place they would see it: the
+              // file on their disk still has the key, and the copy FORGE holds
+              // does not. Rule and count only, never the value.
+              const redacted = (a.redactions ?? []).reduce((n, r) => n + r.count, 0);
+              return (
+                <span
+                  key={a.name}
+                  data-testid="attachment-chip"
+                  title={
+                    redacted > 0
+                      ? `${a.trust ?? "semi_trusted"} · ${redacted} secret${redacted === 1 ? "" : "s"} redacted before storage: ` +
+                        (a.redactions ?? []).map((r) => `${r.rule}×${r.count}`).join(", ")
+                      : `${a.trust ?? "semi_trusted"} · no secrets detected`
+                  }
+                  className={`rounded-md border px-2 py-1 font-mono text-[11px] ${
+                    redacted > 0
+                      ? "border-amber-900/60 bg-amber-950/30 text-amber-200/90"
+                      : "border-ink-700 bg-ink-900 text-slate-400"
+                  }`}
+                >
+                  {a.name}
+                  {redacted > 0 ? <span className="ml-1.5">· {redacted} redacted</span> : null}
+                </span>
+              );
+            })}
           </div>
         ) : null}
         <div className="mx-auto flex max-w-3xl items-end gap-2">

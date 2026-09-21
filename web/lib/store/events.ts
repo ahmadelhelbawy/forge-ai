@@ -86,6 +86,16 @@ export type ConversationEventBody =
       readonly truncated: boolean;
       readonly contentHash: string;
       readonly attachmentAt: string;
+      /**
+       * Trust tier and redaction record, assigned at upload (V2-R step 10).
+       *
+       * Optional because the log is append-only and events written before
+       * V2-R carry neither. A replay of one of those must not invent a tier:
+       * the fold falls back to `semi_trusted`, which is the tier every
+       * attachment has ever had under SC-R2 — recording it, not changing it.
+       */
+      readonly trust?: string;
+      readonly redactions?: ReadonlyArray<{ readonly rule: string; readonly count: number }>;
     }
   | {
       readonly kind: "clarification_set";

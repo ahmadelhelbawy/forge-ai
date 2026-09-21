@@ -188,6 +188,10 @@ export interface AttachmentMeta {
   size: number;
   truncated: boolean;
   at: string;
+  /** Trust tier assigned at upload (V2-R). Absent on pre-V2-R records. */
+  trust?: string;
+  /** What the secret scanner removed, by rule and count — never by value (SC-R6). */
+  redactions?: Array<{ rule: string; count: number }>;
 }
 
 export interface ConversationDetail {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { ingestAttachment } from "@/lib/attachments";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
@@ -32,7 +33,13 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
   if (convo.attachments.length + files.length > MAX_FILES) {
     return NextResponse.json({ error: `At most ${MAX_FILES} attachments per conversation.` }, { status: 413 });
   }
-  const added: Array<{ name: string; size: number; truncated: boolean }> = [];
+  const added: Array<{
+    name: string;
+    size: number;
+    truncated: boolean;
+    trust: string;
+    redactions: Array<{ rule: string; count: number }>;
+  }> = [];
   for (const file of files) {
     const ext = extOf(file.name);
     if (!ALLOWED_EXT.has(ext)) {
@@ -41,15 +48,30 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
     if (file.size > MAX_FILE_BYTES) {
       return NextResponse.json({ error: `${file.name} exceeds 512KB.` }, { status: 413 });
     }
-    const text = await file.text();
-    const nul = String.fromCharCode(0);
-    const safe = text.indexOf(nul) >= 0 ? text.split(nul).join("") : text;
-    convo.attachmentContents[file.name] = safe;
-    const meta = { name: file.name, size: file.size, truncated: false, at: new Date().toISOString() };
+    // Scanned and trust-classified BEFORE it is stored, so no un-redacted copy
+    // ever reaches the object store or a provider (SC-R6, INV-002).
+    const ingested = ingestAttachment(file.name, await file.text());
+    convo.attachmentContents[file.name] = ingested.content;
+    const meta = {
+      name: file.name,
+      size: file.size,
+      truncated: false,
+      at: new Date().toISOString(),
+      trust: ingested.trust,
+      // Rule and count only. A record of a secret must never be a second copy
+      // of the secret, which is why `SecretFinding` carries no value.
+      redactions: ingested.findings.map((f) => ({ rule: f.rule, count: f.count })),
+    };
     const existing = convo.attachments.findIndex((a) => a.name === file.name);
     if (existing >= 0) convo.attachments[existing] = meta;
     else convo.attachments.push(meta);
-    added.push({ name: file.name, size: file.size, truncated: false });
+    added.push({
+      name: file.name,
+      size: file.size,
+      truncated: false,
+      trust: ingested.trust,
+      redactions: meta.redactions,
+    });
   }
   saveConversation(convo);
   return NextResponse.json({ attachments: convo.attachments, added }, { status: 201 });

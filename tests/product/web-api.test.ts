@@ -1373,3 +1373,60 @@ describe.skipIf(!WEB_E2E)("compile-on-demand over HTTP (V2-R)", () => {
     expect(compiled.status).toBe(409);
   });
 });
+
+/**
+ * Attachment trust and secret scanning over HTTP (V2-R step 10).
+ *
+ * The function-level proof is in `tests/product/attachment-trust.test.ts`. What
+ * this adds is the thing that actually matters: the bytes the SERVER keeps.
+ * Before V2-R a `.env` dragged into the chat window was stored verbatim and
+ * forwarded to a third-party provider, so the assertion that counts is that the
+ * key is not in the conversation the server hands back.
+ */
+describe.skipIf(!WEB_E2E)("attachments are scanned and trust-classified (V2-R)", () => {
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  /** Synthetic, and shaped to match the vendored rules. A real key is never needed. */
+  const SECRET = "AKIAIOSFODNN7EXAMPLE";
+
+  async function upload(id: string, name: string, body: string): Promise<Record<string, unknown>> {
+    const form = new FormData();
+    form.append("files", new File([body], name, { type: "text/plain" }));
+    const response = await fetch(`${BASE}/api/conversations/${id}/attachments`, {
+      method: "POST",
+      body: form,
+    });
+    return (await response.json()) as Record<string, unknown>;
+  }
+
+  it("never stores the secret it was handed", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const result = await upload(id, "deploy.txt", `AWS_ACCESS_KEY_ID=${SECRET}\nReview the retry budget.`);
+
+    const added = result["added"] as Array<Record<string, unknown>>;
+    expect(added[0]!["trust"]).toBe("semi_trusted");
+    expect((added[0]!["redactions"] as unknown[]).length).toBeGreaterThan(0);
+
+    // The bytes the server kept. This is the whole point of the step.
+    const detail = await fetch(`${BASE}/api/conversations/${id}`);
+    const body = await detail.text();
+    expect(body, "the uploaded secret is still in the conversation").not.toContain(SECRET);
+
+    // And the record of the redaction is not itself a copy of the secret.
+    expect(JSON.stringify(added)).not.toContain(SECRET);
+  });
+
+  it("keeps the rest of an attachment intact", async () => {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    await upload(id, "notes.md", "Review the auth module and report findings with a line number.");
+    const listed = await api(BASE, `/api/conversations/${id}/attachments`);
+    const attachments = listed.body["attachments"] as Array<Record<string, unknown>>;
+    expect(attachments[0]!["name"]).toBe("notes.md");
+    expect(attachments[0]!["trust"]).toBe("semi_trusted");
+    expect(attachments[0]!["redactions"]).toEqual([]);
+  });
+});

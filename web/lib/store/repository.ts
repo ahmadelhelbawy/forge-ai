@@ -268,6 +268,11 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
           size: body.size,
           truncated: body.truncated,
           at: body.attachmentAt,
+          // A pre-V2-R event carries no tier. `semi_trusted` is not a guess:
+          // it is the tier SC-R2 has always assigned to explicit user files,
+          // so this records what was already true rather than inventing it.
+          trust: body.trust ?? "semi_trusted",
+          redactions: body.redactions ?? [],
         });
         convo.attachmentContents[body.name] = text(store, body.contentHash);
         break;
@@ -441,6 +446,8 @@ export function saveConversation(store: Store, convo: Conversation): void {
       // WS-R18: the payload is an object, never inlined into the record.
       contentHash: store.objects.put(convo.attachmentContents[attachment.name] ?? ""),
       attachmentAt: attachment.at,
+      trust: attachment.trust ?? "semi_trusted",
+      redactions: attachment.redactions ?? [],
     });
   }
 

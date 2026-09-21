@@ -136,6 +136,10 @@ export interface AttachmentMeta {
   readonly size: number;
   readonly truncated: boolean;
   readonly at: string;
+  /** Trust tier assigned at upload (V2-R). Absent on pre-V2-R records. */
+  readonly trust?: string;
+  /** What the secret scanner removed, by rule and count — never by value (SC-R6). */
+  readonly redactions?: ReadonlyArray<{ readonly rule: string; readonly count: number }>;
 }
 
 export interface Conversation {
