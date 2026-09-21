@@ -1,0 +1,101 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Harden the authentication library's password storage and account lockout",
+    "kind": "feature",
+    "success_definition": "Passwords are stored hashed and accounts lock after repeated failures",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Passwords are hashed with scrypt and a per-user salt before storage",
+      "priority": "must",
+      "acceptance": [
+        "No password is stored in a recoverable form"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Lock the account after five failed login attempts",
+      "priority": "must",
+      "acceptance": [
+        "The sixth attempt is refused"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "process",
+      "hardness": "hard",
+      "statement": "Lock the account after three failed login attempts",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "scope",
+      "hardness": "soft",
+      "statement": "Rewrite the login endpoint to return 429 when an account is locked",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Rewrite the login endpoint",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "src/**",
+      "test/**"
+    ],
+    "exclude": [],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [],
+  "context_refs": [],
+  "assumptions": [],
+  "open_questions": [],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "node --test",
+      "expected": "exit 0",
+      "satisfies": [
+        "g1",
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Confirm no password or hash is written to a log",
+      "expected": "no log line contains credential material",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "A patch to the authentication library",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": []
+  }
+}

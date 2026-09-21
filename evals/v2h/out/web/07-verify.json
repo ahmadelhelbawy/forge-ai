@@ -1,0 +1,9 @@
+{
+  "packageValid": true,
+  "verdicts": [
+    {
+      "obligation_id": "v1",
+      "verdict": "VERIFIED"
+    }
+  ]
+}

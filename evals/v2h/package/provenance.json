@@ -1,0 +1,48 @@
+{
+  "nodes": [
+    {
+      "node_id": "objective",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "scope",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "d1",
+      "source_ref": "user_input"
+    }
+  ],
+  "context_refs": [],
+  "materialization": {},
+  "dropped_context": [],
+  "topology_gaps": []
+}

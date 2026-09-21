@@ -1,0 +1,31 @@
+{
+  "declares_only": true,
+  "grants": null,
+  "required_capabilities": [],
+  "target": {
+    "id": "claude-code",
+    "version": "2026.9.1",
+    "tools": [
+      "glob",
+      "grep",
+      "read",
+      "agentic_subsearch"
+    ],
+    "autonomy": "high",
+    "permission_model": "per-tool-prompt"
+  },
+  "network_policy": "none",
+  "filesystem_scope": {
+    "include": [
+      "src/**",
+      "test/**"
+    ],
+    "exclude": []
+  },
+  "blast_radius": "module",
+  "repository": {
+    "commit": null,
+    "dirty": null
+  },
+  "degradations": []
+}

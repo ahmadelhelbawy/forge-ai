@@ -1,0 +1,28 @@
+{
+  "executed_by_forge": false,
+  "entries": [
+    {
+      "id": "v1",
+      "kind": "test",
+      "spec": "node --test",
+      "expected": "exit 0",
+      "satisfies": [
+        "g1",
+        "g2"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Confirm no password or hash is written to a log",
+      "expected": "no log line contains credential material",
+      "satisfies": [
+        "g1"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    }
+  ]
+}

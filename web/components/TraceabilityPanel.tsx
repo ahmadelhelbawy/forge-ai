@@ -1,6 +1,6 @@
 "use client";
 
-import { GitBranch, Table2 } from "lucide-react";
+import { GitBranch, Pin, Table2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { DiagnosticList } from "./DiagnosticList";
@@ -155,7 +155,7 @@ export function TraceabilityPanel({
                 >
                   <td className="truncate">{r.id}</td>
                   <td className="truncate" title={r.text}>
-                    {r.pinned ? "📌 " : ""}
+                    {r.pinned ? <Pin size={10} className="mr-1 inline" aria-label="pinned" /> : null}
                     {r.text}
                   </td>
                   <td>{r.origin === "user_stated" ? "stated" : "inferred"}</td>

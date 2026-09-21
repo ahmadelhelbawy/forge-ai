@@ -1848,6 +1848,43 @@ module.
 is undetectable, and `VERIFIED` is stated as exactly what it is: the supplied
 evidence, taken at its word, shows the expected exit code.
 
+### 23.8 Governance, linkage and traceability as built *(V2-H, 2026-09-22)*
+
+```
+ledger (pinned) ─┐                         governance log (human decisions, append-only)
+cached IR ───────┼─ requirementManifest ─▶ governRequirements ── status, successor, conflicts
+                 │   (identity, origin)     (src/requirement/governance.ts)      │
+bound repo ──WorkspaceGuard──▶ linkRequirements (linkage.ts): rg_term / test_naming
+  (binding.ts: allowlist,        create links; scope_glob / git_history corroborate ─┐
+   realpath once)                                                                    ▼
+package: trace.json, verification.json ──┐        buildTraceabilityMatrix (traceability.ts)
+V2-G verdict report (handed in as data) ─┴──────▶ pure join · canonical JSON · advisory apart
+                                                          │
+                     Studio TraceabilityPanel ◀── web/lib/requirements.ts ──▶ forge explain --package
+```
+
+**Status is derived, never stored.** The workspace persists human decisions as
+`requirement_decided` events; status is a fold of them over the current manifest.
+Nothing about governance enters the package, so accepting a requirement moves no
+`semantic_id` and evidence stays bound (`EV-R2`).
+
+**Binding adds no filesystem code.** `openRepository` opens the requested path and
+each `FORGE_REPO_ROOTS` entry with `WorkspaceGuard.open` and compares real paths;
+every later read is `guard.readText`, which scans secrets before content is
+representable. Linkage matches terms on the redacted content and emits only paths
+and the requirement's own terms.
+
+**Advisory is a type, not a flag.** `LinkageResult` has no field that can hold an
+`AdvisoryLink`; the matrix takes advisory links as a separate input, re-stamps them
+`advisory: true`, and drops any "authoritative" link without `rg_term` or
+`test_naming` evidence. The Studio renders them from their own field in their own box.
+
+**Model reachability.** `tests/contract/requirement-boundaries.test.ts` allowlists
+the importers of the governance, linkage, binding and traceability layers
+(`web/lib/requirements.ts`, `src/cli/explain.ts`) and of the workspace entry point
+(its four routes); the turn pipeline refuses a turn during which governance, a link
+or the binding changed (`GovernanceTamperedError`).
+
 ---
 
 ## 23. Revision changelog

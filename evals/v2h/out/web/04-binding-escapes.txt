@@ -1,0 +1,6 @@
+traversal:  400
+outside:    400
+symlink:    400
+relative:   400
+valid bind: 201
+{"error":"Repository binding refused (traversal): the repository path may not contain '..'.","reason":"traversal"}

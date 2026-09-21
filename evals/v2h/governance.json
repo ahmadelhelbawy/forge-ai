@@ -1,0 +1,6 @@
+{
+  "decisions": [
+    { "kind": "accept", "requirement_id": "req-9fe9a9225dac" },
+    { "kind": "supersede", "requirement_id": "req-192a664c17e9", "successor_id": "req-41d752a1a451" }
+  ]
+}

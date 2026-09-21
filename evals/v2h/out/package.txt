@@ -1,0 +1,12 @@
+sha256:fd82da8640c0156024d636be99d42df9238dcca4ea38de559ee05a21dd19b631
+  package.json
+  task-ir.json
+  strategy.json
+  requirements.json
+  trace.json
+  provenance.json
+  runtime-contract.json
+  verification.json
+  diagnostics.json
+  artifacts/PROMPT.md
+  run.json

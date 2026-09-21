@@ -35,9 +35,9 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-21 at the V2-F closure commit — **1132 tests passing (71
-skipped)**, typecheck / `schema:check` (9 schemas) / web build clean, the HTTP
-product suite green (`web/scripts/e2e.sh`, **70/70**), the frozen P1.6 manifest
+Verified 2026-09-22 at the V2-H completion commit — **1261 tests passing (81
+skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the HTTP
+product suite green (`web/scripts/e2e.sh`, **80/80**), the frozen P1.6 manifest
 verifying, and the
 opt-in live-provider smoke (`web/scripts/live-smoke.mjs`) covering streaming,
 requirement preservation and candidates.
@@ -61,7 +61,14 @@ every artifact hash, so one id means one Execution Contract — `PK-R3`, `INV-00
 `forge verify`, Studio Verify box, `forge explain --package --evidence`; the
 package is validated by a byte-for-byte rebuild before any evidence is read;
 `VERIFIED`/`FAILED`/`UNVERIFIED`/`REVIEW_REQUIRED` by a fixed table, `EV-R1`–`EV-R6`;
-FORGE executes nothing and keeps output hashes only).
+FORGE executes nothing and keeps output hashes only) · **V2-H** (requirement
+governance + code linkage, §22.10: derived lifecycle `open`/`accepted`/
+`superseded`/`conflicted` from an append-only log of human decisions, never
+stored and never in the package; explicit per-conversation repository binding
+from the `FORGE_REPO_ROOTS` allowlist through `WorkspaceGuard`; deterministic
+`rg_term`/`test_naming` linkage with advisory links in a separate collection;
+the traceability matrix as a pure join in the Studio and `forge explain
+--package --workspace --governance`; `FORGE-R001`–`R003`; real run in `evals/v2h/`).
 
 **V2-R, eleven commits, 2026-09-21.** OSS baseline and the root `exports` fix ·
 the renderer stopped asserting `"assumed, not stated"` about user-derived content
@@ -74,8 +81,7 @@ tests holding the bytes identical to the CLI's · attachments scanned and
 classified `semi_trusted` before storage · protocol-aware provider routing and
 parallel preservation extraction.
 
-**Not built:** **V2-H** (requirement governance + code linkage) is **next and
-not started** · V2-I (productization). The
+**Not built:** **V2-I** (productization) is **next and not started**. The
 reasoning, the rejected alternatives and the two struck phases are in
 [`docs/roadmap-v2.md`](docs/roadmap-v2.md); the phase entries are in `plan.md`.
 P6's judged diagnostics (`C040`, `C041`, `C051`) stay **catalogued but
@@ -211,7 +217,7 @@ pnpm forge task "<text>" --target <profile>
 pnpm forge context resolve --ir <path> --workspace <dir>
 pnpm forge strategies --ir <path> [--target <profile>]
 pnpm forge explain --ir <path> --target <profile> [--json]
-pnpm forge explain --package <dir> [--evidence <file>]
+pnpm forge explain --package <dir> [--evidence <file>] [--workspace <dir>] [--governance <file>] [--requirement <id>] [--json]
 pnpm forge package --ir <path> --target <profile> --out <dir>
 pnpm forge verify --package <dir> --evidence <file> [--json]
 pnpm forge ir validate|hash|show <path>

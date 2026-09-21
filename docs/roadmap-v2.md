@@ -225,6 +225,9 @@ keeps it honest: a verdict is a statement about evidence, never about the world.
 
 # V2-H · Requirement governance + code linkage
 
+> **Status: COMPLETE 2026-09-22.** As built in `spec.md` §22.10 and
+> `docs/architecture.md` §23.8; deviations from this entry are in `plan.md`'s log.
+
 ### 1. Product capability gained
 Requirements acquire identity, lifecycle and location: a **traceability matrix** —
 requirement × files × tests × verdict — that says which requirements are real, which were

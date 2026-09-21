@@ -1,0 +1,46 @@
+{
+  "requirements": [
+    {
+      "id": "req-9fe9a9225dac",
+      "text": "Passwords are hashed with scrypt and a per-user salt before storage",
+      "origin": "inferred",
+      "node_id": "g1",
+      "kind": "goal"
+    },
+    {
+      "id": "req-192a664c17e9",
+      "text": "Lock the account after five failed login attempts",
+      "origin": "inferred",
+      "node_id": "g2",
+      "kind": "goal"
+    },
+    {
+      "id": "req-41d752a1a451",
+      "text": "Lock the account after three failed login attempts",
+      "origin": "inferred",
+      "node_id": "c1",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-e1e6d5bf5c7a",
+      "text": "Rewrite the login endpoint to return 429 when an account is locked",
+      "origin": "inferred",
+      "node_id": "c2",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-c3aa9167bacf",
+      "text": "Rewrite the login endpoint",
+      "origin": "inferred",
+      "node_id": "n1",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-b6b3bb2d180c",
+      "text": "A patch to the authentication library",
+      "origin": "inferred",
+      "node_id": "d1",
+      "kind": "deliverable"
+    }
+  ]
+}

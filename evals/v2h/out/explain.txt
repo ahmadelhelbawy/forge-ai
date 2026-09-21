@@ -1,0 +1,124 @@
+package    evals/v2h/package
+semantic   sha256:fd82da8640c0156024d636be99d42df9238dcca4ea38de559ee05a21dd19b631
+target     claude-code@2026.9.1 (native_topology)
+tokenizer  gpt-tokenizer/o200k_base@4.0.0
+strategy   (identity)
+
+=== requirements (6) ===
+  req-9fe9a9225dac  inferred    goal        g1
+      Passwords are hashed with scrypt and a per-user salt before storage
+  req-192a664c17e9  inferred    goal        g2
+      Lock the account after five failed login attempts
+  req-41d752a1a451  inferred    constraint  c1
+      Lock the account after three failed login attempts
+  req-e1e6d5bf5c7a  inferred    constraint  c2
+      Rewrite the login endpoint to return 429 when an account is locked
+  req-c3aa9167bacf  inferred    non_goal    n1
+      Rewrite the login endpoint
+  req-b6b3bb2d180c  inferred    deliverable d1
+      A patch to the authentication library
+
+=== verification obligations (2) ===
+  FORGE executed none of these: executed_by_forge=false
+  [v1] test: node --test
+      expect exit 0
+  [v2] review: Confirm no password or hash is written to a log
+      expect no log line contains credential material
+
+=== diagnostics ===
+  (none)
+  deterministic_hash sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945
+
+=== artifacts ===
+  artifacts/PROMPT.md  66 spans  sha256:f59eeb61ecaf1182c5fcea1b07a9a1ac54d99a9c06a18bd4e7d48035e11f05de
+
+every content hash above is sha256 over the file's bytes — verifiable with sha256sum (PK-R8)
+
+package    sha256:fd82da8640c0156024d636be99d42df9238dcca4ea38de559ee05a21dd19b631  (validated: rebuilt byte-for-byte from its own inputs)
+
+=== obligation → evidence → verdict ===
+  [v1] test: node --test
+      → record #0 (ci, exit 0)
+      → VERIFIED
+  [v2] review: Confirm no password or hash is written to a log
+      → no accepted evidence
+      → REVIEW_REQUIRED
+
+VERIFIED 1 · FAILED 0 · UNVERIFIED 0 · REVIEW_REQUIRED 1
+
+VERIFIED means the supplied evidence, taken at its word, shows the expected exit code. Evidence is unsigned, so FORGE cannot detect a fabricated record whose hashes were recomputed. FORGE executed nothing to produce this report.
+
+=== requirement traceability (6 of 6) ===
+repository   bound — links are deterministic evidence only
+verdicts     joined from the supplied evidence
+
+  [req-9fe9a9225dac] "Passwords are hashed with scrypt and a per-user salt before storage"
+    provenance   inferred · IR goal g1
+    lifecycle    accepted
+    IR node      g1 (goal)
+    artifact     PROMPT.md:208–275 (g1)
+                 PROMPT.md:381–424 (g1)
+    files        src/config.js ← rg_term 5/6 [hash, password, salt, storage, user] · scope_glob src/** · git_history #0
+                 src/password.js ← rg_term 6/6 [hash, password, salt, scrypt, storage, user] · scope_glob src/** · git_history #1
+    tests        test/password-hashing.test.js ← test_naming [hash, password] · scope_glob test/** · git_history #1
+    ADVISORY     (none supplied)
+    obligation   [v1] test: node --test → 1 record(s) → VERIFIED
+                 [v2] review: Confirm no password or hash is written to a log → 0 record(s) → REVIEW_REQUIRED
+
+  [req-192a664c17e9] "Lock the account after five failed login attempts"
+    provenance   inferred · IR goal g2
+    lifecycle    superseded · superseded by req-41d752a1a451 · inactive
+    IR node      g2 (goal)
+    artifact     PROMPT.md:290–339 (g2)
+                 PROMPT.md:433–461 (g2)
+    files        src/lockout.js ← rg_term 6/6 [account, attempt, fail, five, lock, login] · scope_glob src/** · git_history #0
+    tests        test/lockout.test.js ← rg_term 6/6 [account, attempt, fail, five, lock, login] · scope_glob test/** · git_history #0
+    ADVISORY     (none supplied)
+    obligation   [v1] test: node --test → 1 record(s) → VERIFIED
+
+  [req-41d752a1a451] "Lock the account after three failed login attempts"
+    provenance   inferred · IR constraint c1
+    lifecycle    open
+    IR node      c1 (constraint)
+    artifact     PROMPT.md:536–586 (c1)
+                 PROMPT.md:1258–1313 (c1)
+    files        src/lockout.js ← rg_term 5/6 [account, attempt, fail, lock, login] · scope_glob src/** · git_history #0
+    tests        test/lockout.test.js ← rg_term 5/6 [account, attempt, fail, lock, login] · scope_glob test/** · git_history #0
+    ADVISORY     (none supplied)
+    obligation   (no obligation satisfies it)
+
+  [req-e1e6d5bf5c7a] "Rewrite the login endpoint to return 429 when an account is locked"
+    provenance   inferred · IR constraint c2
+    lifecycle    conflicted · conflicts with req-c3aa9167bacf
+    IR node      c2 (constraint)
+    artifact     PROMPT.md:661–727 (c2)
+    files        (none — no deterministic evidence)
+    tests        (none — no deterministic evidence)
+    ADVISORY     (none supplied)
+    obligation   (no obligation satisfies it)
+
+  [req-c3aa9167bacf] "Rewrite the login endpoint"
+    provenance   inferred · IR non_goal n1
+    lifecycle    conflicted · conflicts with req-e1e6d5bf5c7a
+    IR node      n1 (non_goal)
+    artifact     PROMPT.md:821–847 (n1)
+    files        (none — no deterministic evidence)
+    tests        (none — no deterministic evidence)
+    ADVISORY     (none supplied)
+    obligation   (no obligation satisfies it)
+
+  [req-b6b3bb2d180c] "A patch to the authentication library"
+    provenance   inferred · IR deliverable d1
+    lifecycle    open
+    IR node      d1 (deliverable)
+    artifact     PROMPT.md:1389–1426 (d1)
+    files        (none — no deterministic evidence)
+    tests        (none — no deterministic evidence)
+    ADVISORY     (none supplied)
+    obligation   (no obligation satisfies it)
+
+  warning[FORGE-R001] Requirements req-c3aa9167bacf ("Rewrite the login endpoint") and req-e1e6d5bf5c7a ("Rewrite the login endpoint to return 429 when an account is locked") conflict. Both stay conflicted until a human supersedes one of them; FORGE picks no side (RG-R5).
+  warning[FORGE-R002] Requirement req-192a664c17e9 was superseded by req-41d752a1a451 but is still present in the current version: "Lock the account after five failed login attempts". Reported, not changed — unpinning or revising is the user's decision (RG-R4).
+  info[FORGE-R003] Linkage read src/config.js with content redacted by the secret scanner (aws-access-key x1); terms were matched on the redacted text only (LK-R3, SC-R6).
+
+VERIFIED means the supplied evidence, taken at its word, shows the expected exit code. Evidence is unsigned, so FORGE cannot detect a fabricated record whose hashes were recomputed. FORGE executed nothing to produce this report.

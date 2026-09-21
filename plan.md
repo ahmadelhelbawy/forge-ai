@@ -14,8 +14,8 @@
 > P1.7, P2, P3, P4**, and the V2 sequence **V2-0 … V2-E** plus **V2-R** (product
 > convergence) and **V2-F** (Execution Contract + requirement identity, absorbing
 > P5; closed after the 2026-09-21 closure audit that bound `semantic_id` to the
-> requirement manifest) and **V2-G** (evidence-based verification). Next, and
-> **not started**: **V2-H** (requirement governance + code linkage). Then V2-I
+> requirement manifest), **V2-G** (evidence-based verification) and **V2-H**
+> (requirement governance + code linkage). Next, and **not started**: **V2-I**
 > (productization). The reasoning
 > behind that ordering — including the two phases struck because V2-R already did
 > the work — is in [`docs/roadmap-v2.md`](docs/roadmap-v2.md).
@@ -1003,7 +1003,7 @@ is code is ceremony, not capability.
 | V2-R | `FR-051`, `WS-R15`, `WS-R20`, `WS-R21`, `SC-R2`, `SC-R6`, `INV-012`, `INV-016` | `AC-033`, `AC-034`, `AC-035`, `AC-037` |
 | V2-F | `FR-040`–`FR-044`, `FR-046`, `FR-052`, `PK-R1`–`PK-R8`, `PV-R1`–`PV-R5`, `RQ-R1`–`RQ-R3`, `INV-004`, `INV-005`, `INV-013`, `INV-015` | `AC-005`, `AC-020`, `AC-044`, `AC-045`, `AC-046` |
 | V2-G | `EV-R1`, `EV-R2` *(new in V2-G)* | new — `FORGE-V001`–`V003` |
-| V2-H | `INV-002`, `INV-011`, `FR-025`–`FR-030` *(reused)* | new |
+| V2-H | `FR-055`–`FR-058`, `RG-R1`–`RG-R6`, `RB-R1`–`RB-R3`, `LK-R1`–`LK-R4`, `TM-R1`–`TM-R4`; `INV-011`, `FR-025` *(reused)* | `AC-051`–`AC-057`; `FORGE-R001`–`R003` |
 | V2-I | `NFR-011`, `TS-R6` | `AC-038` |
 
 ---
@@ -1476,7 +1476,7 @@ binds to a package by `semantic_id`), and codes `FORGE-V001`–`V003`.
 and a Verify box under the Studio's package result. Spec: `FR-053`, `FR-054`,
 `EV-R1`–`EV-R6` (§11.1), `FORGE-V001`–`V005`, `AC-047`–`AC-050`. Deviations below.
 
-### V2-H · Requirement governance + code linkage *(NEXT — not started)*
+### V2-H · Requirement governance + code linkage *(COMPLETE — 2026-09-22)*
 
 **Objective.** Lifecycle (`origin` immutable and FORGE-assigned, orthogonal to
 `status`), repository binding through `WorkspaceGuard`, and the traceability
@@ -1486,6 +1486,10 @@ filesystem reach it has never had. Every read goes through `WorkspaceGuard`
 (`INV-011`) and every file through `scanSecrets`, exactly as V2-R step 10 did for
 attachments.
 **Deferrable.** V2-F + V2-G + V2-I is a coherent shippable product without it.
+**Done** (`spec.md` §22.10): `src/requirement/{governance,binding,linkage,traceability}.ts`,
+`web/lib/requirements.ts` + routes `/repository`, `/requirements`, `/links`,
+`/traceability`, the Studio traceability panel, and `forge explain --package
+--workspace --governance --requirement`. Real acceptance in `evals/v2h/`.
 
 ### V2-I · Productization
 
@@ -1613,3 +1617,10 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-21 | V2-G | The expected exit code is `N` when `expected` is exactly `exit N`, otherwise `0`; several records per obligation are allowed and any failure makes it `FAILED`. | `expected` is free text for humans ("matches", "present"); interpreting it further would be judgement. Letting one pass outvote a recorded failure would let a flaky rerun hide the failure. |
 | 2026-09-21 | V2-G | Evidence carries hashes only: the schema is strict, so a record with inline output is rejected, and optional log files are checked against the recorded hashes. There is no excerpt field. | The brief allowed a secret-scanned excerpt. Having no excerpt is strictly safer and costs nothing verification needs. Without signatures a fabricator who recomputes hashes is undetectable; every report says so (`EV-R5`). |
 | 2026-09-21 | V2-G | The HTTP verify tests run against the stub provider, whose extracted IR has no verification entries, so over HTTP they prove routing, mismatch, malformed-input and determinism behaviour but exercise zero obligations. | The verdict table is proven exhaustively against real assembled packages (`tests/property/verify-verdict.test.ts`) and through the real CLI binary (`tests/contract/cli-verify.test.ts`), both of which call the same `src/verify/` the route calls. Changing the stub's extraction to add obligations would change shared test infrastructure outside this phase. |
+| 2026-09-22 | V2-H | **Lifecycle status is derived from an append-only log of human decisions, never stored**, and lives beside the package rather than in `requirements.json`. | A stored status field would be a second source of truth beside the decisions that justify it. Keeping it out of the package means accepting a requirement moves no `semantic_id`, so V2-G evidence stays bound (`EV-R2`). |
+| 2026-09-22 | V2-H | **Pinning counts as acceptance** (a pinned requirement derives `accepted`), and pinning a requirement's verbatim text makes its row `user_stated` with the ledger shown as a second source. | The roadmap's migration rule ("existing ledger entries migrate to `user_stated`, `accepted`") recorded, not changed. A verbatim pin is the user *stating* the text; the inferred IR node stays listed as a source, and no operation rewrites a record's origin (`RG-R6`). |
+| 2026-09-22 | V2-H | **Deterministic conflict detection** reuses §22.8's tokenizer: a non-goal (≥ 3 tokens) whose token sequence occurs in a goal, constraint, deliverable or pinned requirement. Conflicts clear only by a human supersession; `accept` on a conflicted requirement is refused. | The brief required conflicts surfaced and never auto-resolved but named no detector; this is the one rule already published for "the same statement". No `dismiss` decision was added — it would be new workflow. |
+| 2026-09-22 | V2-H | **Repository binding requires an operator allowlist, `FORGE_REPO_ROOTS`**; unset means binding is refused. `..` in the requested path is refused as written. | "Do not give the served workspace arbitrary filesystem access": without an allowlist, binding would let anyone reaching the port point the guard at any directory. The CLI's `--workspace` is the invoking user's own binding and needs none. |
+| 2026-09-22 | V2-H | **Linkage adds a published suffix rule** (strip the first of `ing`/`ed`/`es`/`s` leaving ≥ 3 chars) and thresholds `max(min(2,n), ⌈0.6n⌉)` for `rg_term`, `min(2,n)` for `test_naming`. `scope_glob` and `git_history` only corroborate. | Exact-word matching misses ordinary inflection ("hashed" in a requirement vs `hashPassword` in code); the rule is applied identically to both sides, so it cannot make one side match what the other would not. Corroboration-only follows the P2 deviation that scope is admissibility, not relevance. |
+| 2026-09-22 | V2-H | **The only advisory-link producer is a user assertion**; no model proposes links. | Nothing in the sequence asks a model for a finding (§23.5). The advisory collection exists, is exercised and is kept separate, so a future model proposer lands in the right place. |
+| 2026-09-22 | V2-H | **The stub extractor now declares one `command` obligation satisfying `g1`.** The V2-G deviation above recorded that stub-mode packages had no obligations, so the HTTP verdict tests could only pass vacuously; they now assert obligations exist. The candidates ordering test's staged delays follow the computed fit order instead of a hard-coded one. | Found when the V2-H verdict-join test over HTTP had nothing to join. Test infrastructure only; no product path uses the stub. The candidate test's precondition, not its assertion, changed. |

@@ -114,6 +114,28 @@ shows the expected exit code*; evidence is unsigned, and the report says so.
 evidence → verdict, and the Studio has the same check under the package result.
 `evals/v2g/` is a real run: a passing suite → `VERIFIED`, a genuinely broken one → `FAILED`.
 
+### Requirement traceability
+
+FORGE can answer, per requirement: who stated it, whether a human accepted,
+superseded or found it in conflict, where the compiled artifact carries it, which
+repository files and tests implement it, and what verdict external evidence gave its
+obligations — the **traceability matrix**. It is a join over data FORGE already
+holds; no model is asked.
+
+```bash
+pnpm forge explain --package ./pkg \
+  --workspace ../my-repo \            # link requirements to files/tests (read via WorkspaceGuard)
+  --governance decisions.json \       # accept / supersede / conflict (schema/requirement/)
+  --evidence evidence.json            # join V2-G verdicts
+pnpm forge explain --package ./pkg --json   # the matrix, byte-identical per input
+```
+
+Links are authoritative only with deterministic evidence (`rg_term`, `test_naming`);
+anything asserted is shown separately as **advisory**. In the workspace, set
+`FORGE_REPO_ROOTS` to the directories a conversation may bind (binding is refused
+when it is unset), then use the Requirement traceability panel under Compile.
+`evals/v2h/` is a real run.
+
 Turning natural language into an IR uses a model boundary, so it needs a provider:
 
 ```bash
