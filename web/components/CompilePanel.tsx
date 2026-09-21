@@ -4,6 +4,7 @@ import { Download, Hammer, Package } from "lucide-react";
 import { useState } from "react";
 
 import { DiagnosticList } from "./DiagnosticList";
+import { TraceabilityPanel } from "./TraceabilityPanel";
 import { api, type CompileResponse, type PackageResponse, type TargetInfo, type VerifyResponse } from "@/lib/api";
 
 /**
@@ -256,6 +257,9 @@ export function CompilePanel({
           {error}
         </div>
       ) : null}
+
+      {/* V2-H: governance, repository linkage and the traceability matrix. */}
+      <TraceabilityPanel conversationId={conversationId} target={target} evidence={evidence} />
 
       {result ? (
         <>

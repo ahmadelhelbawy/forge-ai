@@ -172,11 +172,16 @@ describe("the alternatives are generated concurrently, and order does not depend
    * provider, so the request failed outright. The calls are independent, so
    * concurrency is the structural fix rather than a bigger timeout.
    */
-  function timedTransport() {
+  function timedTransport(fitOrder: readonly string[] = ["surgical", "rigorous", "autonomous"]) {
     let inFlight = 0;
     let peak = 0;
     const finished: string[] = [];
-    const delays: Record<string, number> = { surgical: 60, rigorous: 30, autonomous: 5, exploratory: 5 };
+    // The best-fitting archetype answers last, whatever the fit order is: the
+    // staging follows the ranking rather than assuming it (a fixed map broke
+    // when the stub IR gained an obligation and the ranking moved).
+    const delays: Record<string, number> = Object.fromEntries(
+      fitOrder.map((strategy, i) => [strategy, [60, 30, 5][i] ?? 5]),
+    );
     const complete = async (request: { strategy: string }) => {
       inFlight += 1;
       peak = Math.max(peak, inFlight);
@@ -201,7 +206,7 @@ describe("the alternatives are generated concurrently, and order does not depend
 
   it("orders candidates by archetype fit, not by which answered first", async () => {
     const convo = withPrompt();
-    const transport = timedTransport();
+    const transport = timedTransport(chooseArchetypesOrder(convo));
     const result = await generateCandidates(convo, { count: 3, complete: transport.complete });
 
     const returned = result.candidates.map((c) => c.candidate.strategy);

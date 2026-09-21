@@ -1579,6 +1579,9 @@ describe.skipIf(!WEB_E2E)("Evidence-based verification over HTTP (V2-G)", () => 
     const verification = JSON.parse(files.find((f) => f.path === "verification.json")!.content) as {
       entries: Array<{ id: string; kind: string }>;
     };
+    // Guards against the vacuous pass found in V2-H: with no obligations every
+    // loop over verdicts below would assert nothing.
+    expect(verification.entries.length).toBeGreaterThan(0);
     return { id, semanticId: String(built.body["semanticId"]), obligations: verification.entries };
   }
 
@@ -1646,5 +1649,195 @@ describe.skipIf(!WEB_E2E)("Evidence-based verification over HTTP (V2-G)", () => 
     const a = await api(BASE, `/api/conversations/${id}/verify`, { method: "POST", body });
     const b = await api(BASE, `/api/conversations/${id}/verify`, { method: "POST", body });
     expect(a.body["json"]).toBe(b.body["json"]);
+  });
+});
+
+/**
+ * V2-H over HTTP: requirement governance, repository binding, deterministic
+ * linkage and the traceability matrix (spec.md §22.10, AC-051–AC-057).
+ *
+ * The fixture repository lives under WEB_E2E_REPO_ROOTS, which e2e.sh also
+ * hands the server as FORGE_REPO_ROOTS. Requirements are PINNED so that what is
+ * linked does not depend on the stub extractor's reading of the prompt.
+ */
+const REPO_ROOTS = process.env["WEB_E2E_REPO_ROOTS"] ?? "";
+
+describe.skipIf(!WEB_E2E || REPO_ROOTS === "")("requirement governance and traceability over HTTP (V2-H)", () => {
+  const FAKE_KEY = "AKIA" + "Q7XJ4MZ2KD9PL3WB";
+  const STATED = "Run the test suite before approving";
+  const OTHER = "Report every finding with a file path";
+  let repo = "";
+  let outside = "";
+
+  beforeAll(async () => {
+    await checkHealth(BASE);
+    const { mkdirSync, mkdtempSync, writeFileSync, realpathSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    repo = realpathSync(mkdtempSync(join(REPO_ROOTS, "repo-")));
+    outside = realpathSync(mkdtempSync(join(tmpdir(), "forge-e2e-outside-")));
+    mkdirSync(join(repo, "src"), { recursive: true });
+    mkdirSync(join(repo, "tests"), { recursive: true });
+    writeFileSync(join(repo, "src", "review.ts"), "// Run the whole test suite before approving a change.\nexport function approve() { return runSuite(); }\n");
+    writeFileSync(join(repo, "tests", "test-suite-approving.test.ts"), "// approval gate\n");
+    writeFileSync(join(repo, "src", "config.ts"), `// run test suite approving\nexport const key = "${FAKE_KEY}";\n`);
+    writeFileSync(join(repo, ".env"), `KEY=${FAKE_KEY}\n`);
+    writeFileSync(join(outside, "notes.ts"), "run test suite approving\n");
+  }, 60_000);
+
+  async function conversation(): Promise<string> {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Write a code review prompt. Run the test suite before approving." }),
+    });
+    for (const text of [STATED, OTHER]) {
+      await api(BASE, `/api/conversations/${id}/ledger`, { method: "POST", body: JSON.stringify({ text }) });
+    }
+    return id;
+  }
+
+  async function matrix(id: string, extra: Record<string, unknown> = {}): Promise<{ status: number; body: Record<string, unknown>; raw: string }> {
+    const response = await fetch(`${BASE}/api/conversations/${id}/traceability`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ target: "claude-code", ...extra }),
+    });
+    const raw = await response.text();
+    return { status: response.status, body: JSON.parse(raw) as Record<string, unknown>, raw };
+  }
+
+  type Row = {
+    id: string; text: string; origin: string; status: string; superseded_by: string | null;
+    files: Array<{ path: string; advisory: boolean; evidence: Array<{ type: string }> }>;
+    tests: Array<{ path: string; advisory: boolean }>;
+    advisory_links: Array<{ path: string; advisory: boolean }>;
+    obligations: Array<{ id: string; verdict: string | null }>;
+  };
+  const rows = (body: Record<string, unknown>) => body["rows"] as Row[];
+  const rowFor = (body: Record<string, unknown>, text: string) => rows(body).find((r) => r.text === text)!;
+
+  it("works unbound: the matrix has rows and no links, and chat is unaffected", async () => {
+    const id = await conversation();
+    const m = await matrix(id);
+    expect(m.status).toBe(200);
+    expect(m.body["repository_bound"]).toBe(false);
+    expect(rowFor(m.body, STATED)).toMatchObject({ origin: "user_stated", status: "accepted", files: [], tests: [] });
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect((convo.body["promptVersions"] as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it("binds explicitly, refuses escapes, and unbinds", async () => {
+    const id = await conversation();
+    const escape = await api(BASE, `/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path: `${repo}/../..` }) });
+    expect(escape.status).toBe(400);
+    expect(escape.body["reason"]).toBe("traversal");
+    const out = await api(BASE, `/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path: outside }) });
+    expect(out.status).toBe(400);
+    expect(out.body["reason"]).toBe("outside-allowlist");
+    const ok = await api(BASE, `/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path: repo }) });
+    expect(ok.status).toBe(201);
+    expect((await api(BASE, `/api/conversations/${id}/repository`)).body).toMatchObject({ bound: true, usable: true });
+    await api(BASE, `/api/conversations/${id}/repository`, { method: "DELETE" });
+    expect((await api(BASE, `/api/conversations/${id}/repository`)).body["bound"]).toBe(false);
+  });
+
+  it("links a stated requirement to a file and a test by deterministic evidence, and leaks no credential", async () => {
+    const id = await conversation();
+    await api(BASE, `/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path: repo }) });
+    const m = await matrix(id);
+    const row = rowFor(m.body, STATED);
+    expect(row.files.map((f) => f.path)).toContain("src/review.ts");
+    expect(row.files.find((f) => f.path === "src/review.ts")!.evidence.map((e) => e.type)).toContain("rg_term");
+    expect(row.tests.map((t) => t.path)).toContain("tests/test-suite-approving.test.ts");
+    for (const l of [...row.files, ...row.tests]) expect(l.advisory).toBe(false);
+    expect(row.files.map((f) => f.path)).not.toContain(".env");
+    const diagnostics = m.body["diagnostics"] as Array<{ code: string; message: string }>;
+    expect(diagnostics.some((d) => d.code === "FORGE-R003" && d.message.includes("src/config.ts"))).toBe(true);
+
+    // Same inputs, same bytes (TM-R3) — compared before the package call below,
+    // which extracts the IR and so legitimately changes the matrix's inputs.
+    expect((await matrix(id)).raw).toBe(m.raw);
+
+    const everything = [
+      m.raw,
+      JSON.stringify((await api(BASE, `/api/conversations/${id}`)).body),
+      JSON.stringify((await api(BASE, `/api/conversations/${id}/requirements`)).body),
+      JSON.stringify((await api(BASE, `/api/conversations/${id}/repository`)).body),
+      JSON.stringify((await api(BASE, `/api/conversations/${id}/package`, { method: "POST", body: JSON.stringify({ target: "claude-code" }) })).body),
+    ].join("\n");
+    expect(everything).not.toContain(FAKE_KEY);
+  });
+
+  it("governs by explicit decision: supersession keeps the old row; bad decisions are refused", async () => {
+    const id = await conversation();
+    const m0 = await matrix(id);
+    const stated = rowFor(m0.body, STATED).id;
+    const other = rowFor(m0.body, OTHER).id;
+    const withOrigin = await api(BASE, `/api/conversations/${id}/requirements`, {
+      method: "POST",
+      body: JSON.stringify({ decision: { kind: "accept", requirement_id: stated, origin: "user_stated" } }),
+    });
+    expect(withOrigin.status).toBe(400);
+    const accepted = await api(BASE, `/api/conversations/${id}/requirements`, {
+      method: "POST", body: JSON.stringify({ decision: { kind: "accept", requirement_id: stated } }),
+    });
+    expect(accepted.status).toBe(409); // pinned ⇒ already accepted (RG-R2)
+    const sup = await api(BASE, `/api/conversations/${id}/requirements`, {
+      method: "POST", body: JSON.stringify({ decision: { kind: "supersede", requirement_id: other, successor_id: stated } }),
+    });
+    expect(sup.status).toBe(201);
+    const back = await api(BASE, `/api/conversations/${id}/requirements`, {
+      method: "POST", body: JSON.stringify({ decision: { kind: "supersede", requirement_id: stated, successor_id: other } }),
+    });
+    expect(back.status).toBe(409);
+    const m = await matrix(id);
+    expect(rowFor(m.body, OTHER)).toMatchObject({ status: "superseded", superseded_by: stated });
+    const diagnostics = m.body["diagnostics"] as Array<{ code: string }>;
+    expect(diagnostics.some((d) => d.code === "FORGE-R002")).toBe(true);
+  });
+
+  it("keeps asserted links advisory and out of the authoritative columns", async () => {
+    const id = await conversation();
+    await api(BASE, `/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path: repo }) });
+    const m0 = await matrix(id);
+    const other = rowFor(m0.body, OTHER).id;
+    const escape = await api(BASE, `/api/conversations/${id}/links`, {
+      method: "POST", body: JSON.stringify({ requirementId: other, path: "../../etc/passwd" }),
+    });
+    expect(escape.status).toBe(400);
+    const added = await api(BASE, `/api/conversations/${id}/links`, {
+      method: "POST", body: JSON.stringify({ requirementId: other, path: "src/review.ts", note: "I think" }),
+    });
+    expect(added.status).toBe(201);
+    expect(added.body["advisory"]).toBe(true);
+    const row = rowFor((await matrix(id)).body, OTHER);
+    expect(row.advisory_links).toEqual([expect.objectContaining({ path: "src/review.ts", advisory: true })]);
+    expect(row.files.map((f) => f.path)).not.toContain("src/review.ts");
+  });
+
+  it("joins V2-G verdicts to the requirements their obligations satisfy", async () => {
+    const id = await conversation();
+    const built = await api(BASE, `/api/conversations/${id}/package`, { method: "POST", body: JSON.stringify({ target: "claude-code" }) });
+    const files = built.body["files"] as Array<{ path: string; content: string }>;
+    const entries = (JSON.parse(files.find((f) => f.path === "verification.json")!.content) as { entries: Array<{ id: string; kind: string }> }).entries;
+    const semanticId = String(built.body["semanticId"]);
+    const evidence = JSON.stringify({
+      records: entries.map((o) => ({
+        obligation_id: o.id, kind: o.kind, exit_code: 0, stdout_hash: null, stderr_hash: null,
+        started_at: "2026-09-21T10:00:00Z", duration_ms: 10, runner: "ci", repo_commit: null, package_semantic_id: semanticId,
+      })),
+    });
+    const verified = await api(BASE, `/api/conversations/${id}/verify`, { method: "POST", body: JSON.stringify({ target: "claude-code", evidence }) });
+    const expected = new Map((verified.body["verdicts"] as Array<{ obligation_id: string; verdict: string }>).map((v) => [v.obligation_id, v.verdict]));
+    const m = await matrix(id, { evidence });
+    expect(m.body["package_semantic_id"]).toBe(semanticId);
+    expect(m.body["caveat"]).toContain("taken at its word");
+    const cells = rows(m.body).flatMap((r) => r.obligations);
+    expect(entries.length).toBeGreaterThan(0);
+    expect(cells.length).toBeGreaterThan(0);
+    for (const c of cells) expect(c.verdict).toBe(expected.get(c.id));
+    expect(cells.some((c) => c.verdict === "VERIFIED")).toBe(true);
   });
 });

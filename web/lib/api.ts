@@ -413,6 +413,78 @@ export interface VerifyResponse {
   json: string;
 }
 
+/** V2-H: one link a deterministic rule derived (LK-R1). `advisory` is always false. */
+export interface AuthoritativeLinkWire {
+  advisory: false;
+  requirement_id: string;
+  path: string;
+  kind: "file" | "test";
+  evidence: Array<
+    | { type: "rg_term"; matched_terms: string[]; matched: number; of: number; required: number }
+    | { type: "test_naming"; matched_terms: string[] }
+    | { type: "scope_glob"; glob: string }
+    | { type: "git_history"; commit_position: number }
+  >;
+}
+
+/** V2-H: a link a user asserted (LK-R4). `advisory` is always true. */
+export interface AdvisoryLinkWire {
+  advisory: true;
+  requirement_id: string;
+  path: string;
+  source: "user_asserted" | "model";
+  note: string;
+}
+
+export interface MatrixRowWire {
+  id: string;
+  text: string;
+  origin: "user_stated" | "inferred";
+  status: "open" | "accepted" | "superseded" | "conflicted";
+  pinned: boolean;
+  superseded_by: string | null;
+  active: boolean;
+  conflicts_with: string[];
+  sources: Array<{ kind: "ledger" } | { kind: "ir_node"; node_id: string; node_kind: string }>;
+  artifact_spans: Array<{ artifact_path: string; start: number; end: number; node_id: string }>;
+  files: AuthoritativeLinkWire[];
+  tests: AuthoritativeLinkWire[];
+  advisory_links: AdvisoryLinkWire[];
+  obligations: Array<{
+    id: string;
+    kind: string;
+    spec: string;
+    expected: string;
+    verdict: string | null;
+    accepted_records: number;
+  }>;
+}
+
+/** V2-H: the requirement traceability matrix (TM-R1–TM-R4). */
+export interface TraceabilityMatrixWire {
+  matrix_version: number;
+  package_semantic_id: string | null;
+  ir_extracted: boolean;
+  repository_bound: boolean;
+  verdicts_supplied: boolean;
+  verdicts_rejected: boolean;
+  caveat: string | null;
+  rows: MatrixRowWire[];
+  diagnostics: DiagnosticWire[];
+}
+
+export interface RepositoryWire {
+  bound: boolean;
+  root: string | null;
+  usable: boolean;
+  error?: string;
+}
+
+export type GovernanceDecisionWire =
+  | { kind: "accept"; requirement_id: string }
+  | { kind: "supersede"; requirement_id: string; successor_id: string }
+  | { kind: "conflict"; requirement_ids: [string, string] };
+
 export const api = {
   health: () => request<{ ok: boolean; version: string; storage: string; providers: ProviderInfo[] }>("/api/health"),
   catalog: () =>
@@ -433,6 +505,21 @@ export const api = {
     }),
   verifyVersion: (id: string, input: { evidence: string; target?: string; v?: number }) =>
     request<VerifyResponse>(`/api/conversations/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  // V2-H (spec.md §22.10). Every call below is an explicit user action.
+  repository: (id: string) => request<RepositoryWire>(`/api/conversations/${id}/repository`),
+  bindRepository: (id: string, path: string) =>
+    request<RepositoryWire>(`/api/conversations/${id}/repository`, { method: "POST", body: JSON.stringify({ path }) }),
+  unbindRepository: (id: string) =>
+    request<RepositoryWire>(`/api/conversations/${id}/repository`, { method: "DELETE" }),
+  decideRequirement: (id: string, decision: GovernanceDecisionWire) =>
+    request<unknown>(`/api/conversations/${id}/requirements`, { method: "POST", body: JSON.stringify({ decision }) }),
+  addAdvisoryLink: (id: string, input: { requirementId: string; path: string; note?: string }) =>
+    request<unknown>(`/api/conversations/${id}/links`, { method: "POST", body: JSON.stringify(input) }),
+  traceability: (id: string, input: { target?: string; evidence?: string } = {}) =>
+    request<TraceabilityMatrixWire>(`/api/conversations/${id}/traceability`, {
       method: "POST",
       body: JSON.stringify(input),
     }),

@@ -36,3 +36,10 @@ export async function verifyVersion(
   const report = verifyPackage({ files, evidence, logHashes: new Map() });
   return { v: built.v, profileId: built.profileId, report };
 }
+
+/**
+ * The EV-R5 caveat, re-exported so the traceability matrix can repeat it
+ * whenever it shows a verdict (TM-R3) without a second importer of the
+ * verification layer (AC-050).
+ */
+export { REPORT_CAVEAT } from "forge/dist/verify/verdict.js";

@@ -64,7 +64,19 @@ export function stubExtraction(text: string): TaskIR {
       required_capabilities: [],
       assumptions: [],
       open_questions: [],
-      verification: [],
+      // One obligation satisfying g1, so a stub-mode package has something to
+      // verify: without it every stub package had zero obligations and the
+      // V2-G/V2-H HTTP verdict tests could only pass vacuously.
+      verification: [
+        {
+          id: "v1",
+          kind: "command",
+          spec: "grep -q . PROMPT.md",
+          expected: "exit 0",
+          satisfies: ["g1"],
+          derived_from: "s1",
+        },
+      ],
       deliverables: [{ id: "d1", kind: "doc", description: "the prompt", derived_from: "s1" }],
       risk: { level: "low", factors: [] },
     } as never,

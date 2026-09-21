@@ -6,10 +6,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OK_DIR="$(mktemp -d /tmp/forge-e2e-ok.XXXXXX)"
 FAIL_DIR="$(mktemp -d /tmp/forge-e2e-fail.XXXXXX)"
+# V2-H: the operator allowlist for repository binding (RB-R2). The suite
+# creates its fixture repositories inside it.
+REPO_ROOTS="$(mktemp -d /tmp/forge-e2e-repos.XXXXXX)"
 
 cleanup() {
   kill ${OK_PID:-} ${FAIL_PID:-} ${STUB_PID:-} 2>/dev/null || true
-  rm -rf "$OK_DIR" "$FAIL_DIR"
+  rm -rf "$OK_DIR" "$FAIL_DIR" "$REPO_ROOTS"
 }
 trap cleanup EXIT
 
@@ -18,7 +21,7 @@ rm -rf "$ROOT/web/.next"
 pnpm --dir "$ROOT/web" build >/dev/null
 
 echo "==> starting stub servers"
-PORT=3210 FORGE_DATA_DIR="$OK_DIR" FORGE_CHAT_STUB=1 \
+PORT=3210 FORGE_DATA_DIR="$OK_DIR" FORGE_CHAT_STUB=1 FORGE_REPO_ROOTS="$REPO_ROOTS" \
   node "$ROOT/web/.next/standalone/web/server.js" >/tmp/forge-e2e-ok.log 2>&1 &
 OK_PID=$!
 PORT=3211 FORGE_DATA_DIR="$FAIL_DIR" FORGE_CHAT_STUB=error \
@@ -39,5 +42,5 @@ done
 
 echo "==> running product HTTP suite"
 WEB_E2E=1 WEB_E2E_BASE=http://localhost:3210 WEB_E2E_FAIL_BASE=http://localhost:3211 \
-  WEB_E2E_PROVIDER_BASE=http://localhost:3220 \
+  WEB_E2E_PROVIDER_BASE=http://localhost:3220 WEB_E2E_REPO_ROOTS="$REPO_ROOTS" \
   pnpm vitest run tests/product/web-api.test.ts
