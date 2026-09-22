@@ -210,6 +210,30 @@ export interface ConversationDetail {
   ledger: PinnedRequirement[];
   currentV: number;
   prompt: string | null;
+  /** §22.11. Null until the first discovery turn. */
+  discovery?: DiscoveryWire | null;
+}
+
+/** §22.11: FORGE's evolving understanding. Model-authored, validated, never user-stated. */
+export interface DiscoveryBriefWire {
+  vision?: string;
+  goal?: string;
+  target_user?: string;
+  problem?: string;
+  background?: string;
+  capabilities?: string[];
+  constraints?: string[];
+  success_criteria?: string[];
+  open_questions?: string[];
+}
+
+export interface DiscoveryWire {
+  status: "open" | "generated";
+  brief: DiscoveryBriefWire;
+  questions: Array<{ question: string; options: string[] }>;
+  ready: boolean;
+  research_needed: string | null;
+  turns: number;
 }
 
 /** The wire form of a turn event. Mirrors `web/lib/turn/events.ts`. */
@@ -531,7 +555,7 @@ export const api = {
   deleteConversation: (id: string) => request<{ deleted: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
   sendMessage: (
     id: string,
-    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean },
+    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean; generate?: boolean },
   ) => request<TurnOutcome>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
   /**
    * Send a message and read the turn as it happens (WS-R10).
@@ -546,7 +570,7 @@ export const api = {
    */
   streamMessage: async (
     id: string,
-    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean },
+    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean; generate?: boolean },
     handlers: StreamHandlers = {},
     signal?: AbortSignal,
   ): Promise<TurnOutcome> => {

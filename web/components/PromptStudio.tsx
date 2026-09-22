@@ -29,6 +29,7 @@ import {
   type CandidatePromotion,
   type ComparisonPayload,
   type DiagnosticWire,
+  type DiscoveryWire,
   type DiffHunk,
   type DriftReportWire,
   type OverlayDistinctness,
@@ -39,9 +40,12 @@ import {
   type TargetInfo,
 } from "@/lib/api";
 import { CompilePanel } from "./CompilePanel";
+import { DiscoveryBrief } from "./DiscoveryPanel";
 import { estimateTokens } from "@/lib/diff";
 
 interface Props {
+  /** §22.11: the evolving brief, shown before and beside the prompt. */
+  discovery: DiscoveryWire | null;
   conversationId: string | null;
   prompt: string | null;
   versions: PromptVersion[];
@@ -171,6 +175,7 @@ function Editor({
  * Studio that invented alternatives by default would break WS-R8.
  */
 export function PromptStudio({
+  discovery,
   conversationId,
   prompt,
   versions,
@@ -586,11 +591,15 @@ export function PromptStudio({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2.5">
         {tab === "prompt" ? (
           !conversationId || (!prompt && !drafting) ? (
+            discovery ? (
+              <DiscoveryBrief discovery={discovery} />
+            ) : (
             <div className="py-10 text-center text-[13px] leading-relaxed text-slate-500">
               No prompt yet.
               <br />
               It will appear here once the conversation produces one.
             </div>
+            )
           ) : (
             <>
               {editing ? (

@@ -3,10 +3,11 @@
 import { Paperclip, RotateCcw, SendHorizonal, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import type { AttachmentMeta, ChatMessage, DiagnosticWire } from "@/lib/api";
+import type { AttachmentMeta, ChatMessage, DiagnosticWire, DiscoveryWire } from "@/lib/api";
 import { Markdown } from "@/lib/markdown";
 
 import { DiagnosticList } from "./DiagnosticList";
+import { DiscoveryPanel } from "./DiscoveryPanel";
 
 interface Props {
   messages: ChatMessage[];
@@ -39,6 +40,10 @@ interface Props {
    */
   diagnostics: DiagnosticWire[];
   onSend: (text: string) => void;
+  /** §22.11: the conversation's discovery state; the panel shows while it is open. */
+  discovery: DiscoveryWire | null;
+  /** WS-R31: the explicit generate control. */
+  onGenerate: () => void;
   onAttach: (files: File[]) => void;
   onStop: () => void;
   onRetry: () => void;
@@ -65,6 +70,8 @@ export function ChatPanel({
   startedAt,
   diagnostics,
   onSend,
+  discovery,
+  onGenerate,
   onAttach,
   onStop,
   onRetry,
@@ -210,6 +217,11 @@ export function ChatPanel({
           </div>
         )}
       </div>
+      {discovery?.status === "open" && !sending ? (
+        <div className="px-6 pb-2">
+          <DiscoveryPanel discovery={discovery} disabled={sending || !ready} onAnswer={onSend} onGenerate={onGenerate} />
+        </div>
+      ) : null}
       <div className="border-t border-ink-800 px-6 py-3">
         {attachments.length > 0 ? (
           <div className="mx-auto mb-2 flex max-w-3xl flex-wrap gap-1.5">

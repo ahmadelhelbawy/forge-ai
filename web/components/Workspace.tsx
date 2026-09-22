@@ -245,7 +245,7 @@ export function Workspace(): React.JSX.Element {
    * there is no client state that could survive as a phantom message.
    */
   const runTurn = useCallback(
-    async (input: { content?: string; regenerate?: boolean }) => {
+    async (input: { content?: string; regenerate?: boolean; generate?: boolean }) => {
       let id = activeId;
       if (!id) {
         try {
@@ -323,6 +323,11 @@ export function Workspace(): React.JSX.Element {
 
   const send = useCallback((text: string) => runTurn({ content: text }), [runTurn]);
   const retry = useCallback(() => runTurn({ regenerate: true }), [runTurn]);
+  // WS-R31: the only way out of discovery. The server words the message.
+  const generate = useCallback(
+    () => runTurn({ generate: true, content: "Generate the prompt from what we have discussed." }),
+    [runTurn],
+  );
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
   const attach = useCallback(
@@ -562,6 +567,8 @@ export function Workspace(): React.JSX.Element {
               startedAt={startedAt}
               diagnostics={diagnostics}
               onSend={send}
+              discovery={detail?.discovery ?? null}
+              onGenerate={generate}
               onAttach={attach}
               onStop={stop}
               onRetry={retry}
@@ -570,6 +577,7 @@ export function Workspace(): React.JSX.Element {
             <PromptStudio
               conversationId={activeId}
               prompt={detail?.prompt ?? null}
+              discovery={detail?.discovery ?? null}
               versions={versions}
               candidates={detail?.candidates ?? []}
               currentV={detail?.currentV ?? 0}
