@@ -1897,15 +1897,14 @@ describe.skipIf(!WEB_E2E)("Discovery over HTTP (Sprint 1)", () => {
     expect(discovery.turns).toBe(2);
     expect(discovery.questions[0]!.question).toContain("bookkeeping for small firms");
     expect(discovery.brief.constraints).toContain("Make money — bookkeeping for small firms");
-    // The stub classifies a plain instruction as CREATE; the gate holds it.
+    // Asking in words is not the generate control: discovery is open and no
+    // prompt exists, so the turn is DISCOVER without a classification (WS-R31).
     const pushy = await api(BASE, `/api/conversations/${id}/messages`, {
       method: "POST",
       body: JSON.stringify({ content: "Just write the prompt" }),
     });
     expect(pushy.body["action"]).toBe("DISCOVER");
     expect(pushy.body["promptChanged"]).toBe(false);
-    const codes = (pushy.body["diagnostics"] as Array<{ code: string }>).map((d) => d.code);
-    expect(codes).toContain("FORGE-W011");
     const convo = await api(BASE, `/api/conversations/${id}`);
     expect(convo.body["promptVersions"]).toEqual([]);
   });

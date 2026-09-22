@@ -45,7 +45,7 @@ import {
   absentDiscoveredRequirements,
   applyDiscoveryUpdate,
   openDiscovery,
-  parseDiscoveryUpdate,
+  readDiscoveryUpdate,
   unresolvedQuestions,
   type DiscoveryState,
 } from "forge/dist/conversation/discovery.js";
@@ -379,6 +379,12 @@ export async function* runTurn(
           ),
         );
       }
+    } else if (state.discoveryOpen && !state.hasCurrentPrompt) {
+      // WS-R31: with discovery open and no prompt, every action the state can
+      // express resolves to DISCOVER, so asking a model would only add latency
+      // and a failure mode. The answer is deterministic; no call is spent.
+      action = "DISCOVER";
+      yield push({ kind: "action_resolved", action, degraded: false });
     } else {
       const classifyCalls: CompletionResult[] = [];
       try {
@@ -632,7 +638,7 @@ export async function* runTurn(
 
     // ── Discovery state (WS-R30) ──────────────────────────────────────────
     if (action === "DISCOVER") {
-      const update = parseDiscoveryUpdate(response.text);
+      const { update, problem } = readDiscoveryUpdate(response.text);
       if (update !== null) {
         convo.discovery = applyDiscoveryUpdate(convo.discovery ?? openDiscovery(), update);
         yield push({
@@ -645,7 +651,7 @@ export async function* runTurn(
         note(
           diagnostic(
             "FORGE-W003",
-            "The discovery update in the response was missing or did not match its schema, so the brief was left unchanged.",
+            `The discovery update was unusable (${problem}), so the brief was left unchanged.`,
             [measureEvidence("unreadable_discovery_updates", 1, "responses")],
           ),
         );

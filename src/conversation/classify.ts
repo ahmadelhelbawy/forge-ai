@@ -31,12 +31,13 @@ import type { ModelBoundary } from "../model/boundaries.js";
 export const CONVERSATION_CLASSIFY_ID = "conversation.classify";
 export const CONVERSATION_CLASSIFY_VERSION = "2";
 /**
- * Raised from 200 in Product Sprint 1. A reasoning model can spend a 200-token
- * cap before it emits any answer, which surfaced in the running app as
- * "classifier returned no JSON". The answer itself is ~30 tokens; the headroom
- * is for the model, not for the output.
+ * Raised from 200 in Product Sprint 1. A reasoning model spends its cap
+ * thinking before it answers: measured live on qwen3.8-flash, a 223-character
+ * message returned EMPTY text at 1024 tokens (17 s) and a valid answer at 4000
+ * (47 s). The answer itself is ~30 tokens; the headroom is for the model's
+ * reasoning, not for the output. That was the "classifier returned no JSON".
  */
-export const CONVERSATION_CLASSIFY_MAX_TOKENS = 1024;
+export const CONVERSATION_CLASSIFY_MAX_TOKENS = 4096;
 
 /** What the conversation can currently express. Facts, never model output. */
 export const ConversationStateSchema = z.strictObject({

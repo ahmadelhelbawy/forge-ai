@@ -17,7 +17,8 @@ import {
   absentDiscoveredRequirements,
   parseDiscoveryUpdate,
 } from "../../src/conversation/discovery.js";
-import { loadConversation, newConversation, saveConversation, type Conversation } from "../../web/lib/store";
+import { addPromptVersion, loadConversation, newConversation, saveConversation, type Conversation } from "../../web/lib/store";
+import { buildSystemPrompt } from "../../web/lib/chat";
 import { executeTurn, type GenerationContext, type TurnDeps } from "../../web/lib/turn/pipeline";
 
 beforeEach(() => {
@@ -136,23 +137,43 @@ describe("WS-R30 — a vague idea enters discovery and writes nothing (AC-058)",
 });
 
 describe("adaptive discovery", () => {
-  it("feeds the previous brief and questions into the next turn, and the brief becomes more specific", async () => {
+  it("feeds the answer into the next turn and the brief becomes more specific — with no classification call", async () => {
     const convo = await vagueConversation();
     const s = scripted({ classify: [create], generate: [SECOND] });
     const result = await executeTurn(convo, "Make money — I run bookkeeping for small accounting firms.", s.deps);
-    // A CREATE while discovery is open is gated to DISCOVER (WS-R31).
+    // WS-R31: discovery open and no prompt, so DISCOVER is the only possible
+    // answer and no classifier call is spent to reach it.
     expect(result.action).toBe("DISCOVER");
-    expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W011");
+    expect(s.calls()).toBe(1);
     expect(convo.promptVersions).toHaveLength(0);
     expect(convo.discovery!.brief.goal).toBe("Automate client onboarding for small accounting firms");
     expect(convo.discovery!.turns).toBe(2);
     expect(convo.discovery!.research_needed).toContain("pricing");
   });
+});
 
-  it("treats a plain answer as more discovery while it is open", async () => {
-    const convo = await vagueConversation();
-    const s = scripted({ classify: ['{"action":"DISCUSS","versions":[]}'], generate: [SECOND] });
-    const result = await executeTurn(convo, "bookkeeping", s.deps);
+describe("WS-R31 — a classified write is gated while discovery is open (AC-059)", () => {
+  async function reopened(): Promise<Conversation> {
+    const convo = newConversation({ title: "g" });
+    addPromptVersion(convo, "# An existing prompt", "manual");
+    await executeTurn(convo, "Actually, I'm not sure this is the right agent at all", scripted({ classify: [discover], generate: [FIRST] }).deps);
+    expect(convo.discovery?.status).toBe("open");
+    return convo;
+  }
+
+  it("turns a classified REVISE into DISCOVER, emits FORGE-W011, and writes nothing", async () => {
+    const convo = await reopened();
+    const s = scripted({ classify: ['{"action":"REVISE","versions":[]}'], generate: [discoveryAnswer(JSON.parse(SECOND).discovery, "# A rewritten prompt")] });
+    const result = await executeTurn(convo, "Just rewrite it for bookkeeping", s.deps);
+    expect(result.action).toBe("DISCOVER");
+    expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W011");
+    expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W004");
+    expect(convo.promptVersions).toHaveLength(1);
+  });
+
+  it("treats a plain discussion as more discovery, without W011", async () => {
+    const convo = await reopened();
+    const result = await executeTurn(convo, "bookkeeping", scripted({ classify: ['{"action":"DISCUSS","versions":[]}'], generate: [SECOND] }).deps);
     expect(result.action).toBe("DISCOVER");
     expect(result.diagnostics.map((d) => d.code)).not.toContain("FORGE-W011");
   });
@@ -246,6 +267,13 @@ describe("WS-R34 — classifier degradation is bounded and visible (AC-061)", ()
 });
 
 describe("the deterministic helpers", () => {
+  it("accepts eight options on a question and rejects nine", () => {
+    const update = (n: number) =>
+      JSON.stringify({ reply: "x", prompt: null, discovery: { brief: {}, questions: [{ question: "Which?", options: Array.from({ length: n }, (_, i) => `o${i}`) }] } });
+    expect(parseDiscoveryUpdate(update(8))).not.toBeNull();
+    expect(parseDiscoveryUpdate(update(9))).toBeNull();
+  });
+
   it("rejects a discovery update with more than three questions", () => {
     const questions = [1, 2, 3, 4].map((n) => ({ question: `Question ${n}?`, options: [] }));
     expect(parseDiscoveryUpdate(JSON.stringify({ reply: "x", prompt: null, discovery: { brief: {}, questions } }))).toBeNull();
@@ -255,5 +283,37 @@ describe("the deterministic helpers", () => {
     const brief = { goal: "Automate onboarding", constraints: ["No new dependencies"] };
     expect(absentDiscoveredRequirements(brief, "- automate ONBOARDING.\n- no new dependencies!")).toEqual([]);
     expect(absentDiscoveredRequirements(brief, "automate onboarding")).toEqual([{ field: "constraint", text: "No new dependencies" }]);
+  });
+});
+
+describe("the real generation prompt carries discovery forward", () => {
+  const base = { target: null, targetId: "generic", currentPrompt: null, currentVersion: 0, attachments: [], isFirstTurn: false };
+
+  it("gives a DISCOVER turn the current brief and the questions it is answering, and forbids a prompt", async () => {
+    const convo = await vagueConversation();
+    await executeTurn(convo, "bookkeeping", scripted({ generate: [SECOND] }).deps);
+    const system = buildSystemPrompt({ ...base, action: "DISCOVER", discovery: convo.discovery });
+    expect(system).toContain("DISCOVERY MODE");
+    expect(system).toContain('Always set "prompt" to null');
+    expect(system).toContain("Goal: Automate client onboarding for small accounting firms");
+    expect(system).toContain("- Which accounting software do your clients use?");
+    expect(system).toContain("research_needed");
+  });
+
+  it("gives an approved generate the brief to carry and the unresolved questions to state", async () => {
+    const convo = await vagueConversation();
+    await executeTurn(convo, "bookkeeping", scripted({ generate: [SECOND] }).deps);
+    const system = buildSystemPrompt({
+      ...base,
+      action: "CREATE",
+      discovery: convo.discovery,
+      generation: { explicitGenerate: true, unresolved: ["Which accounting software do the firms use?"] },
+    });
+    expect(system).toContain("THE USER PRESSED GENERATE");
+    expect(system).toContain("  - Must run on a budget under 200 dollars a month");
+    expect(system).toContain("UNRESOLVED");
+    expect(system).toContain("- Which accounting software do the firms use?");
+    // A classified CREATE with no approval gets none of it.
+    expect(buildSystemPrompt({ ...base, action: "CREATE", discovery: convo.discovery })).not.toContain("THE USER PRESSED GENERATE");
   });
 });

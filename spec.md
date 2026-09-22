@@ -1181,7 +1181,8 @@ and no version are written.
 **WS-R13.** The per-turn model-call budget is declared and bounded. A simple
 revision costs one generation call plus at most one classification call and
 one bounded repair of that classification (`WS-R34`); an explicit generate
-request (`WS-R31`) spends no classification call at all.
+request, and a discovery turn before any prompt exists (`WS-R31`), spend no
+classification call at all.
 Multi-call work (candidate generation, requirement checking) is opt-in or
 background and never on the critical path of an ordinary revision.
 
@@ -1504,7 +1505,7 @@ the classifier judges a message's intent incomplete, ambiguous, exploratory or
 strategic, the action is `DISCOVER`. The generation response may carry, beside
 `reply`, a `discovery` object: a **brief** (vision, goal, target user, problem,
 background, capabilities, constraints, success criteria, open questions — each
-optional), **at most three** questions for the next step, each with at most six
+optional), **at most three** questions for the next step, each with at most eight
 suggested options (free text is always allowed), a `ready` flag, and a
 `research_needed` note. FORGE validates it against a published schema and
 persists the result as the conversation's **discovery state**. An unreadable or
@@ -1519,7 +1520,11 @@ is written only by an **explicit generate request** — a user action that names
 action directly and spends no classification call. The request resolves to
 `CREATE` (or `REVISE` when a current prompt exists), and on success discovery
 becomes **generated**. The model's `ready` flag highlights the control; it never
-triggers it. A classified `DISCOVER` when discovery is not open opens it.
+triggers it. A classified `DISCOVER` when discovery is not open opens it. While
+discovery is open **and no prompt exists**, every action the state can express
+resolves to `DISCOVER`, so no classification call is made at all: the answer is
+known, and a reasoning model was measured spending 17–47 s and sometimes its whole
+output budget to reach it.
 
 **WS-R32 — Generating with unresolved questions is allowed and loud.** The
 unresolved set is computed deterministically: the brief's open questions plus the

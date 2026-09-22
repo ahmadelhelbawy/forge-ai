@@ -35,8 +35,12 @@ export type DiscoveryBrief = z.infer<typeof DiscoveryBriefSchema>;
 
 export const DiscoveryQuestionSchema = z.strictObject({
   question: z.string().trim().min(3).max(400),
-  /** Suggested answers. Free text is always allowed, so options are never required. */
-  options: z.array(z.string().trim().min(1).max(120)).max(6).default([]),
+  /**
+   * Suggested answers. Free text is always allowed, so options are never
+   * required. Eight, not six: a live model listed eight for one question, and
+   * discarding a whole update over one extra chip helps nobody.
+   */
+  options: z.array(z.string().trim().min(1).max(120)).max(8).default([]),
 });
 export type DiscoveryQuestion = z.infer<typeof DiscoveryQuestionSchema>;
 
@@ -58,13 +62,26 @@ export type DiscoveryUpdate = z.infer<typeof DiscoveryUpdateSchema>;
  * so (FORGE-W003). Never a partial guess.
  */
 export function parseDiscoveryUpdate(text: string): DiscoveryUpdate | null {
+  return readDiscoveryUpdate(text).update;
+}
+
+/**
+ * The same read, with the reason it failed — a diagnostic that only says
+ * "did not match" cannot be acted on (INV-007).
+ */
+export function readDiscoveryUpdate(text: string): { update: DiscoveryUpdate | null; problem: string | null } {
   for (const candidate of jsonObjects(text)) {
     const discovery = (candidate as { discovery?: unknown }).discovery;
     if (discovery === undefined) continue;
     const parsed = DiscoveryUpdateSchema.safeParse(discovery);
-    return parsed.success ? parsed.data : null;
+    if (parsed.success) return { update: parsed.data, problem: null };
+    const issue = parsed.error.issues[0];
+    return {
+      update: null,
+      problem: issue ? `${issue.path.join(".") || "discovery"}: ${issue.message}` : "invalid",
+    };
   }
-  return null;
+  return { update: null, problem: "the response carried no discovery object" };
 }
 
 /**
