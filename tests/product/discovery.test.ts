@@ -317,3 +317,22 @@ describe("the real generation prompt carries discovery forward", () => {
     expect(buildSystemPrompt({ ...base, action: "CREATE", discovery: convo.discovery })).not.toContain("THE USER PRESSED GENERATE");
   });
 });
+
+describe("a failed generate is loud, not blank", () => {
+  it("names an exhausted output budget, keeps the user's message, writes nothing, and leaves discovery open", async () => {
+    const convo = await vagueConversation();
+    const deps: TurnDeps = {
+      providerId: "test",
+      renderGeneration: (action, message) => ({ system: `SYSTEM ${action}`, user: message }),
+      async complete() {
+        return { text: "", model: "reasoner", latencyMs: 1, finishReason: "length" };
+      },
+    };
+    const result = await executeTurn(convo, "Generate the prompt from what we have discussed.", deps, { generate: true });
+    expect(result.failed).toBe(true);
+    expect(String((result.error as Error).message)).toContain("whole output budget");
+    expect(convo.promptVersions).toHaveLength(0);
+    expect(convo.messages.at(-1)).toMatchObject({ role: "user" });
+    expect(convo.discovery!.status).toBe("open");
+  });
+});

@@ -84,7 +84,12 @@ export const TURN_CALL_BUDGET = 3;
  */
 export const CLASSIFY_MESSAGE_LIMIT = 20_000;
 
-export const CHAT_MAX_TOKENS = 4000;
+/**
+ * Raised from 4000 in Product Sprint 1: a reasoning model (qwen3.8-flash) spent
+ * all 4000 thinking and returned an empty prompt on a real generate request.
+ * The cap bounds cost; it must leave room for the thinking and the answer.
+ */
+export const CHAT_MAX_TOKENS = 16000;
 export const CHAT_TEMPERATURE = 0.7;
 
 export interface CompletionRequest {
@@ -98,6 +103,8 @@ export interface CompletionResult {
   readonly text: string;
   readonly model: string;
   readonly latencyMs: number;
+  /** Why the model stopped, when the transport reports it (`length`, `stop`, …). */
+  readonly finishReason?: string;
 }
 
 /** What the generation prompt needs to know beyond the action (§22.11). */
@@ -597,8 +604,13 @@ export async function* runTurn(
     // different case and still degrades to chat below (FORGE-W003).
     if (response.text.trim().length === 0) {
       throw new Error(
-        `The model (${response.model}) returned an empty response, so nothing was written. ` +
-          "Check the model ID and the provider account, then retry.",
+        response.finishReason === "length"
+          ? `The model (${response.model}) used its whole output budget (${CHAT_MAX_TOKENS} tokens) without ` +
+              "writing an answer — reasoning models can spend it all thinking. Nothing was written; retry, " +
+              "or choose a model with a larger output limit."
+          : `The model (${response.model}) returned an empty response${
+              response.finishReason ? ` (finish reason: ${response.finishReason})` : ""
+            }, so nothing was written. Check the model ID and the provider account, then retry.`,
       );
     }
 

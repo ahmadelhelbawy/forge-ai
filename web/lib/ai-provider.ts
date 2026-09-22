@@ -45,6 +45,11 @@ export interface GenerateResult {
   readonly text: string;
   readonly modelId: string;
   readonly latencyMs: number;
+  /**
+   * Why the model stopped, as the SDK reports it. `length` with empty text is
+   * the reasoning-model case: the whole output budget went to thinking.
+   */
+  readonly finishReason?: string;
 }
 
 export interface StreamInput extends GenerateInput {
@@ -105,7 +110,7 @@ export async function generate(spec: TransportSpec, input: GenerateInput): Promi
     maxOutputTokens: input.maxTokens,
     temperature: input.temperature,
   });
-  return { text: result.text, modelId: spec.modelId, latencyMs: Date.now() - started };
+  return { text: result.text, modelId: spec.modelId, latencyMs: Date.now() - started, finishReason: result.finishReason };
 }
 
 /**
@@ -132,7 +137,13 @@ export async function generateStream(spec: TransportSpec, input: StreamInput): P
     ...(input.signal ? { abortSignal: input.signal } : {}),
   });
   const text = await collectTextStream(result.fullStream, input.onChunk);
-  return { text, modelId: spec.modelId, latencyMs: Date.now() - started };
+  const finishReason = await Promise.resolve(result.finishReason).catch(() => undefined);
+  return {
+    text,
+    modelId: spec.modelId,
+    latencyMs: Date.now() - started,
+    ...(finishReason !== undefined ? { finishReason } : {}),
+  };
 }
 
 /**

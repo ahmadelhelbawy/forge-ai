@@ -38,7 +38,7 @@ export interface ParsedTurn {
   readonly prompt: string | null;
 }
 
-export const CHAT_MAX_TOKENS = 4000;
+export const CHAT_MAX_TOKENS = 16000;
 export const CHAT_TEMPERATURE = 0.7;
 
 export function buildSystemPrompt(ctx: TurnContext): string {

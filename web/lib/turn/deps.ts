@@ -69,7 +69,12 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
         maxTokens: request.maxTokens,
         temperature: request.temperature,
       });
-      return { text: response.text, model: response.modelId, latencyMs: response.latencyMs };
+      return {
+        text: response.text,
+        model: response.modelId,
+        latencyMs: response.latencyMs,
+        ...(response.finishReason !== undefined ? { finishReason: response.finishReason } : {}),
+      };
     },
     async *streamComplete(request, signal) {
       const chunks: string[] = [];
@@ -120,6 +125,7 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
         text: response.text,
         model: response.modelId,
         latencyMs: response.latencyMs,
+        ...(response.finishReason !== undefined ? { finishReason: response.finishReason } : {}),
       };
       return result;
     },
