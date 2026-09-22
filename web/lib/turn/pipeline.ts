@@ -30,6 +30,7 @@ import {
   conversationClassifyBoundary,
   parseClassifyOutput,
   renderClassifyPrompt,
+  renderClassifyRepairPrompt,
   type ClassifyOutput,
   type ConversationStateSummary,
 } from "forge/dist/conversation/classify.js";
@@ -40,6 +41,14 @@ import {
   createEnvelopeStreamReader,
   parseEnvelope,
 } from "forge/dist/conversation/generate.js";
+import {
+  absentDiscoveredRequirements,
+  applyDiscoveryUpdate,
+  openDiscovery,
+  parseDiscoveryUpdate,
+  unresolvedQuestions,
+  type DiscoveryState,
+} from "forge/dist/conversation/discovery.js";
 import type { LedgerCheckResult } from "forge/dist/critic/deterministic/ledger.js";
 import { diagnostic, measureEvidence, type Diagnostic } from "forge/dist/ir/diagnostic.js";
 import { sha256Hex, type ModelCallRecord } from "forge/dist/model/provider.js";
@@ -58,8 +67,11 @@ import {
 } from "../store";
 import type { TurnDelta, TurnEvent, TurnEventBody, TurnStreamItem } from "./events";
 
-/** WS-R13: one classification plus one generation. Declared, not implied. */
-export const TURN_CALL_BUDGET = 2;
+/**
+ * WS-R13: one classification, at most one repair of it (WS-R34), and one
+ * generation. Declared, not implied. An explicit generate request spends one.
+ */
+export const TURN_CALL_BUDGET = 3;
 
 /**
  * What the classifier sees of a long message.
@@ -88,11 +100,23 @@ export interface CompletionResult {
   readonly latencyMs: number;
 }
 
+/** What the generation prompt needs to know beyond the action (§22.11). */
+export interface GenerationContext {
+  /** WS-R31: the user pressed generate; this is the approved transition. */
+  readonly explicitGenerate: boolean;
+  /** WS-R32: questions still open when generate was pressed. */
+  readonly unresolved: readonly string[];
+}
+
 export interface TurnDeps {
   /** Recorded on every call record (WS-R14). */
   readonly providerId: string;
   /** The workspace's system + user prompt for the resolved action. */
-  renderGeneration(action: ConversationAction, message: string): { system: string; user: string };
+  renderGeneration(
+    action: ConversationAction,
+    message: string,
+    context?: GenerationContext,
+  ): { system: string; user: string };
   complete(request: CompletionRequest): Promise<CompletionResult>;
   /**
    * The same call, streamed (WS-R10).
@@ -125,6 +149,12 @@ export interface TurnOptions {
    * the first attempt did.
    */
   readonly regenerate?: boolean;
+  /**
+   * WS-R31: the explicit generate control. The action is named by the user,
+   * not classified — CREATE, or REVISE when a prompt exists — and it is the only
+   * way a version is written while discovery is open.
+   */
+  readonly generate?: boolean;
 }
 
 export interface TurnResult {
@@ -153,6 +183,8 @@ export interface TurnResult {
    * render a deterministic verdict and a judged one as one list (WS-R28).
    */
   readonly preservation: LedgerCheckResult | null;
+  /** The conversation's discovery state after the turn (§22.11). */
+  readonly discovery: DiscoveryState | null;
   readonly diagnostics: readonly Diagnostic[];
   readonly events: readonly TurnEvent[];
 }
@@ -220,6 +252,7 @@ export function conversationState(convo: Conversation): ConversationStateSummary
     versions: convo.promptVersions.map((p) => p.v).sort((a, b) => a - b),
     candidateCount: convo.candidates.length,
     hasPendingClarification: convo.pendingClarification !== null,
+    discoveryOpen: convo.discovery?.status === "open",
   };
 }
 
@@ -299,6 +332,7 @@ export async function* runTurn(
     streamed: false,
     regenerated,
     preservation: null,
+    discovery: convo.discovery,
     diagnostics,
     events: emitted,
     ...over,
@@ -326,57 +360,121 @@ export async function* runTurn(
     let cited: readonly number[] = [];
     let degraded = false;
     let unsupported: readonly string[] = [];
-    let classifyResponse: CompletionResult | null = null;
-    try {
-      const classifyInput = ClassifyInputSchema.parse({
-        message: message.slice(0, CLASSIFY_MESSAGE_LIMIT),
-        state,
-      });
-      const classifyPrompt = renderClassifyPrompt(classifyInput);
-      const response = await deps.complete({
-        system: "You are FORGE's conversation-action classifier.",
-        user: classifyPrompt,
-        maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
-        temperature: 0,
-      });
-      classifyResponse = response;
-      recordModelCall(
-        convo,
-        callRecord(CONVERSATION_CLASSIFY_ID, CONVERSATION_CLASSIFY_VERSION, deps.providerId, response, classifyPrompt),
-      );
-      checkCancelled();
-      checkLedgerIntact();
-      const output: ClassifyOutput = parseClassifyOutput(response.text);
-      action = output.action;
-      cited = output.versions;
-      // The boundary's own post-validators, run where the answer arrives.
-      unsupported = conversationClassifyBoundary.postValidators.flatMap((validate) =>
-        validate(classifyInput, output),
-      );
-    } catch (error) {
-      if (error instanceof TurnCancelled) throw error;
-      // WS-R4: the least destructive action, never "let the model decide".
-      degraded = true;
-      action = DEFAULT_ACTION;
-      cited = [];
-      unsupported = [];
-      note(
-        diagnostic(
-          "FORGE-W001",
-          `Action classification failed (${error instanceof Error ? error.message : String(error)}); the turn was treated as DISCUSS and no prompt version was written.`,
-          [measureEvidence("classification_failures", 1, "calls")],
-        ),
-      );
+    const explicitGenerate = options.generate === true;
+    let unresolved: string[] = [];
+
+    if (explicitGenerate) {
+      // WS-R31: the user named the transition. No model decides it, so no
+      // classification call is spent and none can overrule it.
+      action = state.hasCurrentPrompt ? "REVISE" : "CREATE";
+      unresolved = convo.discovery?.status === "open" ? unresolvedQuestions(convo.discovery) : [];
+      yield push({ kind: "action_resolved", action, degraded: false, explicit: true });
+      if (unresolved.length > 0) {
+        note(
+          diagnostic(
+            "FORGE-W010",
+            `Generating with ${unresolved.length} unresolved question(s); each is stated as an assumption in the prompt: ` +
+              unresolved.map((q) => `"${q}"`).join("; "),
+            [measureEvidence("unresolved_questions", unresolved.length, "questions")],
+          ),
+        );
+      }
+    } else {
+      const classifyCalls: CompletionResult[] = [];
+      try {
+        const classifyInput = ClassifyInputSchema.parse({
+          message: message.slice(0, CLASSIFY_MESSAGE_LIMIT),
+          state,
+        });
+        const ask = async (prompt: string): Promise<CompletionResult> => {
+          const response = await deps.complete({
+            system: "You are FORGE's conversation-action classifier.",
+            user: prompt,
+            maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
+            temperature: 0,
+          });
+          classifyCalls.push(response);
+          recordModelCall(
+            convo,
+            callRecord(CONVERSATION_CLASSIFY_ID, CONVERSATION_CLASSIFY_VERSION, deps.providerId, response, prompt),
+          );
+          checkCancelled();
+          checkLedgerIntact();
+          return response;
+        };
+        const first = await ask(renderClassifyPrompt(classifyInput));
+        let output: ClassifyOutput;
+        try {
+          output = parseClassifyOutput(first.text);
+        } catch (firstError) {
+          if (!(firstError instanceof Error) || firstError.name !== "ClassificationError") throw firstError;
+          // WS-R34: exactly one repair, stating the error and the shape.
+          const repaired = await ask(renderClassifyRepairPrompt(classifyInput, firstError.message));
+          try {
+            output = parseClassifyOutput(repaired.text);
+          } catch (secondError) {
+            throw new Error(
+              `${firstError.message} After one repair: ${secondError instanceof Error ? secondError.message : String(secondError)}`,
+            );
+          }
+        }
+        action = output.action;
+        cited = output.versions;
+        // The boundary's own post-validators, run where the answer arrives.
+        unsupported = conversationClassifyBoundary.postValidators.flatMap((validate) =>
+          validate(classifyInput, output),
+        );
+      } catch (error) {
+        if (error instanceof TurnCancelled) throw error;
+        if (error instanceof LedgerTamperedError || error instanceof GovernanceTamperedError) throw error;
+        // WS-R4: the least destructive action, never "let the model decide".
+        degraded = true;
+        action = DEFAULT_ACTION;
+        cited = [];
+        unsupported = [];
+        note(
+          diagnostic(
+            "FORGE-W001",
+            `Action classification failed (${error instanceof Error ? error.message : String(error)}); the turn was treated as DISCUSS and no prompt version was written.`,
+            [measureEvidence("classification_failures", 1, "calls")],
+          ),
+        );
+      }
+      for (const response of classifyCalls) {
+        yield push({
+          kind: "model_call",
+          boundaryId: CONVERSATION_CLASSIFY_ID,
+          model: response.model,
+          latencyMs: response.latencyMs,
+        });
+      }
+
+      // ── The discovery gate (WS-R31) ──────────────────────────────────────
+      //
+      // While discovery is open, nothing a classifier says writes a version.
+      // A write it proposed is refused loudly; a plain discussion or answer is
+      // simply more discovery.
+      let gatedFrom: ConversationAction | undefined;
+      if (state.discoveryOpen && ["CREATE", "REVISE", "DISCUSS", "CLARIFY"].includes(action)) {
+        if (writesVersion(action)) {
+          gatedFrom = action;
+          note(
+            diagnostic(
+              "FORGE-W011",
+              `The message was classified ${action}, but discovery is still open, so it was treated as DISCOVER and no prompt was written. Press Generate when you want the prompt.`,
+              [measureEvidence("gated_writes", 1, "writes")],
+            ),
+          );
+        }
+        action = "DISCOVER";
+        unsupported = [];
+      }
+      if (action === "DISCOVER" && convo.discovery?.status !== "open") {
+        // Opening (or reopening) discovery keeps whatever was already learnt.
+        convo.discovery = convo.discovery ? { ...convo.discovery, status: "open" } : openDiscovery();
+      }
+      yield push({ kind: "action_resolved", action, degraded, ...(gatedFrom ? { gatedFrom } : {}) });
     }
-    if (classifyResponse) {
-      yield push({
-        kind: "model_call",
-        boundaryId: CONVERSATION_CLASSIFY_ID,
-        model: classifyResponse.model,
-        latencyMs: classifyResponse.latencyMs,
-      });
-    }
-    yield push({ kind: "action_resolved", action, degraded });
 
     // ── Refuse what the state cannot express (WS-R5) ──────────────────────
     if (unsupported.length > 0) {
@@ -425,7 +523,7 @@ export async function* runTurn(
       stage: "generating",
       label: writesVersion(action) ? STAGE_LABELS.generating : DISCUSSION_GENERATING_LABEL,
     });
-    const rendered = deps.renderGeneration(action, message);
+    const rendered = deps.renderGeneration(action, message, { explicitGenerate, unresolved });
     const request: CompletionRequest = {
       system: rendered.system,
       user: rendered.user,
@@ -532,6 +630,28 @@ export async function* runTurn(
       }
     }
 
+    // ── Discovery state (WS-R30) ──────────────────────────────────────────
+    if (action === "DISCOVER") {
+      const update = parseDiscoveryUpdate(response.text);
+      if (update !== null) {
+        convo.discovery = applyDiscoveryUpdate(convo.discovery ?? openDiscovery(), update);
+        yield push({
+          kind: "discovery_updated",
+          status: "open",
+          questions: update.questions.length,
+          ready: update.ready,
+        });
+      } else {
+        note(
+          diagnostic(
+            "FORGE-W003",
+            "The discovery update in the response was missing or did not match its schema, so the brief was left unchanged.",
+            [measureEvidence("unreadable_discovery_updates", 1, "responses")],
+          ),
+        );
+      }
+    }
+
     // ── Apply (WS-R2) ─────────────────────────────────────────────────────
     yield push({ kind: "stage", stage: "saving", label: STAGE_LABELS.saving });
     let version: PromptVersion | null = null;
@@ -539,6 +659,23 @@ export async function* runTurn(
     if (proposed !== null && proposed !== before && writesVersion(action)) {
       version = addPromptVersion(convo, proposed, "model", { action, turnId });
       yield push({ kind: "version_created", v: version.v, action });
+    }
+
+    // ── Discovery coverage and close (WS-R31, WS-R33) ─────────────────────
+    if (version !== null && explicitGenerate && convo.discovery !== null) {
+      for (const item of absentDiscoveredRequirements(convo.discovery.brief, version.text)) {
+        note(
+          diagnostic(
+            "FORGE-W009",
+            `The discovered ${item.field} "${item.text}" does not appear in version ${version.v} by the presence rule of §22.8. It may have been paraphrased or dropped; check it.`,
+            [measureEvidence("absent_discovered_requirements", 1, "items")],
+          ),
+        );
+      }
+      if (convo.discovery.status === "open") {
+        convo.discovery = { ...convo.discovery, status: "generated", questions: [], ready: false };
+        yield push({ kind: "discovery_updated", status: "generated", questions: 0, ready: false });
+      }
     }
 
     // ── Layer 1: the requirement ledger (WS-R25, WS-R29) ──────────────────
@@ -564,7 +701,7 @@ export async function* runTurn(
     convo.messages.push({ role: "assistant", content: reply, at: new Date().toISOString() });
     yield push({ kind: "message_appended", role: "assistant" });
     yield push({ kind: "turn_completed", action, versionCreated: version !== null });
-    return result({ action, reply, version, degraded, streamed, preservation });
+    return result({ action, reply, version, degraded, streamed, preservation, discovery: convo.discovery });
   } catch (error) {
     // WS-R12: a cancelled turn and a failed turn end in the same place. The
     // user's message stays; no assistant message and no version are written.

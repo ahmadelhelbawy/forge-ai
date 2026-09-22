@@ -48,6 +48,8 @@ function outcome(convo: Conversation, result: TurnResult): Record<string, unknow
     refused: result.refused,
     streamed: result.streamed,
     regenerated: result.regenerated,
+    // §22.11: the brief, the outstanding questions and whether the gate is open.
+    discovery: result.discovery,
     cancelled: result.cancelled,
     // The deterministic preservation verdict, kept in its own field for the
     // same reason it is kept in its own field on the non-streaming route: a
@@ -118,6 +120,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
         const iterator = runTurn(convo, prepared.content, deps, {
           signal: request.signal,
           regenerate: prepared.regenerate,
+          generate: prepared.generate,
         });
         let next = await iterator.next();
         while (!next.done) {

@@ -6,11 +6,12 @@
  * a closed set is how a set stops being closed.
  *
  * WS-R2 is expressed here as data: four actions may write a prompt version and
- * six may not. `writesVersion` is the single place that distinction is made.
+ * seven may not. `writesVersion` is the single place that distinction is made.
  */
 
 export const CONVERSATION_ACTIONS = [
   "DISCUSS",
+  "DISCOVER",
   "CREATE",
   "REVISE",
   "CRITIQUE",
@@ -29,7 +30,7 @@ export const VERSION_WRITING_ACTIONS = ["CREATE", "REVISE", "MERGE", "RESTORE"] 
 
 export type VersionWritingAction = (typeof VERSION_WRITING_ACTIONS)[number];
 
-/** WS-R2: the read-only six. A message that only asks a question lands here. */
+/** WS-R2: the read-only seven. A message that only asks a question lands here. */
 export const READ_ONLY_ACTIONS = CONVERSATION_ACTIONS.filter(
   (action): action is Exclude<ConversationAction, VersionWritingAction> =>
     !(VERSION_WRITING_ACTIONS as readonly string[]).includes(action),

@@ -18,6 +18,8 @@
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
 import type { ModelCallRecord } from "forge/dist/model/provider.js";
 
+import type { DiscoveryState } from "forge/dist/conversation/discovery.js";
+
 import type { GovernanceDecisionRecord, GovernanceDecisionShape } from "../store-types";
 import type { TurnEvent } from "../turn/events";
 
@@ -127,6 +129,13 @@ export type ConversationEventBody =
       readonly boundaryVersion: string;
       readonly extractedAt: string;
     }
+  | {
+      readonly kind: "discovery_updated";
+      readonly id: string;
+      /** The whole state: small, and a snapshot keeps every prior brief in the log. */
+      readonly state: DiscoveryState;
+      readonly updatedAt: string;
+    }
   | { readonly kind: "repository_bound"; readonly id: string; readonly root: string; readonly boundAt: string }
   | { readonly kind: "repository_unbound"; readonly id: string }
   | {
@@ -169,6 +178,7 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   "requirement_pinned",
   "requirement_unpinned",
   "version_ir_extracted",
+  "discovery_updated",
   "repository_bound",
   "repository_unbound",
   "requirement_decided",

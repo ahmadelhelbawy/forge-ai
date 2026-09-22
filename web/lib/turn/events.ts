@@ -50,6 +50,10 @@ export type TurnEventBody =
       readonly action: ConversationAction;
       /** True when classification failed or was skipped and WS-R4 applied. */
       readonly degraded: boolean;
+      /** WS-R31: the user named the action with the generate control; no classification ran. */
+      readonly explicit?: boolean;
+      /** WS-R31: what the classifier said before the discovery gate changed it. */
+      readonly gatedFrom?: ConversationAction;
     }
   | { readonly kind: "diagnostic"; readonly diagnostic: Diagnostic }
   | { readonly kind: "action_refused"; readonly action: ConversationAction; readonly reason: string }
@@ -72,6 +76,13 @@ export type TurnEventBody =
       readonly v: number;
       readonly pinned: number;
       readonly missing: number;
+    }
+  | {
+      /** WS-R30: the discovery state changed. Counts only; the state itself is on the conversation. */
+      readonly kind: "discovery_updated";
+      readonly status: "open" | "generated";
+      readonly questions: number;
+      readonly ready: boolean;
     }
   | { readonly kind: "clarification_pending"; readonly question: string }
   | { readonly kind: "clarification_resolved"; readonly question: string }

@@ -24,11 +24,14 @@ export interface TurnRequestBody {
   provider?: unknown;
   model?: unknown;
   regenerate?: unknown;
+  /** WS-R31: the explicit generate control. */
+  generate?: unknown;
 }
 
 export interface PreparedTurn {
   readonly content: string;
   readonly regenerate: boolean;
+  readonly generate: boolean;
   readonly before: string | null;
 }
 
@@ -42,7 +45,14 @@ export interface PreparedTurn {
  */
 export function prepareTurn(convo: Conversation, body: TurnRequestBody): PreparedTurn | NextResponse {
   const regenerate = body.regenerate === true;
+  const generate = body.generate === true;
+  if (regenerate && generate) {
+    return NextResponse.json({ error: "A turn is either a retry or a generate request, not both." }, { status: 400 });
+  }
   let content = typeof body.content === "string" ? body.content.trim() : "";
+  // WS-R31: pressing Generate is itself the message. Its wording is FORGE's,
+  // shown in the transcript so the transition is visible where it happened.
+  if (generate && !content) content = "Generate the prompt from what we have discussed.";
 
   if (regenerate) {
     const lastUser = [...convo.messages].reverse().find((m) => m.role === "user");
@@ -63,7 +73,7 @@ export function prepareTurn(convo: Conversation, body: TurnRequestBody): Prepare
   if (convo.messages.length === 0 && convo.title === "New conversation") {
     convo.title = content.slice(0, 80);
   }
-  return { content, regenerate, before: currentPrompt(convo) };
+  return { content, regenerate, generate, before: currentPrompt(convo) };
 }
 
 export function depsFor(convo: Conversation, before: string | null): TurnDeps {

@@ -90,6 +90,11 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   // FORGE loss in the P1.6 gate was over-blocking. Promote once the
   // false-positive rate has been measured rather than assumed.
   "FORGE-W008": { code: "FORGE-W008", name: "stated_requirement_demoted", severity: "warning", source: "deterministic" },
+  // Discovery (spec.md §22.11, Product Sprint 1). All deterministic: the gate,
+  // the unresolved set and the coverage check are facts about FORGE's state.
+  "FORGE-W009": { code: "FORGE-W009", name: "discovered_requirement_absent", severity: "warning", source: "deterministic" },
+  "FORGE-W010": { code: "FORGE-W010", name: "generated_with_open_questions", severity: "warning", source: "deterministic" },
+  "FORGE-W011": { code: "FORGE-W011", name: "generation_requires_approval", severity: "info", source: "deterministic" },
   // Evidence-based verification (spec.md §11.1, V2-G). All deterministic: the
   // verification layer has no judgement in it and no model boundary (EV-R1).
   // V001 is `info` because a package with no evidence yet is a legitimate,

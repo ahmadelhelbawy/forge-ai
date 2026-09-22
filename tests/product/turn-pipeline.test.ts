@@ -350,12 +350,14 @@ describe("the turn event log (WS-R10, WS-R11)", () => {
 describe("model call accounting and budget (WS-R13, WS-R14, AC-031)", () => {
   beforeEach(isolatedDataDir);
 
-  it("spends at most one classification plus one generation", async () => {
+  // The declared budget is 3 since WS-R34 allows one classification repair;
+  // an ordinary revision with a well-formed classification still spends 2.
+  it("spends exactly one classification plus one generation on an ordinary revision", async () => {
     const convo = conversationWithPrompt();
     const recorder = deps({ classification: classification("REVISE"), generation: envelope("new") });
     await executeTurn(convo, "revise it", recorder.deps);
-    expect(recorder.calls()).toBeLessThanOrEqual(TURN_CALL_BUDGET);
-    expect(TURN_CALL_BUDGET).toBe(2);
+    expect(recorder.calls()).toBe(2);
+    expect(TURN_CALL_BUDGET).toBe(3);
   });
 
   it("records one ModelCallRecord per call, naming the boundary it served", async () => {
@@ -425,10 +427,12 @@ describe("a cancelled turn loses exactly what a failed turn loses (WS-R12, AC-03
 });
 
 describe("the action set is closed (WS-R1)", () => {
-  it("has exactly ten actions, four of which may write", () => {
-    expect(CONVERSATION_ACTIONS).toHaveLength(10);
+  // Eleven since Product Sprint 1 added DISCOVER, which is read-only (§22.11).
+  it("has exactly eleven actions, four of which may write", () => {
+    expect(CONVERSATION_ACTIONS).toHaveLength(11);
     expect(VERSION_WRITING_ACTIONS).toHaveLength(4);
-    expect(READ_ONLY_ACTIONS).toHaveLength(6);
+    expect(READ_ONLY_ACTIONS).toHaveLength(7);
+    expect(READ_ONLY_ACTIONS).toContain("DISCOVER");
   });
 });
 
@@ -671,10 +675,11 @@ describe("a turn can be regenerated (WS-R13)", () => {
     const convo = conversationWithPrompt();
     const first = deps({ classification: classification("REVISE"), generation: envelope("a") });
     await executeTurn(convo, "change it", first.deps);
-    expect(first.calls()).toBe(TURN_CALL_BUDGET);
+    expect(first.calls()).toBe(2);
     const second = deps({ classification: classification("REVISE"), generation: envelope("b") });
     await executeTurn(convo, "change it", second.deps, { regenerate: true });
-    expect(second.calls()).toBe(TURN_CALL_BUDGET);
+    expect(second.calls()).toBe(2);
+    expect(second.calls()).toBeLessThanOrEqual(TURN_CALL_BUDGET);
   });
 
   it("regenerating a discussion still writes no version (WS-R2)", async () => {

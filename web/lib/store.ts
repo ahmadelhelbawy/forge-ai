@@ -128,6 +128,7 @@ export function newConversation(partial: {
     candidatePromotions: [],
     pendingClarification: null,
     ledger: [],
+    discovery: null,
     repository: null,
     governance: [],
     advisoryLinks: [],
@@ -498,6 +499,10 @@ export function semanticSnapshot(convo: Conversation): string {
     governance: convo.governance.map((g) => ({ decision: g.decision, subjects: g.subjects })),
     advisoryLinks: convo.advisoryLinks.map((l) => ({ requirementId: l.requirementId, path: l.path, note: l.note })),
     repositoryBound: convo.repository !== null,
+    // WS-R30: the brief and the gate are what the conversation has worked out.
+    discovery: convo.discovery
+      ? { status: convo.discovery.status, brief: convo.discovery.brief, questions: convo.discovery.questions }
+      : null,
     attachments: convo.attachments.map((a) => ({ name: a.name, size: a.size, truncated: a.truncated })),
   });
 }

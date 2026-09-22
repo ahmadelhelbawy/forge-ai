@@ -24,12 +24,19 @@ import {
   CONVERSATION_ACTIONS,
   type ConversationAction,
 } from "./actions.js";
+import { jsonObjects } from "./discovery.js";
 import { cassetteKey } from "../model/cassette.js";
 import type { ModelBoundary } from "../model/boundaries.js";
 
 export const CONVERSATION_CLASSIFY_ID = "conversation.classify";
-export const CONVERSATION_CLASSIFY_VERSION = "1";
-export const CONVERSATION_CLASSIFY_MAX_TOKENS = 200;
+export const CONVERSATION_CLASSIFY_VERSION = "2";
+/**
+ * Raised from 200 in Product Sprint 1. A reasoning model can spend a 200-token
+ * cap before it emits any answer, which surfaced in the running app as
+ * "classifier returned no JSON". The answer itself is ~30 tokens; the headroom
+ * is for the model, not for the output.
+ */
+export const CONVERSATION_CLASSIFY_MAX_TOKENS = 1024;
 
 /** What the conversation can currently express. Facts, never model output. */
 export const ConversationStateSchema = z.strictObject({
@@ -38,6 +45,8 @@ export const ConversationStateSchema = z.strictObject({
   versions: z.array(z.number().int().positive()),
   candidateCount: z.number().int().min(0),
   hasPendingClarification: z.boolean(),
+  /** WS-R31: discovery is open, so no classified action will write a version. */
+  discoveryOpen: z.boolean().optional(),
 });
 export type ConversationStateSummary = z.infer<typeof ConversationStateSchema>;
 
@@ -64,6 +73,10 @@ export class ClassificationError extends Error {
 
 const ACTION_GUIDE: ReadonlyArray<readonly [ConversationAction, string]> = [
   ["DISCUSS", "the user is talking, asking, or thinking out loud; nothing about the prompt changes"],
+  [
+    "DISCOVER",
+    "the user's goal is incomplete, ambiguous, exploratory or strategic — they do not yet know exactly what they want built — so FORGE should ask questions and help them think, not write a prompt",
+  ],
   ["CREATE", "produce the first prompt, or a deliberately fresh one"],
   ["REVISE", "change the existing prompt while preserving everything not asked about"],
   ["CRITIQUE", "review the prompt and report weaknesses; change nothing"],
@@ -88,6 +101,7 @@ export function renderClassifyPrompt(input: ClassifyInput): string {
     "RULES:",
     "- Only CREATE, REVISE, MERGE and RESTORE change the prompt. If the message only asks something, it is not one of those.",
     "- RESTORE cites exactly one existing version in `versions`. COMPARE and MERGE cite the two artifacts they address.",
+    "- Choose CREATE only when the user has described a concrete enough task to write a good prompt for. When the goal itself is still unclear, choose DISCOVER.",
     "- Never choose an action this conversation's state cannot express. When unsure, choose DISCUSS.",
     "",
     "CONVERSATION STATE:",
@@ -95,6 +109,7 @@ export function renderClassifyPrompt(input: ClassifyInput): string {
     `- existing versions: ${state.versions.length > 0 ? state.versions.join(", ") : "none"}`,
     `- alternative candidates: ${state.candidateCount}`,
     `- pending question from FORGE awaiting an answer: ${state.hasPendingClarification ? "yes" : "no"}`,
+    `- discovery in progress (FORGE is still working out what the user wants): ${state.discoveryOpen ? "yes" : "no"}`,
     "",
     "USER MESSAGE:",
     input.message,
@@ -102,26 +117,45 @@ export function renderClassifyPrompt(input: ClassifyInput): string {
   return lines.join("\n");
 }
 
-/** Pull the classification out of model chatter. Throws rather than guessing. */
+/**
+ * Pull the classification out of model chatter (WS-R34). Every JSON object in
+ * the text is tried against the schema, in order, and the first that validates
+ * wins; code fences and surrounding prose are tolerated because they wrap the
+ * answer rather than change it. Nothing is reinterpreted: a bare word, a
+ * near-miss label or a misspelt action is a failure, never a guess.
+ */
 export function parseClassifyOutput(text: string): ClassifyOutput {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) {
-    throw new ClassificationError("The classifier response contained no JSON object.");
-  }
-  let payload: unknown;
-  try {
-    payload = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    throw new ClassificationError("The classifier response contained malformed JSON.");
-  }
-  const parsed = ClassifyOutputSchema.safeParse(payload);
-  if (!parsed.success) {
+  const objects = jsonObjects(text);
+  if (objects.length === 0) {
     throw new ClassificationError(
-      `The classifier did not answer with one of the ten conversation actions: ${parsed.error.issues[0]?.message ?? "invalid"}.`,
+      text.trim().length === 0
+        ? "The classifier returned an empty response."
+        : "The classifier response contained no JSON object.",
     );
   }
-  return parsed.data;
+  let firstIssue: string | null = null;
+  for (const payload of objects) {
+    const parsed = ClassifyOutputSchema.safeParse(payload);
+    if (parsed.success) return parsed.data;
+    firstIssue ??= parsed.error.issues[0]?.message ?? "invalid";
+  }
+  throw new ClassificationError(
+    `The classifier did not answer with one of the ${CONVERSATION_ACTIONS.length} conversation actions: ${firstIssue}.`,
+  );
+}
+
+/**
+ * The single bounded repair (WS-R34): the original task, the error, and the
+ * exact shape required. Pure, so a repair is as replayable as the first call.
+ */
+export function renderClassifyRepairPrompt(input: ClassifyInput, error: string): string {
+  return [
+    renderClassifyPrompt(input),
+    "",
+    `YOUR PREVIOUS ANSWER WAS REJECTED: ${error}`,
+    `Answer again with exactly one JSON object and nothing else, for example {"action": "DISCUSS", "versions": []}.`,
+    `"action" must be one of: ${CONVERSATION_ACTIONS.join(", ")}.`,
+  ].join("\n");
 }
 
 /**

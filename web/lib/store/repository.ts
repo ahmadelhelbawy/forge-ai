@@ -73,6 +73,8 @@ interface Baseline {
    */
   readonly ledgerIds: readonly string[];
   readonly versionIrs: number;
+  /** WS-R30: the discovery state at load, as JSON, compared rather than counted. */
+  readonly discovery: string | null;
   /** RB-R1: the bound root at load, compared rather than counted. */
   readonly repositoryRoot: string | null;
   readonly governance: number;
@@ -103,6 +105,7 @@ function emptyBaseline(convo: Conversation): Baseline {
     modelCalls: 0,
     ledgerIds: [],
     versionIrs: 0,
+    discovery: null,
     repositoryRoot: null,
     governance: 0,
     advisoryLinkIds: [],
@@ -127,6 +130,7 @@ function baselineOf(convo: Conversation, existed: boolean): Baseline {
     modelCalls: convo.modelCalls.length,
     ledgerIds: convo.ledger.map((e) => e.id),
     versionIrs: convo.versionIrs.length,
+    discovery: convo.discovery ? JSON.stringify(convo.discovery) : null,
     repositoryRoot: convo.repository?.root ?? null,
     governance: convo.governance.length,
     advisoryLinkIds: convo.advisoryLinks.map((l) => l.id),
@@ -177,6 +181,7 @@ function shell(id: string, at: string): Conversation {
     pendingClarification: null,
     ledger: [],
     versionIrs: [],
+    discovery: null,
     repository: null,
     governance: [],
     advisoryLinks: [],
@@ -331,6 +336,9 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
             at: body.extractedAt,
           }),
         );
+        break;
+      case "discovery_updated":
+        convo.discovery = Object.freeze({ ...body.state });
         break;
       case "repository_bound":
         convo.repository = Object.freeze({ root: body.root, at: body.boundAt });
@@ -525,6 +533,10 @@ export function saveConversation(store: Store, convo: Conversation): void {
     });
   }
 
+  // WS-R30: discovery is a value; a change is written as the new whole state.
+  if (convo.discovery && JSON.stringify(convo.discovery) !== base.discovery) {
+    emit({ kind: "discovery_updated", id: convo.id, state: convo.discovery, updatedAt: new Date().toISOString() });
+  }
   // RB-R1: the binding is a value, compared; a change of root is an unbind
   // followed by a bind, so the log reads as the two user actions it was.
   const root = convo.repository?.root ?? null;

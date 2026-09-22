@@ -15,6 +15,7 @@ import { writesVersion } from "forge/dist/conversation/actions.js";
 import { parseEnvelope } from "forge/dist/conversation/generate.js";
 
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
+import { renderBrief, type DiscoveryState } from "forge/dist/conversation/discovery.js";
 import type { TargetBrief } from "./forge.js";
 
 export interface TurnContext {
@@ -26,6 +27,10 @@ export interface TurnContext {
   readonly isFirstTurn: boolean;
   /** The resolved action (WS-R1). Absent before classification exists. */
   readonly action?: ConversationAction;
+  /** §22.11: what discovery has established so far, if it ran. */
+  readonly discovery?: DiscoveryState | null;
+  /** WS-R31/WS-R32: an approved generate, and what was still open when it was pressed. */
+  readonly generation?: { readonly explicitGenerate: boolean; readonly unresolved: readonly string[] };
 }
 
 export interface ParsedTurn {
@@ -64,6 +69,11 @@ export function buildSystemPrompt(ctx: TurnContext): string {
         ? "This action may produce a new version: set \"prompt\" to the full revised prompt when you change it."
         : "This action is read-only with respect to the prompt: answer in `reply` and set \"prompt\" to null.",
     );
+  }
+  if (ctx.action === "DISCOVER") {
+    lines.push("", ...discoveryInstructions(ctx.discovery ?? null));
+  } else if (ctx.generation?.explicitGenerate && ctx.discovery) {
+    lines.push("", ...generateInstructions(ctx.discovery, ctx.generation.unresolved));
   }
   if (ctx.target && ctx.targetId !== "generic") {
     const t = ctx.target;
@@ -106,6 +116,55 @@ export function buildSystemPrompt(ctx: TurnContext): string {
     }
   }
   return lines.join("\n");
+}
+
+/**
+ * DISCOVER (WS-R30, WS-R35). The model helps the user think; FORGE owns the
+ * gate. These instructions ask for a structured update, and the pipeline
+ * validates it — nothing here is trusted because it was asked for.
+ */
+function discoveryInstructions(state: DiscoveryState | null): string[] {
+  const lines = [
+    "DISCOVERY MODE — the user does not yet know exactly what they want. Your job is to help them work it out, NOT to write a prompt.",
+    '- Always set "prompt" to null. FORGE will not write a prompt until the user presses Generate.',
+    "- Ask 1-3 high-value questions about what is still missing (for example their work and skills, who it is for, the problem, the outcome they want, data and tools they have, how autonomous it should be, risk, budget, time, how success is measured). Choose by what matters most next; never run through a fixed questionnaire, and never ask something already answered.",
+    "- Let each answer shape the next question. Questions should help the user think, not fill in a form.",
+    "- Where it helps, give each question 2-5 short options; the user can always answer freely.",
+    "- When the user wants ideas, propose a small number of concrete, plausible directions grounded in their skills, access, time and budget, and ask which resonate.",
+    "- Your knowledge is not current market research. Never present remembered facts as current; when a decision needs up-to-date external data (markets, prices, competitors), say so in research_needed.",
+    "- Keep `reply` short and conversational: reflect what you understood, then the questions.",
+    "",
+    'Add a "discovery" key to the JSON object:',
+    '{"reply": "...", "prompt": null, "discovery": {"brief": {"vision": "...", "goal": "...", "target_user": "...", "problem": "...", "background": "...", "capabilities": ["..."], "constraints": ["..."], "success_criteria": ["..."], "open_questions": ["..."]}, "questions": [{"question": "...", "options": ["...", "..."]}], "ready": false, "research_needed": null}}',
+    "- The brief is your cumulative understanding. Carry forward everything still true from the CURRENT BRIEF, update what changed, and include only fields you actually know — omit the rest.",
+    "- Set ready to true when there is enough to write a good prompt. The user decides when to generate; you never do.",
+  ];
+  if (state && Object.keys(state.brief).length > 0) {
+    lines.push("", "CURRENT BRIEF:", ...renderBrief(state.brief));
+  }
+  if (state && state.questions.length > 0) {
+    lines.push("", "QUESTIONS YOU ASKED LAST TURN (the user's message may answer them):", ...state.questions.map((q) => `- ${q.question}`));
+  }
+  return lines;
+}
+
+/** An approved generate after discovery (WS-R31–WS-R33). */
+function generateInstructions(state: DiscoveryState, unresolved: readonly string[]): string[] {
+  const lines = [
+    "THE USER PRESSED GENERATE. Write the prompt now, from the conversation and this DISCOVERED BRIEF.",
+    "Carry every goal, constraint and success criterion into the prompt, using the brief's own wording where you can — FORGE checks that each one is present.",
+    "",
+    "DISCOVERED BRIEF:",
+    ...renderBrief(state.brief),
+  ];
+  if (unresolved.length > 0) {
+    lines.push(
+      "",
+      "UNRESOLVED — the user chose to generate before these were answered. State each one in the prompt as an explicit assumption or open question, and mention them in `reply`:",
+      ...unresolved.map((q) => `- ${q}`),
+    );
+  }
+  return lines;
 }
 
 export function parseChatReply(text: string): ParsedTurn {

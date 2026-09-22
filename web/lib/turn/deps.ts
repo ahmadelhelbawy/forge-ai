@@ -12,6 +12,7 @@ import { generate, generateStream } from "@/lib/ai-provider";
 import { buildSystemPrompt } from "@/lib/chat";
 import { getTargetBrief, ProviderError, resolveCall, transportFor } from "@/lib/forge";
 import type { Conversation } from "@/lib/store";
+import { renderBrief } from "forge/dist/conversation/discovery.js";
 import type { CompletionResult, TurnDeps } from "@/lib/turn/pipeline";
 
 const ATTACH_BUDGET = 100_000;
@@ -40,7 +41,7 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
 
   return {
     providerId: call.providerId,
-    renderGeneration: (action, message) => {
+    renderGeneration: (action, message, context) => {
       const history = convo.messages
         .slice(0, -1)
         .slice(-20)
@@ -55,6 +56,8 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
           attachments,
           isFirstTurn: convo.messages.length <= 1,
           action,
+          discovery: convo.discovery,
+          ...(context ? { generation: context } : {}),
         }),
         user: history ? `${history}\n\nUser: ${message}` : message,
       };
@@ -164,15 +167,20 @@ function revise(before: string | null, asked: string): string {
 export const STUB_UNREADABLE_SENTINEL = "[[forge:stub-unreadable]]";
 
 export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
-  const answer = (request: { user: string }): CompletionResult => {
+  const answer = (request: { system: string; user: string }): CompletionResult => {
     if (process.env["FORGE_CHAT_STUB"] === "error") {
       throw new ProviderError("Stub provider failure (FORGE_CHAT_STUB=error).", "stub");
     }
     if (request.user.includes("Classify the user's message")) {
       const message = request.user.slice(request.user.lastIndexOf("USER MESSAGE:"));
-      const action = message.trimEnd().endsWith("?") ? "EXPLAIN" : before ? "REVISE" : "CREATE";
+      // The stub has no judgement, so it reads one plain signal: a user who says
+      // they do not know what they want is discovering. Production reads none
+      // of this — the classifier model decides (§22.11).
+      const unsure = /\b(not sure|don't know|do not know|no idea|unsure)\b/i.test(message);
+      const action = unsure ? "DISCOVER" : message.trimEnd().endsWith("?") ? "EXPLAIN" : before ? "REVISE" : "CREATE";
       return { text: JSON.stringify({ action, versions: [] }), model: "stub", latencyMs: 0 };
     }
+    if (request.system.startsWith("stub:DISCOVER")) return stubDiscovery(convo, request.user);
     const asked = request.user.slice(-80);
     // A degraded turn has to be reachable offline, or the only place
     // FORGE-W003 can be seen is a live provider misbehaving — which is not
@@ -188,7 +196,7 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
       };
     }
     return {
-      text: JSON.stringify({ reply: `Stub reply to: ${asked}`, prompt: revise(before, asked) }),
+      text: JSON.stringify({ reply: `Stub reply to: ${asked}`, prompt: withBrief(revise(before, asked), request.system) }),
       model: "stub",
       latencyMs: 0,
     };
@@ -196,7 +204,15 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
 
   return {
     providerId: "stub",
-    renderGeneration: (action, message) => ({ system: `stub:${action}`, user: message }),
+    renderGeneration: (action, message, context) => ({
+      system:
+        context?.explicitGenerate && convo.discovery
+          ? `stub:${action}\n${renderBrief(convo.discovery.brief).join("\n")}${
+              context.unresolved.length > 0 ? `\nAssumptions:\n${context.unresolved.map((q) => `- ${q}`).join("\n")}` : ""
+            }`
+          : `stub:${action}`,
+      user: message,
+    }),
     complete: async (request) => answer(request),
     async *streamComplete(request, signal) {
       const result = answer(request);
@@ -212,5 +228,41 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
       }
       return result;
     },
+  };
+}
+
+/** The stub carries the discovered brief into a generated prompt, as a good model would. */
+function withBrief(prompt: string, system: string): string {
+  const [, ...brief] = system.split("\n");
+  return brief.length > 0 ? `${prompt}\n${brief.join("\n")}` : prompt;
+}
+
+/**
+ * The stub's discovery turn (§22.11). Deterministic, and adaptive in the one
+ * way a test can check: each question quotes the answer it follows, and the
+ * brief grows by what the user said.
+ */
+function stubDiscovery(convo: Conversation, user: string): CompletionResult {
+  const previous = convo.discovery?.brief ?? {};
+  const answer = user.trim().split("\n").at(-1)!.slice(0, 200);
+  const turns = convo.discovery?.turns ?? 0;
+  const brief = {
+    ...previous,
+    goal: previous.goal ?? answer,
+    ...(turns > 0 ? { constraints: [...(previous.constraints ?? []), answer] } : {}),
+    open_questions: ["Who exactly will use it?"],
+  };
+  const questions =
+    turns === 0
+      ? [{ question: "What is your main goal?", options: ["Save time", "Make money", "Build for my company", "Research / learning"] }]
+      : [{ question: `You said "${answer.slice(0, 60)}". Who exactly will use it?`, options: [] }];
+  return {
+    text: JSON.stringify({
+      reply: `Let's work out what to build. ${questions[0]!.question}`,
+      prompt: null,
+      discovery: { brief, questions, ready: turns >= 1, research_needed: null },
+    }),
+    model: "stub",
+    latencyMs: 0,
   };
 }

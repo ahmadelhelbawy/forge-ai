@@ -1841,3 +1841,97 @@ describe.skipIf(!WEB_E2E || REPO_ROOTS === "")("requirement governance and trace
     expect(cells.some((c) => c.verdict === "VERIFIED")).toBe(true);
   });
 });
+
+/**
+ * Discovery over HTTP (Product Sprint 1, spec.md §22.11, AC-058–AC-060).
+ *
+ * The stub model classifies "don't know" as DISCOVER and answers with a
+ * deterministic discovery update whose next question quotes the last answer,
+ * so adaptivity is checkable offline. The live-provider run is the real test
+ * of judgement; this proves the product's plumbing and the gate.
+ */
+describe.skipIf(!WEB_E2E)("Discovery over HTTP (Sprint 1)", () => {
+  beforeAll(async () => {
+    await checkHealth(BASE);
+  }, 60_000);
+
+  type Discovery = {
+    status: string;
+    turns: number;
+    ready: boolean;
+    brief: { goal?: string; constraints?: string[]; open_questions?: string[] };
+    questions: Array<{ question: string; options: string[] }>;
+  };
+
+  async function vague(): Promise<{ id: string; first: Record<string, unknown> }> {
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const first = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "I want to build an AI agent but I don't know exactly what agent to build." }),
+    });
+    return { id, first: first.body };
+  }
+
+  it("enters discovery on a vague idea, asks with options, and writes no prompt", async () => {
+    const { id, first } = await vague();
+    expect(first["action"]).toBe("DISCOVER");
+    expect(first["promptChanged"]).toBe(false);
+    expect(String(first["reply"]).length).toBeGreaterThan(0);
+    const discovery = first["discovery"] as Discovery;
+    expect(discovery.status).toBe("open");
+    expect(discovery.questions[0]!.options.length).toBeGreaterThan(0);
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect(convo.body["promptVersions"]).toEqual([]);
+    expect((convo.body["discovery"] as Discovery).status).toBe("open");
+  });
+
+  it("adapts to the answer, grows the brief, and still writes nothing — even when asked to", async () => {
+    const { id } = await vague();
+    const second = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Make money — bookkeeping for small firms" }),
+    });
+    const discovery = second.body["discovery"] as Discovery;
+    expect(second.body["action"]).toBe("DISCOVER");
+    expect(discovery.turns).toBe(2);
+    expect(discovery.questions[0]!.question).toContain("bookkeeping for small firms");
+    expect(discovery.brief.constraints).toContain("Make money — bookkeeping for small firms");
+    // The stub classifies a plain instruction as CREATE; the gate holds it.
+    const pushy = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Just write the prompt" }),
+    });
+    expect(pushy.body["action"]).toBe("DISCOVER");
+    expect(pushy.body["promptChanged"]).toBe(false);
+    const codes = (pushy.body["diagnostics"] as Array<{ code: string }>).map((d) => d.code);
+    expect(codes).toContain("FORGE-W011");
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect(convo.body["promptVersions"]).toEqual([]);
+  });
+
+  it("generates only on the explicit request, carrying the brief and surfacing open questions", async () => {
+    const { id } = await vague();
+    await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: "Make money — bookkeeping for small firms" }),
+    });
+    const both = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ generate: true, regenerate: true }),
+    });
+    expect(both.status).toBe(400);
+    const generated = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ generate: true }),
+    });
+    expect(generated.body["action"]).toBe("CREATE");
+    expect(generated.body["promptChanged"]).toBe(true);
+    const prompt = String(generated.body["prompt"]);
+    expect(prompt).toContain("Make money — bookkeeping for small firms");
+    expect((generated.body["discovery"] as Discovery).status).toBe("generated");
+    const codes = (generated.body["diagnostics"] as Array<{ code: string; message: string }>);
+    expect(codes.find((d) => d.code === "FORGE-W010")?.message).toContain("Who exactly will use it?");
+    expect(codes.map((d) => d.code)).not.toContain("FORGE-W009");
+  });
+});

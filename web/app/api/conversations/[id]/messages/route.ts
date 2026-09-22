@@ -42,6 +42,7 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
   const result = await executeTurn(convo, prepared.content, deps, {
     signal: request.signal,
     regenerate: prepared.regenerate,
+    generate: prepared.generate,
   });
   saveConversation(convo);
 
@@ -64,6 +65,8 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
     refused: result.refused,
     streamed: result.streamed,
     regenerated: result.regenerated,
+    // §22.11: the brief, the outstanding questions and whether the gate is open.
+    discovery: result.discovery,
     // WS-R28: Layer 1's verdict travels in its own field, labelled
     // deterministic, and never merged into a list of advice.
     preservation: result.preservation

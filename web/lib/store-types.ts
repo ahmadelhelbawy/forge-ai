@@ -6,6 +6,7 @@
  * here knows how a conversation is stored.
  */
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
+import type { DiscoveryState } from "forge/dist/conversation/discovery.js";
 import type { ModelCallRecord } from "forge/dist/model/provider.js";
 
 import type { TurnEvent } from "./turn/events";
@@ -228,6 +229,12 @@ export interface Conversation {
    * advice never pays for it.
    */
   versionIrs: VersionIr[];
+  /**
+   * WS-R30/WS-R31. Null until the first DISCOVER turn. While `status` is
+   * `open`, no classified action writes a version; only an explicit generate
+   * request does.
+   */
+  discovery: DiscoveryState | null;
   /** RB-R1. Null unless the user explicitly bound a repository. */
   repository: RepositoryBinding | null;
   /** RG-R3. Append-only human decisions; status is derived from them, never stored. */
