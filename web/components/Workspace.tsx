@@ -423,7 +423,17 @@ export function Workspace(): React.JSX.Element {
     api
       .reasoning(provider, model)
       .then((r) => live && setReasoning(r))
-      .catch(() => live && setReasoning(null));
+      .catch(
+        (e: unknown) =>
+          live &&
+          setReasoning({
+            supported: false,
+            levels: [],
+            source: null,
+            wire: null,
+            reason: `Could not check reasoning support (${e instanceof Error ? e.message : String(e)}); none is sent.`,
+          }),
+      );
     return () => {
       live = false;
     };
@@ -588,7 +598,7 @@ export function Workspace(): React.JSX.Element {
   );
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-ink-950/80 px-2 backdrop-blur">
         <button
           onClick={() => (narrow ? setLeftDrawer(!leftDrawer) : setLeftOpen(!leftOpen))}
@@ -620,8 +630,8 @@ export function Workspace(): React.JSX.Element {
           />
         </div>
         <div className="flex-1" />
-
-        <label className="flex items-center gap-1.5">
+        <div className="no-scrollbar flex min-w-0 items-center gap-2 overflow-x-auto">
+        <label className="flex shrink-0 items-center gap-1.5">
           <span className="hidden text-[11.5px] text-slate-500 lg:inline">Target</span>
           <select
             value={target}
@@ -639,7 +649,7 @@ export function Workspace(): React.JSX.Element {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-1.5">
+        <label className="flex shrink-0 items-center gap-1.5">
           <span className="hidden text-[11.5px] text-slate-500 lg:inline">Model</span>
           {customModel ? (
             <input
@@ -669,9 +679,9 @@ export function Workspace(): React.JSX.Element {
                   persistSelection(nextProvider, nextModel, false);
                 }
               }}
-              className={`${control} max-w-56`}
+              className={`${control} max-w-40 sm:max-w-56`}
             >
-              {models.length === 0 ? <option value="">No models available</option> : null}
+              {models.length === 0 ? <option value="">{catalogReady ? "No models available" : "Loading models…"}</option> : null}
               {groupedModels().map((g) => (
                 <optgroup key={g.provider} label={g.label}>
                   {g.models.map((m) => (
@@ -702,7 +712,7 @@ export function Workspace(): React.JSX.Element {
           </button>
         ) : null}
         <label
-          className="flex items-center gap-1.5"
+          className="flex shrink-0 items-center gap-1.5"
           title={
             reasoning?.supported
               ? `Reasoning effort — ${reasoning.source === "discovered" ? "support reported by the provider" : "support documented for this model"}.`
@@ -726,7 +736,8 @@ export function Workspace(): React.JSX.Element {
             ))}
           </select>
         </label>
-        <div className="mx-1 h-5 w-px bg-white/[0.08]" />
+        </div>
+        <div className="mx-1 hidden h-5 w-px bg-white/[0.08] sm:block" />
         <button
           onClick={() => {
             setSettingsTab("providers");
@@ -749,8 +760,8 @@ export function Workspace(): React.JSX.Element {
         </button>
         <span
           role="status"
-          title={providerAvailable ? "A model provider is connected" : "No provider configured"}
-          className={`mx-1 h-2 w-2 rounded-full ${providerAvailable ? "bg-emerald-400" : "bg-rose-400"}`}
+          title={!catalogReady ? "Loading providers…" : providerAvailable ? "A model provider is connected" : "No provider configured"}
+          className={`mx-1 h-2 w-2 shrink-0 rounded-full ${!catalogReady ? "bg-slate-600" : providerAvailable ? "bg-emerald-400" : "bg-rose-400"}`}
         />
         <button
           onClick={() => (narrow ? setRightDrawer(!rightDrawer) : setRightOpen(!rightOpen))}

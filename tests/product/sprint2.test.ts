@@ -254,6 +254,24 @@ describe("WS-R38 — transformation modes (AC-063)", () => {
     expect(system).toContain("MODE: POLISH");
     expect(system).not.toContain("MODE: REBUILD");
   });
+
+  it("keeps unresolved questions out of a polished prompt (WS-R32 under polish)", () => {
+    const discovery = { ...openDiscovery("refine"), brief: { goal: "Review PRs" } };
+    const render = (mode: "polish" | "strengthen") =>
+      buildSystemPrompt({
+        target: null,
+        targetId: "generic",
+        currentPrompt: null,
+        currentVersion: 0,
+        attachments: [],
+        isFirstTurn: false,
+        action: "CREATE",
+        discovery,
+        generation: { explicitGenerate: true, unresolved: ["Which agent runs it?"], mode },
+      });
+    expect(render("polish")).toContain("do NOT write them into it");
+    expect(render("strengthen")).toContain("State each one in the prompt");
+  });
 });
 
 // ── WS-R39: artifact kind ───────────────────────────────────────────────────
@@ -454,6 +472,18 @@ describe("discovery quality (AC-067)", () => {
     expect(sameQuestion("Who approves the output?", "Which budget do you have?")).toBe(false);
   });
 
+  it("keeps at most two questions in refine discovery, moving the rest to open questions (WS-R37)", () => {
+    const next = applyDiscoveryUpdate(openDiscovery("refine"), {
+      brief: {},
+      questions: [q("Which agent runs this review?"), q("Is the verdict pass or fail?"), q("Should style issues be reported?")],
+      ready: true,
+      research_needed: null,
+      artifact_kind: null,
+    });
+    expect(next.questions.map((x) => x.question)).toEqual(["Which agent runs this review?", "Is the verdict pass or fail?"]);
+    expect(next.brief.open_questions).toEqual(["Should style issues be reported?"]);
+  });
+
   it("counts a restated open question once (WS-R32 with the WS-R44 rule)", () => {
     const state = {
       ...openDiscovery(),
@@ -572,5 +602,26 @@ describe("settings and verifications survive a reload", () => {
     expect(back.verifications[0]).toMatchObject({ evidenceKept: true, evidence: '{"records":[]}', counts: { VERIFIED: 1 } });
     // A credential in pasted evidence is never written to disk.
     expect(back.verifications[1]).toMatchObject({ evidenceKept: false, evidence: null });
+  });
+});
+
+describe("a failed call still leaves a trace (WS-R14)", () => {
+  it("records a classifier transport failure as model_call_failed and degrades with W001", async () => {
+    const convo = newConversation({ title: "f" });
+    const deps: TurnDeps = {
+      providerId: "test",
+      renderGeneration: (action, message) => ({ system: `SYSTEM ${action}`, user: message }),
+      async complete(request) {
+        if (request.user.includes("Classify the user's message")) throw new Error("Invalid JSON response");
+        return { text: '{"reply":"ok","prompt":null}', model: "m", latencyMs: 1 };
+      },
+    };
+    const result = await executeTurn(convo, "what makes a good review prompt?", deps);
+    expect(result.degraded).toBe(true);
+    expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W001");
+    const failed = result.events.find((e) => e.kind === "model_call_failed");
+    expect(failed).toMatchObject({ boundaryId: "conversation.classify", reason: "Invalid JSON response" });
+    saveConversation(convo);
+    expect(loadConversation(convo.id)!.turnEvents.some((e) => e.kind === "model_call_failed")).toBe(true);
   });
 });

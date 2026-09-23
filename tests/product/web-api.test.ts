@@ -1934,3 +1934,139 @@ describe.skipIf(!WEB_E2E)("Discovery over HTTP (Sprint 1)", () => {
     expect(codes.map((d) => d.code)).not.toContain("FORGE-W009");
   });
 });
+
+/**
+ * Product Sprint 2 over HTTP (§22.12, §22.13, WS-R44–WS-R46): the fast path,
+ * modes, settings, staged output, several targets, and persisted verification —
+ * through the real routes, with the stub model.
+ */
+describe.skipIf(!WEB_E2E)("Sprint 2 product surface over HTTP", () => {
+  const PASTED = [
+    "You are a senior code reviewer for a TypeScript monorepo.",
+    "",
+    "## Rules",
+    "- Never approve a change that deletes a test.",
+    "- Cite a file path and line number for every finding.",
+    "- Flag any new dependency and say why it is needed.",
+    "",
+    "## Output format",
+    "A markdown list of findings, most severe first, then a one-line verdict.",
+    "Keep the whole review under 400 words and do not restate the diff.",
+    "",
+    "## Context",
+    "The repository uses strict TypeScript, pnpm workspaces and vitest.",
+  ].join("\n");
+  const json = (body: unknown): RequestInit => ({ method: "POST", body: JSON.stringify(body) });
+  const patch = (body: unknown): RequestInit => ({ method: "PATCH", body: JSON.stringify(body) });
+  async function fresh(): Promise<string> {
+    const created = await api(BASE, "/api/conversations", json({ target: "claude-code" }));
+    return created.body["id"] as string;
+  }
+  const calls = (convo: Record<string, unknown>) => (convo["modelCalls"] as Array<{ boundaryId: string }>).map((c) => c.boundaryId);
+
+  it("opens refine discovery for a pasted prompt with no classification call", async () => {
+    const id = await fresh();
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, json({ content: `Improve this\n\n${PASTED}` }));
+    expect(turn.body["action"]).toBe("DISCOVER");
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect((convo.body["discovery"] as { flavor: string }).flavor).toBe("refine");
+    expect(calls(convo.body)).not.toContain("conversation.classify");
+    expect(convo.body["promptVersions"]).toEqual([]);
+  });
+
+  it("writes directly on a published direct phrase, switches the named target and emits W012", async () => {
+    const id = await fresh();
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, json({ content: `Just improve it and compile this for Codex.\n\n${PASTED}` }));
+    expect(turn.body["action"]).toBe("CREATE");
+    expect((turn.body["diagnostics"] as Array<{ code: string }>).map((d) => d.code)).toContain("FORGE-W012");
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect(convo.body["target"]).toBe("openai-codex");
+    expect((convo.body["promptVersions"] as Array<{ mode?: string }>)[0]!.mode).toBe("strengthen");
+    expect(calls(convo.body)).not.toContain("conversation.classify");
+  });
+
+  it("validates and persists the user's settings, and closes and reopens discovery", async () => {
+    const id = await fresh();
+    expect((await api(BASE, `/api/conversations/${id}`, patch({ artifactKind: "robot" }))).status).toBe(400);
+    expect((await api(BASE, `/api/conversations/${id}`, patch({ reasoningEffort: "extreme" }))).status).toBe(400);
+    expect((await api(BASE, `/api/conversations/${id}`, patch({ discovery: "close" }))).status).toBe(409);
+    const ok = await api(BASE, `/api/conversations/${id}`, patch({ artifactKind: "builder", outputShape: "staged" }));
+    expect(ok.status).toBe(200);
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    expect([convo.body["artifactKind"], convo.body["outputShape"]]).toEqual(["builder", "staged"]);
+
+    await api(BASE, `/api/conversations/${id}/messages`, json({ content: `Improve this\n\n${PASTED}` }));
+    expect((await api(BASE, `/api/conversations/${id}`, patch({ discovery: "close" }))).status).toBe(200);
+    const closed = await api(BASE, `/api/conversations/${id}`);
+    expect((closed.body["discovery"] as { status: string }).status).toBe("closed");
+    expect((await api(BASE, `/api/conversations/${id}`, patch({ discovery: "reopen" }))).status).toBe(200);
+  });
+
+  it("refuses a malformed mode and a mode without generate", async () => {
+    const id = await fresh();
+    expect((await api(BASE, `/api/conversations/${id}/messages`, json({ generate: true, mode: "reimagine" }))).status).toBe(400);
+    expect((await api(BASE, `/api/conversations/${id}/messages`, json({ content: "hi", mode: "polish" }))).status).toBe(400);
+    expect((await api(BASE, `/api/conversations/${id}/messages`, json({ content: "hi", reasoningEffort: "max" }))).status).toBe(400);
+  });
+
+  it("writes a staged version, reads it back as stages, and compiles several targets from one IR", async () => {
+    const id = await fresh();
+    await api(BASE, `/api/conversations/${id}`, patch({ outputShape: "staged" }));
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, json({ generate: true, mode: "polish", content: "Write a prompt for a release checklist agent." }));
+    expect(turn.body["promptChanged"]).toBe(true);
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    const stages = convo.body["stages"] as { ok: boolean; stages: Array<{ n: number; dependsOn: number[] }> };
+    expect(stages.ok).toBe(true);
+    expect(stages.stages.map((s) => s.dependsOn)).toEqual([[], [1]]);
+
+    const many = await api(BASE, `/api/conversations/${id}/compile`, json({ targets: ["claude-code", "openai-codex"] }));
+    expect(many.status).toBe(200);
+    const results = many.body["results"] as Array<{ target: string; extracted: boolean; artifacts: Array<{ contentHash: string }> }>;
+    expect(results.map((r) => r.target)).toEqual(["claude-code", "openai-codex"]);
+    expect(results.filter((r) => r.extracted).length).toBeLessThanOrEqual(1);
+    const single = await api(BASE, `/api/conversations/${id}/compile`, json({ target: "openai-codex" }));
+    expect((single.body["artifacts"] as Array<{ contentHash: string }>).map((a) => a.contentHash)).toEqual(
+      results[1]!.artifacts.map((a) => a.contentHash),
+    );
+    expect((await api(BASE, `/api/conversations/${id}/compile`, json({ targets: ["claude-code", "nope"] }))).status).toBe(400);
+    expect((await api(BASE, `/api/conversations/${id}/compile`, json({ targets: [] }))).status).toBe(400);
+  });
+
+  it("keeps a verification on the conversation, and never stores evidence carrying a secret", async () => {
+    const id = await fresh();
+    await api(BASE, `/api/conversations/${id}/messages`, json({ content: "write a prompt for a changelog agent" }));
+    const clean = await api(BASE, `/api/conversations/${id}/verify`, json({ evidence: '{"records":[]}' }));
+    expect(clean.status).toBe(200);
+    expect(clean.body["evidenceKept"]).toBe(true);
+    // A valid record whose free-text `runner` field carries a planted key: the
+    // evidence is accepted and judged, but its text is never written to disk.
+    const record = {
+      obligation_id: "v1",
+      kind: "command",
+      exit_code: 0,
+      stdout_hash: null,
+      stderr_hash: null,
+      started_at: "2026-09-23T00:00:00Z",
+      duration_ms: 1,
+      runner: "ci AKIAIOSFODNN7EXAMPLE",
+      repo_commit: null,
+      package_semantic_id: `sha256:${"0".repeat(64)}`,
+    };
+    const secret = await api(BASE, `/api/conversations/${id}/verify`, json({ evidence: JSON.stringify({ records: [record] }) }));
+    expect(secret.status).toBe(200);
+    expect(secret.body["evidenceKept"]).toBe(false);
+    const convo = await api(BASE, `/api/conversations/${id}`);
+    const records = convo.body["verifications"] as Array<{ evidenceKept: boolean; evidence: string | null }>;
+    expect(records).toHaveLength(2);
+    expect(records[1]).toMatchObject({ evidenceKept: false, evidence: null });
+    expect(JSON.stringify(convo.body)).not.toContain("AKIAIOSFODNN7EXAMPLE");
+  });
+
+  it("answers reasoning availability without a credential in the response", async () => {
+    const res = await api(BASE, "/api/settings/reasoning?provider=openai&model=gpt-4o-mini");
+    expect(res.status).toBe(200);
+    expect(res.body["supported"]).toBe(false);
+    expect(typeof res.body["reason"]).toBe("string");
+    expect((await api(BASE, "/api/settings/reasoning")).status).toBe(400);
+  });
+});

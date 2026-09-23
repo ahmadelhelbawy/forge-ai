@@ -55,6 +55,14 @@ describe("failure classification", () => {
     expect(message).not.toMatch(/API key was rejected/i);
   });
 
+  it("names a 429 per-minute quota as rate limiting, not billing (the recorded defect)", () => {
+    const message = classifyFailure(
+      diag(sdkError(429, '{"error":{"message":"Rate limit exceeded: free-models-per-min quota. Retry shortly."}}')),
+    );
+    expect(message).toMatch(/rate-limit/i);
+    expect(message).not.toMatch(/billing/i);
+  });
+
   it("names a plain 429 as rate limiting when nothing mentions money", () => {
     const message = classifyFailure(diag(sdkError(429, '{"error":{"message":"Too many requests."}}')));
     expect(message).toMatch(/rate-limit/i);

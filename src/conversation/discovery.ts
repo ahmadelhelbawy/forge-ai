@@ -182,13 +182,27 @@ export function freshQuestions(
  * the previous brief and returns the new one — so removing an item is possible;
  * the event log keeps every prior state, so nothing is lost from history.
  */
+/** WS-R37: refine discovery asks at most this many questions per turn. */
+export const REFINE_QUESTION_LIMIT = 2;
+
 export function applyDiscoveryUpdate(state: DiscoveryState, update: DiscoveryUpdate): DiscoveryState {
   const asked = state.asked ?? [];
-  const { kept } = freshQuestions(asked, update.questions);
+  const { kept: fresh } = freshQuestions(asked, update.questions);
+  // WS-R37 is enforced here, not requested: a refine turn that proposes more
+  // than two questions keeps the first two, and the rest become open questions
+  // in the brief — still visible, still stated as assumptions at generate
+  // (WS-R32), never silently lost.
+  const limit = state.flavor === "refine" ? REFINE_QUESTION_LIMIT : fresh.length;
+  const kept = fresh.slice(0, limit);
+  const overflow = fresh.slice(limit).map((q) => q.question);
+  const brief =
+    overflow.length > 0
+      ? { ...update.brief, open_questions: [...(update.brief.open_questions ?? []), ...overflow].slice(0, 12) }
+      : update.brief;
   return {
     status: "open",
     ...(state.flavor ? { flavor: state.flavor } : {}),
-    brief: update.brief,
+    brief,
     questions: kept,
     ready: update.ready,
     research_needed: update.research_needed,

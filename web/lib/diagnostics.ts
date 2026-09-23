@@ -135,6 +135,14 @@ export function providerDiagnostic(error: unknown, ctx: DiagnosticContext): Prov
  */
 export function classifyFailure(d: ProviderDiagnostic): string {
   const text = `${d.providerMessage ?? ""} ${d.summary}`.toLowerCase();
+  // A 429 is a rate limit even when its message says "quota" (per-minute
+  // quotas are rate limits). It is billing only when the provider says money:
+  // telling a rate-limited user to top up sends them to the wrong fix.
+  if (d.httpStatus === 429 && !/credit|billing|balance|prepayment|payment|depleted|insufficient funds/.test(text)) {
+    return `${d.provider} is rate-limiting this key — wait and retry, or choose another model.${
+      d.providerMessage ? ` (${d.providerMessage})` : ""
+    }`;
+  }
   if (/credit|billing|quota|balance|prepayment|insufficient|payment|depleted/.test(text)) {
     return `${d.provider} rejected the request for billing reasons, not a bad key.`;
   }

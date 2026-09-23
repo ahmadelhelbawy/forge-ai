@@ -463,12 +463,22 @@ export async function* runTurn(
           state,
         });
         const ask = async (prompt: string): Promise<CompletionResult> => {
-          const response = await deps.complete({
-            system: "You are FORGE's conversation-action classifier.",
-            user: prompt,
-            maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
-            temperature: 0,
-          });
+          let response: CompletionResult;
+          try {
+            response = await deps.complete({
+              system: "You are FORGE's conversation-action classifier.",
+              user: prompt,
+              maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
+              temperature: 0,
+            });
+          } catch (error) {
+            push({
+              kind: "model_call_failed",
+              boundaryId: CONVERSATION_CLASSIFY_ID,
+              reason: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+          }
           classifyCalls.push(response);
           recordModelCall(
             convo,

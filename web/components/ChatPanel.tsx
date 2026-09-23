@@ -158,7 +158,7 @@ export function ChatPanel({
   const userBubble =
     "max-w-[85%] whitespace-pre-wrap break-words rounded-xl rounded-br-sm border border-white/[0.06] bg-ink-800 px-4 py-2.5 text-[13.5px] leading-relaxed text-slate-100";
   const segment = (active: boolean): string =>
-    `h-6 rounded px-2 text-[11.5px] transition-colors ${active ? "bg-ink-700 text-slate-100" : "text-slate-400 hover:text-slate-200"}`;
+    `h-6 shrink-0 whitespace-nowrap rounded px-2 text-[11.5px] transition-colors ${active ? "bg-ink-700 text-slate-100" : "text-slate-400 hover:text-slate-200"}`;
 
   return (
     <main className="workbench flex min-w-0 flex-1 flex-col">
@@ -328,7 +328,8 @@ export function ChatPanel({
             disabled={!ready || sending}
             className="block max-h-60 min-h-[72px] w-full resize-y rounded-t-xl bg-transparent px-3.5 pb-1 pt-3 text-[14px] leading-relaxed text-slate-100 placeholder:text-slate-600 focus:outline-none disabled:opacity-50"
           />
-          <div className="flex items-center gap-1.5 overflow-x-auto px-2 pb-2 no-scrollbar">
+          <div className="flex items-center gap-1.5 px-2 pb-2">
+            <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
             <input
               ref={fileRef}
               type="file"
@@ -345,7 +346,7 @@ export function ChatPanel({
               aria-label="Attach files"
               onClick={() => fileRef.current?.click()}
               disabled={!ready || sending}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-40"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-40"
             >
               <Paperclip size={15} />
             </button>
@@ -354,7 +355,7 @@ export function ChatPanel({
               aria-label="What FORGE writes"
               data-testid="artifact-kind"
               title="What the prompt is: the agent's own prompt, or instructions for a coding agent to build that agent."
-              className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-ink-850 p-0.5"
+              className="flex shrink-0 items-center gap-0.5 rounded-md border border-white/[0.07] bg-ink-850 p-0.5"
             >
               <Target size={12} className="mx-1 text-slate-500" aria-hidden />
               {(["unspecified", "agent", "builder"] as const).map((kind) => (
@@ -375,7 +376,7 @@ export function ChatPanel({
               aria-label="Output shape"
               data-testid="output-shape"
               title="One master prompt, or dependent stages for complex work — each stage a prompt for one agent run."
-              className="flex items-center gap-0.5 rounded-md border border-white/[0.07] bg-ink-850 p-0.5"
+              className="flex shrink-0 items-center gap-0.5 rounded-md border border-white/[0.07] bg-ink-850 p-0.5"
             >
               <Layers size={12} className="mx-1 text-slate-500" aria-hidden />
               {(["single", "staged"] as const).map((shape) => (
@@ -391,7 +392,7 @@ export function ChatPanel({
                 </button>
               ))}
             </div>
-            <div className="flex-1" />
+            </div>
             <span className="hidden text-[11px] text-slate-600 2xl:inline">Enter to send · Shift+Enter for a new line</span>
             <button
               onClick={send}

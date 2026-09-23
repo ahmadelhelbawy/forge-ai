@@ -1538,7 +1538,9 @@ output budget to reach it.
 unresolved set is computed deterministically: the brief's open questions plus the
 outstanding questions. When it is non-empty at an explicit generate request, the
 generation instruction lists it as assumptions to state in the prompt, and the turn
-emits `FORGE-W010` naming every item.
+emits `FORGE-W010` naming every item. Under the `polish` mode (`WS-R38`), which adds
+nothing, they are stated in the reply instead of the prompt — the live Sprint 2 run
+showed a polish doubling a prompt by writing them in.
 
 **WS-R33 — Discovered requirements are checked, not trusted.** After an explicit
 generate writes a version, each brief goal, constraint and success criterion is
@@ -1611,7 +1613,9 @@ the message is reinterpreted beyond that list.
 **WS-R37 — The fast path.** An `existing_prompt` intake without `direct` opens
 discovery in the **refine** flavour and spends no classification call: the
 generation instruction asks for **at most two** questions, each one that would
-materially change the result, and says the prompt may already be ready. An
+materially change the result, and says the prompt may already be ready. The
+limit is enforced, not only requested: questions beyond two become open
+questions in the brief (the live Sprint 2 run measured a model asking three). An
 `existing_prompt` intake **with** `direct` is an explicit generate request
 (`WS-R31`) — the user named the transition in words FORGE publishes — and the
 turn emits `FORGE-W012` naming every choice FORGE made on the user's behalf. A

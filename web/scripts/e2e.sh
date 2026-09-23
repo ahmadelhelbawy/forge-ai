@@ -21,7 +21,11 @@ rm -rf "$ROOT/web/.next"
 pnpm --dir "$ROOT/web" build >/dev/null
 
 echo "==> starting stub servers"
-PORT=3210 FORGE_DATA_DIR="$OK_DIR" FORGE_CHAT_STUB=1 FORGE_REPO_ROOTS="$REPO_ROOTS" \
+# 10 ms per streamed chunk: at the stub's default 1 ms a whole answer streams in
+# ~20 ms, so the AC-036 "cancel mid-stream" test often cancelled after the stream
+# had ended (measured 3/6 passes on the pre-Sprint-2 build). This makes the
+# test's precondition true; its assertions are unchanged.
+PORT=3210 FORGE_DATA_DIR="$OK_DIR" FORGE_CHAT_STUB=1 FORGE_CHAT_STUB_DELAY_MS=10 FORGE_REPO_ROOTS="$REPO_ROOTS" \
   node "$ROOT/web/.next/standalone/web/server.js" >/tmp/forge-e2e-ok.log 2>&1 &
 OK_PID=$!
 PORT=3211 FORGE_DATA_DIR="$FAIL_DIR" FORGE_CHAT_STUB=error \

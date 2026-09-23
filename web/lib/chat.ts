@@ -85,7 +85,7 @@ export function buildSystemPrompt(ctx: TurnContext): string {
   if (ctx.action === "DISCOVER") {
     lines.push("", ...discoveryInstructions(ctx.discovery ?? null));
   } else if (ctx.generation?.explicitGenerate && ctx.discovery) {
-    lines.push("", ...generateInstructions(ctx.discovery, ctx.generation.unresolved));
+    lines.push("", ...generateInstructions(ctx.discovery, ctx.generation.unresolved, ctx.generation.mode ?? null));
   }
   if (ctx.generation?.mode) lines.push("", ...modeInstructions(ctx.generation.mode));
   if (ctx.generation?.direct) {
@@ -255,7 +255,11 @@ export const STAGED_INSTRUCTIONS: readonly string[] = [
 ];
 
 /** An approved generate after discovery (WS-R31–WS-R33). */
-function generateInstructions(state: DiscoveryState, unresolved: readonly string[]): string[] {
+function generateInstructions(
+  state: DiscoveryState,
+  unresolved: readonly string[],
+  mode: TransformationMode | null,
+): string[] {
   const lines = [
     "THE USER PRESSED GENERATE. Write the prompt now, from the conversation and this DISCOVERED BRIEF.",
     "Carry every goal, constraint and success criterion into the prompt, using the brief's own wording where you can — FORGE checks that each one is present.",
@@ -266,7 +270,9 @@ function generateInstructions(state: DiscoveryState, unresolved: readonly string
   if (unresolved.length > 0) {
     lines.push(
       "",
-      "UNRESOLVED — the user chose to generate before these were answered. State each one in the prompt as an explicit assumption or open question, and mention them in `reply`:",
+      mode === "polish"
+        ? "UNRESOLVED — the user chose to generate before these were answered. POLISH adds nothing to the prompt, so do NOT write them into it: list them in `reply` as open questions:"
+        : "UNRESOLVED — the user chose to generate before these were answered. State each one in the prompt as an explicit assumption or open question, and mention them in `reply`:",
       ...unresolved.map((q) => `- ${q}`),
     );
   }

@@ -68,6 +68,17 @@ export type TurnEventBody =
       /** WS-R43: the reasoning effort sent with the call, when one was. */
       readonly reasoningEffort?: string;
     }
+  | {
+      /**
+       * WS-R14: a call that was made and failed before any output arrived. It
+       * has no output to hash, so it is not a ModelCallRecord — but the log
+       * must still account for it, or a degraded turn looks like it spent
+       * nothing.
+       */
+      readonly kind: "model_call_failed";
+      readonly boundaryId: string;
+      readonly reason: string;
+    }
   | { readonly kind: "message_appended"; readonly role: "user" | "assistant" }
   | { readonly kind: "version_created"; readonly v: number; readonly action: ConversationAction }
   | {
@@ -136,6 +147,7 @@ export const TURN_EVENT_KINDS = [
   "action_refused",
   "current_version_moved",
   "model_call",
+  "model_call_failed",
   "message_appended",
   "version_created",
   "preservation_checked",
