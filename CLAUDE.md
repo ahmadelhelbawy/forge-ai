@@ -35,12 +35,11 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-22 at the V2-H completion commit — **1261 tests passing (81
+Verified 2026-09-23 at the Product Sprint 2 commit — **1320 tests passing (91
 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the HTTP
-product suite green (`web/scripts/e2e.sh`, **80/80**), the frozen P1.6 manifest
-verifying, and the
-opt-in live-provider smoke (`web/scripts/live-smoke.mjs`) covering streaming,
-requirement preservation and candidates.
+product suite green twice in a row (`web/scripts/e2e.sh`, **90/90**), the frozen
+P1.6 manifest verifying ×3, and the live acceptance in `evals/sprint2/`
+(25/25 on the rerun; the first pass's four failures are explained there).
 
 **Complete:** P0 (IR foundation) · P1 (compiler + 7 profiles) · P1.4 (security
 hardening) · P1.5 + P1.6 (thesis gates — both ran; claim retired) · P2 (context
@@ -81,6 +80,18 @@ tests holding the bytes identical to the CLI's · attachments scanned and
 classified `semi_trusted` before storage · protocol-aware provider routing and
 parallel preservation extraction.
 
+**Product Sprint 1 + 2 (2026-09-22/23).** Discovery (§22.11: `DISCOVER`, the
+explicit generate gate, the bounded classifier repair) and final product
+completion: deterministic intake with a refine fast path and a published
+direct-request list (`src/conversation/intake.ts`, WS-R36/R37); Polish /
+Strengthen / Rebuild recorded on versions; user-owned artifact kind (agent vs
+builder) and output shape (single vs staged, `src/conversation/stages.ts`);
+multi-target compile over one IR (WS-R41); reasoning effort sent only where
+declared or discovered (`web/lib/reasoning.ts`, §22.13); one bounded discovery
+repair (budget 4); question de-dup, stated/inferred brief marks, Leave/Reopen;
+persisted verifications; the workspace redesign (resizable/collapsible panels,
+pipeline rail). Live acceptance in `evals/sprint1/` and `evals/sprint2/`.
+
 **Not built:** **V2-I** (productization) is **next and not started**. The
 reasoning, the rejected alternatives and the two struck phases are in
 [`docs/roadmap-v2.md`](docs/roadmap-v2.md); the phase entries are in `plan.md`.
@@ -103,9 +114,11 @@ committed fixture cassettes were regenerated — regenerate with
 **Known defects, recorded and unfixed.** `evals/p16/README.md` still says
 "NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023
 asserts a dependency test that does not exist; cassette replay is unreachable
-from `web/`; a provider `HTTP 429` is classified to the user as "rejected the
-request for billing reasons, not a bad key", which is the wrong cause, though the
-provider's true message is carried correctly in the diagnostic beneath it.
+from `web/`.
+
+*Fixed in Sprint 2, previously listed here:* a provider `HTTP 429` whose message
+said "quota" was told to the user as a billing problem; it is now a rate limit
+unless the provider names money.
 
 *Fixed in V2-R, previously listed here:* the root `exports` map pointing at a
 `dist/index.js` that was never built (step 1); `irForVersion` choosing its

@@ -1,0 +1,82 @@
+{
+  "status": 200,
+  "ms": 92293,
+  "results": [
+    {
+      "target": "claude-code",
+      "extracted": true,
+      "refused": false,
+      "semanticHash": "sha256:d963d02c9de2a920c6d4ba66254cd7282b3469d058e6b9bb2b0fa189583aea1a",
+      "artifacts": [
+        {
+          "path": "PROMPT.md",
+          "contentHash": "sha256:3f5ccdfc7ee0aa6d1171c84e5c7d5d93bce372fbdea082d30bc8d12f3aadddf3",
+          "bytes": 8245
+        }
+      ],
+      "diagnostics": [
+        "FORGE-C031",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C020",
+        "FORGE-C020"
+      ]
+    },
+    {
+      "target": "openai-codex",
+      "extracted": false,
+      "refused": false,
+      "semanticHash": "sha256:d963d02c9de2a920c6d4ba66254cd7282b3469d058e6b9bb2b0fa189583aea1a",
+      "artifacts": [
+        {
+          "path": "TASK.md",
+          "contentHash": "sha256:b60084a0dfc57a1b5e17a5c8b35f803cd1050963d8a65e89b23bf3391c464e2a",
+          "bytes": 8082
+        }
+      ],
+      "diagnostics": [
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C020",
+        "FORGE-C020"
+      ]
+    },
+    {
+      "target": "kiro",
+      "extracted": false,
+      "refused": false,
+      "semanticHash": "sha256:d963d02c9de2a920c6d4ba66254cd7282b3469d058e6b9bb2b0fa189583aea1a",
+      "artifacts": [
+        {
+          "path": ".kiro/specs/review/requirements.md",
+          "contentHash": "sha256:17248ed67b547276f463d0f81fae5bc16791a5ad428c4388d58913849c9110ff",
+          "bytes": 3979
+        },
+        {
+          "path": ".kiro/specs/review/design.md",
+          "contentHash": "sha256:11eb75aa8b59a9cbd274e0729a60209b8c00585296e335102ac4cd6c5e95ca9c",
+          "bytes": 1464
+        },
+        {
+          "path": ".kiro/specs/review/tasks.md",
+          "contentHash": "sha256:30aa257b27cc747179ee5e54001200cbad7101e8b80210a7ea5deb7b6a1d7427",
+          "bytes": 4729
+        }
+      ],
+      "diagnostics": [
+        "FORGE-C031",
+        "FORGE-C031",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C001",
+        "FORGE-C020",
+        "FORGE-C020"
+      ]
+    }
+  ]
+}

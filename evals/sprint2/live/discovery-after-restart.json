@@ -1,0 +1,108 @@
+{
+  "afterServerRestart": true,
+  "id": "9c8dcd32-59d0-421d-a6a5-a13fdbc93434",
+  "discoveryStatus": "generated",
+  "discoveryTurns": 3,
+  "askedQuestions": [
+    "What task currently eats the most staff time or causes the most friction?",
+    "Who would use the agent most?",
+    "How autonomous should it be at first?",
+    "Do you want the agent prompt itself, or instructions for a coding agent to build it?",
+    "What inputs will you give the agent for each draft?",
+    "What types of drafts should it produce?",
+    "How should the agent handle due dates and upload instructions in drafts?",
+    "If this is a repeated follow-up, how should the tone change?"
+  ],
+  "brief": {
+    "vision": "Build an AI agent for a small accounting practice to reduce repetitive work and improve operational efficiency.",
+    "goal": "Create a draft-only agent that generates polite client follow-up emails for missing documents.",
+    "target_user": "The accountant/practice owner.",
+    "problem": "Chasing clients for missing invoices, receipts, or bank statements takes hours every month.",
+    "background": "The practice uses Gmail and Xero and wants a practical, low-risk starting point.",
+    "capabilities": [
+      "drafting client follow-up emails",
+      "organizing missing-document requests",
+      "summarizing document status",
+      "supporting Gmail/Xero-based workflows"
+    ],
+    "constraints": [
+      "low compliance risk",
+      "draft only; humans review and send",
+      "fits existing Gmail/Xero workflow",
+      "no autonomous sending or system actions initially"
+    ],
+    "success_criteria": [
+      "saves staff time",
+      "reduces manual admin",
+      "is safe enough to trust initially",
+      "fits existing accounting workflow",
+      "produces clear reviewable email drafts"
+    ],
+    "open_questions": [
+      "Exact client data privacy/compliance constraints",
+      "How client replies should be handled"
+    ]
+  },
+  "marks": {
+    "Build an AI agent for a small accounting practice to reduce repetitive work and improve operational efficiency.": "inferred",
+    "Create a draft-only agent that generates polite client follow-up emails for missing documents.": "stated",
+    "The accountant/practice owner.": "inferred",
+    "Chasing clients for missing invoices, receipts, or bank statements takes hours every month.": "stated",
+    "The practice uses Gmail and Xero and wants a practical, low-risk starting point.": "inferred",
+    "drafting client follow-up emails": "stated",
+    "organizing missing-document requests": "inferred",
+    "summarizing document status": "inferred",
+    "supporting Gmail/Xero-based workflows": "inferred",
+    "low compliance risk": "inferred",
+    "draft only; humans review and send": "stated",
+    "fits existing Gmail/Xero workflow": "inferred",
+    "no autonomous sending or system actions initially": "inferred",
+    "saves staff time": "inferred",
+    "reduces manual admin": "inferred",
+    "is safe enough to trust initially": "inferred",
+    "fits existing accounting workflow": "inferred",
+    "produces clear reviewable email drafts": "inferred",
+    "Exact client data privacy/compliance constraints": "inferred",
+    "How client replies should be handled": "inferred"
+  },
+  "artifactKind": "agent",
+  "versions": [
+    [
+      1,
+      "CREATE",
+      4182
+    ]
+  ],
+  "messages": 8,
+  "diagnosticsOnGenerate": [
+    "FORGE-W010",
+    "FORGE-W009"
+  ],
+  "modelCalls": [
+    [
+      "conversation.classify",
+      "qwen3.8-flash",
+      3439
+    ],
+    [
+      "conversation.generate",
+      "qwen3.8-flash",
+      17412
+    ],
+    [
+      "conversation.generate",
+      "qwen3.8-flash",
+      32121
+    ],
+    [
+      "conversation.generate",
+      "qwen3.8-flash",
+      31123
+    ],
+    [
+      "conversation.generate",
+      "qwen3.8-flash",
+      90038
+    ]
+  ]
+}

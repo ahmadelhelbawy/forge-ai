@@ -1,0 +1,152 @@
+[
+  {
+    "step": "paste",
+    "name": "a pasted prompt opens refine discovery",
+    "ok": true,
+    "detail": "21551ms"
+  },
+  {
+    "step": "paste",
+    "name": "no classification call",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "paste",
+    "name": "at most two questions",
+    "ok": true,
+    "detail": "2 asked"
+  },
+  {
+    "step": "paste",
+    "name": "no version written",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "modes",
+    "name": "polish writes a version recording the mode",
+    "ok": true,
+    "detail": "v1, 696 chars, 34819ms"
+  },
+  {
+    "step": "modes",
+    "name": "polish keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "FORGE-W010,FORGE-W009"
+  },
+  {
+    "step": "modes",
+    "name": "strengthen writes a version recording the mode",
+    "ok": true,
+    "detail": "v2, 1844 chars, 30286ms"
+  },
+  {
+    "step": "modes",
+    "name": "strengthen keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "no findings"
+  },
+  {
+    "step": "modes",
+    "name": "rebuild writes a version recording the mode",
+    "ok": true,
+    "detail": "v3, 2173 chars, 39011ms"
+  },
+  {
+    "step": "modes",
+    "name": "rebuild keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "no findings"
+  },
+  {
+    "step": "modes",
+    "name": "the three modes produced three distinct texts",
+    "ok": true,
+    "detail": "lengths 696/1844/2173"
+  },
+  {
+    "step": "compile",
+    "name": "three targets compiled",
+    "ok": true,
+    "detail": "92293ms"
+  },
+  {
+    "step": "compile",
+    "name": "at most one IR extraction",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "compile",
+    "name": "one semantic hash, per-target artifacts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "compile",
+    "name": "multi-target codex output equals a single-target compile",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "verify",
+    "name": "the package builds",
+    "ok": true,
+    "detail": "11 files"
+  },
+  {
+    "step": "verify",
+    "name": "every obligation gets one verdict",
+    "ok": true,
+    "detail": "4 obligations"
+  },
+  {
+    "step": "verify",
+    "name": "the verification persists across a reload",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "verify",
+    "name": "the traceability matrix still builds",
+    "ok": true,
+    "detail": "19 rows"
+  },
+  {
+    "step": "reasoning",
+    "name": "OpenRouter support is discovered",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "an undocumented model is unsupported, with a reason",
+    "ok": true,
+    "detail": "OpenCode Go does not document a reasoning setting for qwen3.8-flash."
+  },
+  {
+    "step": "reasoning",
+    "name": "a declared Responses model is supported",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "a turn with effort on a supported model succeeds",
+    "ok": true,
+    "detail": "200 14687ms "
+  },
+  {
+    "step": "reasoning",
+    "name": "the effort is recorded on the model-call events",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "an effort for an unsupported model is refused before any call",
+    "ok": true,
+    "detail": "Reasoning effort \"high\" was requested, but OpenCode Go does not document a reasoning setting for qwen3.8-flash. Choose \"Default\" or a model that supports it."
+  }
+]

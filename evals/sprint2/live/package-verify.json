@@ -1,0 +1,148 @@
+{
+  "package": {
+    "semanticId": "sha256:5cf81bdaf5ee27c5ba174d924f927358a6ebfb425dd59c2a878780c60248cab0",
+    "files": [
+      "package.json",
+      "task-ir.json",
+      "strategy.json",
+      "requirements.json",
+      "trace.json",
+      "provenance.json",
+      "runtime-contract.json",
+      "verification.json",
+      "diagnostics.json",
+      "artifacts/PROMPT.md",
+      "run.json"
+    ]
+  },
+  "obligations": [
+    {
+      "id": "v1",
+      "kind": "review",
+      "spec": "Re-read each file cited in a finding and confirm the cited line number is correct and the issue is real.",
+      "expected": "Every citation matches the actual file content at the stated line.",
+      "satisfies": [
+        "g5"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Check the verdict against the hard rules: any deleted test yields BLOCK, and the verdict otherwise uses exactly one of APPROVE or REQUEST CHANGES per the fixed vocabulary.",
+      "expected": "The verdict uses exactly one fixed-vocabulary value and respects the deleted-test rule.",
+      "satisfies": [
+        "g4",
+        "g6"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v3",
+      "kind": "manual",
+      "spec": "Check the finished review is under 400 words and does not restate the diff.",
+      "expected": "The review is under 400 words with no diff restatement.",
+      "satisfies": [
+        "g5"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v4",
+      "kind": "test",
+      "spec": "Run the affected vitest tests (*.test.ts, *.spec.ts) for the touched area when a finding depends on the result.",
+      "expected": "Test results are available to support or refute the finding.",
+      "satisfies": [
+        "g4"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    }
+  ],
+  "verify": {
+    "status": 200,
+    "verdicts": [
+      {
+        "obligation_id": "v1",
+        "kind": "review",
+        "spec": "Re-read each file cited in a finding and confirm the cited line number is correct and the issue is real.",
+        "satisfies": [
+          "g5"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": null,
+        "verdict": "REVIEW_REQUIRED",
+        "records": []
+      },
+      {
+        "obligation_id": "v2",
+        "kind": "review",
+        "spec": "Check the verdict against the hard rules: any deleted test yields BLOCK, and the verdict otherwise uses exactly one of APPROVE or REQUEST CHANGES per the fixed vocabulary.",
+        "satisfies": [
+          "g4",
+          "g6"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": null,
+        "verdict": "REVIEW_REQUIRED",
+        "records": []
+      },
+      {
+        "obligation_id": "v3",
+        "kind": "manual",
+        "spec": "Check the finished review is under 400 words and does not restate the diff.",
+        "satisfies": [
+          "g5"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": null,
+        "verdict": "REVIEW_REQUIRED",
+        "records": []
+      },
+      {
+        "obligation_id": "v4",
+        "kind": "test",
+        "spec": "Run the affected vitest tests (*.test.ts, *.spec.ts) for the touched area when a finding depends on the result.",
+        "satisfies": [
+          "g4"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": 0,
+        "verdict": "VERIFIED",
+        "records": [
+          {
+            "index": 0,
+            "runner": "sprint2-live",
+            "exit_code": 0,
+            "stdout_hash": null,
+            "stderr_hash": null,
+            "repo_commit": null
+          }
+        ]
+      }
+    ],
+    "evidenceKept": true
+  },
+  "persisted": [
+    {
+      "v": 3,
+      "target": "claude-code",
+      "profileId": "claude-code",
+      "semanticId": "sha256:5cf81bdaf5ee27c5ba174d924f927358a6ebfb425dd59c2a878780c60248cab0",
+      "packageValid": true,
+      "evidenceHash": "sha256:2cc092053a68230901f6693bed6a14c1335c4c1d6585667b82cdbe86dd65c895",
+      "evidenceKept": true,
+      "counts": {
+        "VERIFIED": 1,
+        "FAILED": 0,
+        "UNVERIFIED": 0,
+        "REVIEW_REQUIRED": 3
+      },
+      "at": "2026-09-23T13:52:07.356Z",
+      "evidence": "{\"records\":[{\"obligation_id\":\"v4\",\"kind\":\"test\",\"exit_code\":0,\"stdout_hash\":null,\"stderr_hash\":null,\"started_at\":\"2026-09-23T00:00:00Z\",\"duration_ms\":1,\"runner\":\"sprint2-live\",\"repo_commit\":null,\"package_semantic_id\":\"sha256:5cf81bdaf5ee27c5ba174d924f927358a6ebfb425dd59c2a878780c60248cab0\"}]}"
+    }
+  ]
+}

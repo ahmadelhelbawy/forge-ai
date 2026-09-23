@@ -1,0 +1,6 @@
+{
+  "status": 400,
+  "error": "Reasoning effort \"high\" was requested, but OpenCode Go does not document a reasoning setting for qwen3.8-flash. Choose \"Default\" or a model that supports it.",
+  "messages": 0,
+  "modelCalls": 0
+}

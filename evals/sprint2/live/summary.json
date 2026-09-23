@@ -1,0 +1,218 @@
+[
+  {
+    "step": "paste",
+    "name": "a pasted prompt opens refine discovery",
+    "ok": true,
+    "detail": "36943ms"
+  },
+  {
+    "step": "paste",
+    "name": "no classification call",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "paste",
+    "name": "at most two questions",
+    "ok": false,
+    "detail": "3 asked"
+  },
+  {
+    "step": "paste",
+    "name": "no version written",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "modes",
+    "name": "polish writes a version recording the mode",
+    "ok": true,
+    "detail": "v1, 1217 chars, 31789ms"
+  },
+  {
+    "step": "modes",
+    "name": "polish keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "FORGE-W010,FORGE-W009"
+  },
+  {
+    "step": "modes",
+    "name": "strengthen writes a version recording the mode",
+    "ok": true,
+    "detail": "v2, 2150 chars, 24615ms"
+  },
+  {
+    "step": "modes",
+    "name": "strengthen keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "FORGE-W009"
+  },
+  {
+    "step": "modes",
+    "name": "rebuild writes a version recording the mode",
+    "ok": true,
+    "detail": "v3, 1973 chars, 39510ms"
+  },
+  {
+    "step": "modes",
+    "name": "rebuild keeps the pinned requirement (Layer 1)",
+    "ok": true,
+    "detail": "FORGE-W009"
+  },
+  {
+    "step": "modes",
+    "name": "the three modes produced three distinct texts",
+    "ok": true,
+    "detail": "lengths 1217/2150/1973"
+  },
+  {
+    "step": "direct",
+    "name": "'just improve it' writes directly",
+    "ok": true,
+    "detail": "40300ms"
+  },
+  {
+    "step": "direct",
+    "name": "no classification call",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "direct",
+    "name": "W012 names the assumed choices",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "direct",
+    "name": "the named target was applied",
+    "ok": true,
+    "detail": "openai-codex"
+  },
+  {
+    "step": "kinds",
+    "name": "agent kind writes the agent's own prompt",
+    "ok": true,
+    "detail": "# Issue Triage Agent  You are the issue triage agent for this repository. You ha"
+  },
+  {
+    "step": "kinds",
+    "name": "builder kind writes build instructions",
+    "ok": true,
+    "detail": "# Build Instructions: GitHub Issue Triage Agent  ## Objective Build a lightweigh"
+  },
+  {
+    "step": "staged",
+    "name": "the version parses as ordered stages",
+    "ok": true,
+    "detail": "5 stages"
+  },
+  {
+    "step": "staged",
+    "name": "the pinned requirement is carried by named stages",
+    "ok": true,
+    "detail": "stages 1,2,3,4,5"
+  },
+  {
+    "step": "staged",
+    "name": "no W013",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "compile",
+    "name": "three targets compiled",
+    "ok": true,
+    "detail": "83748ms"
+  },
+  {
+    "step": "compile",
+    "name": "at most one IR extraction",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "compile",
+    "name": "one semantic hash, per-target artifacts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "compile",
+    "name": "multi-target codex output equals a single-target compile",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "verify",
+    "name": "the package builds",
+    "ok": true,
+    "detail": "11 files"
+  },
+  {
+    "step": "verify",
+    "name": "every obligation gets one verdict",
+    "ok": false,
+    "detail": "5 obligations"
+  },
+  {
+    "step": "verify",
+    "name": "the verification persists across a reload",
+    "ok": false,
+    "detail": ""
+  },
+  {
+    "step": "verify",
+    "name": "the traceability matrix still builds",
+    "ok": true,
+    "detail": "16 rows"
+  },
+  {
+    "step": "reasoning",
+    "name": "OpenRouter support is discovered",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "an undocumented model is unsupported, with a reason",
+    "ok": true,
+    "detail": "OpenCode Go does not document a reasoning setting for qwen3.8-flash."
+  },
+  {
+    "step": "reasoning",
+    "name": "a declared Responses model is supported",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "a turn with effort on a supported model succeeds",
+    "ok": false,
+    "detail": "502 13559ms Upstream error from Nvidia: Service temporarily overloaded"
+  },
+  {
+    "step": "reasoning",
+    "name": "the effort is recorded on the model-call events",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "step": "reasoning",
+    "name": "an effort for an unsupported model is refused before any call",
+    "ok": true,
+    "detail": "Reasoning effort \"high\" was requested, but OpenCode Go does not document a reasoning setting for qwen3.8-flash. Choose \"Default\" or a model that supports it."
+  },
+  {
+    "step": "failure",
+    "name": "a provider failure is reported, not blank",
+    "ok": true,
+    "detail": "502: no-such-vendor/no-such-model is not a valid model ID"
+  },
+  {
+    "step": "failure",
+    "name": "the conversation is intact, nothing written",
+    "ok": true,
+    "detail": ""
+  }
+]

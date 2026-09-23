@@ -1,0 +1,59 @@
+{
+  "availability": {
+    "openrouter": {
+      "supported": true,
+      "levels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "source": "discovered",
+      "wire": "openrouter",
+      "reason": null
+    },
+    "qwen": {
+      "supported": false,
+      "levels": [],
+      "source": null,
+      "wire": null,
+      "reason": "OpenCode Go does not document a reasoning setting for qwen3.8-flash."
+    },
+    "luna": {
+      "supported": true,
+      "levels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "source": "declared",
+      "wire": "openai-responses",
+      "reason": null
+    }
+  },
+  "attempts": [
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "status": 200,
+      "error": null
+    }
+  ],
+  "model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "turn": {
+    "status": 200,
+    "ms": 14687,
+    "action": "DISCUSS",
+    "reply": "A good code‑review prompt clearly states the goal (e.g., find bugs, improve readability, enforce style) and lists the specific criteria or checklist the reviewer should apply. It also provides context—such as the relevant files, language, and any constraints—so the AI can focus its analysis without needing extra clarification."
+  },
+  "modelCallEvents": [
+    {
+      "turnId": "ff98c432-53e4-4ef7-8420-30896ffc6999",
+      "kind": "model_call",
+      "boundaryId": "conversation.generate",
+      "model": "nvidia/nemotron-3-super-120b-a12b:free",
+      "latencyMs": 13310,
+      "reasoningEffort": "low",
+      "seq": 9,
+      "at": "2026-09-23T13:52:24.348Z"
+    }
+  ]
+}

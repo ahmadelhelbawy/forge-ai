@@ -1,0 +1,8 @@
+{
+  "status": 502,
+  "error": "no-such-vendor/no-such-model is not a valid model ID",
+  "messages": [
+    "user"
+  ],
+  "versions": 0
+}

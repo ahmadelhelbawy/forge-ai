@@ -1,0 +1,65 @@
+{
+  "status": 200,
+  "ms": 21551,
+  "action": "DISCOVER",
+  "reply": "Strong bones: the hard rules are unambiguous, the output contract is tight (severity order, word cap, no diff restating), and the stack context is exactly what a reviewer needs. What I'd improve: 'most severe first' is used but severity levels are never defined, so ordering will be inconsistent; there's no instruction for the zero-findings case; the verdict line has no fixed vocabulary; and nothing says whether to skip style nitpicks, which risks noisy reviews. For Claude Code specifically, I can also lean on its file access to require verifying cited lines rather than guessing them.",
+  "discovery": {
+    "status": "open",
+    "flavor": "refine",
+    "brief": {
+      "vision": "A senior code reviewer agent for a TypeScript monorepo that delivers concise, evidence-backed reviews with enforced hard rules.",
+      "goal": "Review a code change and output a markdown list of findings, most severe first, each with a file path and line number, followed by a one-line verdict, in under 400 words without restating the diff.",
+      "target_user": "Developers in a strict TypeScript monorepo using pnpm workspaces and vitest.",
+      "problem": "Reviews need to be consistently terse and high-signal while always enforcing non-negotiable rules (no approval when tests are deleted, dependency justification, citations for every finding).",
+      "background": "Repository uses strict TypeScript, pnpm workspaces and vitest.",
+      "capabilities": [
+        "Cite a file path and line number for every finding",
+        "Flag any new dependency and explain why it is needed",
+        "Refuse approval of any change that deletes a test"
+      ],
+      "constraints": [
+        "Never approve a change that deletes a test",
+        "Every finding must cite file path and line number",
+        "Flag any new dependency and say why it is needed",
+        "Output: markdown list of findings, most severe first, then a one-line verdict",
+        "Keep the whole review under 400 words",
+        "Do not restate the diff"
+      ],
+      "success_criteria": [
+        "Every finding has a verifiable file:line citation",
+        "Hard rules are enforced on every review",
+        "Output stays under 400 words with a one-line verdict"
+      ],
+      "open_questions": [
+        "What fixed verdict vocabulary should the review end with?",
+        "Should the reviewer ignore style/formatting nitpicks and report only substantive issues?"
+      ]
+    },
+    "questions": [
+      {
+        "question": "What verdict options should the one-line verdict use?",
+        "options": [
+          "Approve / Request changes / Needs discussion",
+          "LGTM / Changes requested",
+          "Free-form one-liner"
+        ]
+      },
+      {
+        "question": "Should the reviewer report only substantive issues (correctness, tests, security, dependencies) and skip style nitpicks?",
+        "options": [
+          "Substantive only",
+          "Include minor style notes too"
+        ]
+      }
+    ],
+    "ready": true,
+    "research_needed": null,
+    "artifact_kind": "agent",
+    "asked": [
+      "What verdict options should the one-line verdict use?",
+      "Should the reviewer report only substantive issues (correctness, tests, security, dependencies) and skip style nitpicks?"
+    ],
+    "turns": 1
+  },
+  "calls": []
+}

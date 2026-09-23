@@ -1513,6 +1513,23 @@ execution quality — `intent.md` retires that claim.
 > `critic.judge` stay **unbuilt** — neither V2-D, V2-E, nor anything in this
 > sequence asks a model for a finding.
 
+
+### Product Sprint 2 · Final product completion *(2026-09-23)*
+
+**Objective.** Close the gap between the thesis (idea → discovery → requirements →
+prompt → compiled contract → external evidence → verification) and the product a
+user actually meets, without making FORGE an executor.
+**Done** (`spec.md` §22.11 WS-R44–WS-R46, §22.12, §22.13; FR-060–FR-062,
+AC-062–AC-067): deterministic intake (`src/conversation/intake.ts`) with a refine
+fast path and a published direct-request list; Polish/Strengthen/Rebuild modes
+recorded on versions; user-owned artifact kind (agent vs builder) and output shape
+(single vs staged, `src/conversation/stages.ts`); multi-target compile over one IR;
+reasoning effort sent only where support is declared or discovered; one bounded
+repair of a discovery object; question de-duplication, stated/inferred marks,
+Leave/Reopen discovery; persisted verifications; the workspace redesign
+(resizable/collapsible panels, pipeline rail, Discovery and Contract views).
+Live acceptance in `evals/sprint2/`.
+**Not done:** V2-I (one-command start, Docker, release) remains next.
 ---
 
 ## Deviation log
@@ -1624,3 +1641,11 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-22 | V2-H | **Linkage adds a published suffix rule** (strip the first of `ing`/`ed`/`es`/`s` leaving ≥ 3 chars) and thresholds `max(min(2,n), ⌈0.6n⌉)` for `rg_term`, `min(2,n)` for `test_naming`. `scope_glob` and `git_history` only corroborate. | Exact-word matching misses ordinary inflection ("hashed" in a requirement vs `hashPassword` in code); the rule is applied identically to both sides, so it cannot make one side match what the other would not. Corroboration-only follows the P2 deviation that scope is admissibility, not relevance. |
 | 2026-09-22 | V2-H | **The only advisory-link producer is a user assertion**; no model proposes links. | Nothing in the sequence asks a model for a finding (§23.5). The advisory collection exists, is exercised and is kept separate, so a future model proposer lands in the right place. |
 | 2026-09-22 | V2-H | **The stub extractor now declares one `command` obligation satisfying `g1`.** The V2-G deviation above recorded that stub-mode packages had no obligations, so the HTTP verdict tests could only pass vacuously; they now assert obligations exist. The candidates ordering test's staged delays follow the computed fit order instead of a hard-coded one. | Found when the V2-H verdict-join test over HTTP had nothing to join. Test infrastructure only; no product path uses the stub. The candidate test's precondition, not its assertion, changed. |
+| 2026-09-23 | Sprint 2 | **The discovery coverage rule (W009) is content-word coverage ≥ 80% with fixed inflection folding, and W009 is one aggregated finding.** The ledger keeps the contiguous rule. | Sprint 1's live run reported three W009s, all paraphrases. Brief items are FORGE's summaries, not user wording; pinned text still owes the prompt its exact words (`WS-R27`). Measured again live: one finding, a genuine omission. |
+| 2026-09-23 | Sprint 2 | **The per-turn call budget is four**: one discovery repair joins the classification, its repair and the generation. Write actions are never repaired. | A discovery object the schema rejects loses the questions the user is waiting for; one repair is bounded. A repaired prompt would be an unreviewed second rewrite, so writes degrade to chat (`W003`) as before. |
+| 2026-09-23 | Sprint 2 | **Refine discovery's two-question limit is enforced** — extra questions move to the brief's open questions. | The live run measured a model asking three after being told two. An instruction is a request; the limit is a spec guarantee. |
+| 2026-09-23 | Sprint 2 | **Reasoning support is declared per provider family or discovered from OpenRouter's public model list; OpenCode Go declares only its Responses-API models.** Every custom id is unsupported. | Sending `reasoning_effort` to a model that rejects it is a 400 the user did not cause; to one that ignores it, a setting that does nothing. Qwen/MiniMax over the gateway's Anthropic path have no documented thinking support, so the control is disabled there with the reason. |
+| 2026-09-23 | Sprint 2 | **A staged prompt is one version** in a published `## Stage N — Title` / `Depends on:` form, not N versions. | Versions, hashes and the ledger check stay one per artifact (`WS-R7`, `WS-R25`); stages are a deterministic reading of it. Unparseable output is reported (`W013`), never repaired. |
+| 2026-09-23 | Sprint 2 | **Pasted evidence is stored only when the secret scanner finds nothing in it.** | Redacting would change the bytes the verdict's `evidence_hash` names; storing it verbatim could write a credential to disk. The verdict counts are kept either way. |
+| 2026-09-23 | Sprint 2 | **`web/scripts/e2e.sh` runs the stub at 10 ms per streamed chunk.** | The AC-036 cancel-mid-stream test raced a stream that finished in ~20 ms: measured 3/6 passes on the pre-sprint build. The delay makes "mid-stream" true; the assertions are unchanged. Two consecutive E2E runs then passed 90/90. |
+| 2026-09-23 | Sprint 2 | **A classifier call that fails at the transport is logged as a `model_call_failed` turn event.** | It has no output to hash, so it is not a `ModelCallRecord`; found live when a degraded turn's log showed one call where two were made (`WS-R14`). |
