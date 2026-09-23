@@ -85,6 +85,10 @@ interface Baseline {
   readonly target: string;
   readonly provider: string;
   readonly model: string;
+  readonly artifactKind: string;
+  readonly outputShape: string;
+  readonly reasoningEffort: string;
+  readonly verifications: number;
   readonly clarificationId: string | null;
   readonly existed: boolean;
 }
@@ -114,6 +118,10 @@ function emptyBaseline(convo: Conversation): Baseline {
     target: "",
     provider: "",
     model: "",
+    artifactKind: "unspecified",
+    outputShape: "single",
+    reasoningEffort: "default",
+    verifications: 0,
     clarificationId: null,
   };
 }
@@ -139,6 +147,10 @@ function baselineOf(convo: Conversation, existed: boolean): Baseline {
     target: convo.target,
     provider: convo.provider,
     model: convo.model,
+    artifactKind: convo.artifactKind,
+    outputShape: convo.outputShape,
+    reasoningEffort: convo.reasoningEffort,
+    verifications: convo.verifications.length,
     clarificationId: convo.pendingClarification?.id ?? null,
     existed,
   };
@@ -187,6 +199,10 @@ function shell(id: string, at: string): Conversation {
     advisoryLinks: [],
     turnEvents: [],
     modelCalls: [],
+    artifactKind: "unspecified",
+    outputShape: "single",
+    reasoningEffort: "default",
+    verifications: [],
   };
 }
 
@@ -231,6 +247,9 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
         if (typeof body.target === "string") convo.target = body.target;
         if (typeof body.provider === "string") convo.provider = body.provider;
         if (typeof body.model === "string") convo.model = body.model;
+        if (body.artifactKind) convo.artifactKind = body.artifactKind;
+        if (body.outputShape) convo.outputShape = body.outputShape;
+        if (body.reasoningEffort) convo.reasoningEffort = body.reasoningEffort;
         break;
       case "message_appended":
         convo.messages.push({ role: body.role, content: text(store, body.contentHash), at: body.messageAt });
@@ -247,6 +266,8 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
             at: body.versionAt,
             ...(body.action ? { action: body.action } : {}),
             ...(body.turnId ? { turnId: body.turnId } : {}),
+            ...(body.mode ? { mode: body.mode } : {}),
+            ...(body.shape ? { shape: body.shape } : {}),
           }),
         );
         convo.currentV = body.v;
@@ -371,6 +392,13 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
       case "turn_event":
         convo.turnEvents.push(Object.freeze({ ...body.event }));
         break;
+      case "verification_recorded": {
+        const { evidenceTextHash, ...rest } = body.record;
+        convo.verifications.push(
+          Object.freeze({ ...rest, evidence: evidenceTextHash ? text(store, evidenceTextHash) : null }),
+        );
+        break;
+      }
       case "model_call":
         convo.modelCalls.push(Object.freeze({ ...body.record }));
         break;
@@ -428,6 +456,21 @@ export function saveConversation(store: Store, convo: Conversation): void {
       });
     }
   }
+  // WS-R39/WS-R40/WS-R43: settings a user chose, including at creation, where
+  // `conversation_created` does not carry them.
+  if (
+    convo.artifactKind !== base.artifactKind ||
+    convo.outputShape !== base.outputShape ||
+    convo.reasoningEffort !== base.reasoningEffort
+  ) {
+    emit({
+      kind: "settings_changed",
+      id: convo.id,
+      ...(convo.artifactKind !== base.artifactKind ? { artifactKind: convo.artifactKind } : {}),
+      ...(convo.outputShape !== base.outputShape ? { outputShape: convo.outputShape } : {}),
+      ...(convo.reasoningEffort !== base.reasoningEffort ? { reasoningEffort: convo.reasoningEffort } : {}),
+    });
+  }
 
   // V2-B regenerate drops trailing assistant messages and may append new ones
   // in their place. Both halves are recorded; neither is ever silent.
@@ -455,7 +498,18 @@ export function saveConversation(store: Store, convo: Conversation): void {
       source: version.source,
       ...(version.action ? { action: version.action } : {}),
       ...(version.turnId ? { turnId: version.turnId } : {}),
+      ...(version.mode ? { mode: version.mode } : {}),
+      ...(version.shape ? { shape: version.shape } : {}),
       versionAt: version.at,
+    });
+  }
+
+  for (const record of convo.verifications.slice(base.verifications)) {
+    const { evidence, ...rest } = record;
+    emit({
+      kind: "verification_recorded",
+      id: convo.id,
+      record: { ...rest, evidenceTextHash: evidence !== null ? store.objects.put(evidence) : null },
     });
   }
 

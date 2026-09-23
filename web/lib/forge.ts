@@ -115,7 +115,7 @@ export class UnsupportedModelError extends Error {
 }
 
 /** True for a provider whose base URL is an OpenCode Zen gateway. */
-function isOpenCodeGateway(providerId: string, baseURL: string | null): boolean {
+export function isOpenCodeGateway(providerId: string, baseURL: string | null): boolean {
   return providerId === "opencode-go" || (baseURL ?? "").includes("opencode.ai/zen");
 }
 

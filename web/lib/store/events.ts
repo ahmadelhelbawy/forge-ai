@@ -19,8 +19,15 @@ import type { ConversationAction } from "forge/dist/conversation/actions.js";
 import type { ModelCallRecord } from "forge/dist/model/provider.js";
 
 import type { DiscoveryState } from "forge/dist/conversation/discovery.js";
+import type { TransformationMode } from "forge/dist/conversation/intake.js";
+import type { ArtifactKind, OutputShape } from "forge/dist/conversation/stages.js";
 
-import type { GovernanceDecisionRecord, GovernanceDecisionShape } from "../store-types";
+import type {
+  GovernanceDecisionRecord,
+  GovernanceDecisionShape,
+  ReasoningEffort,
+  VerificationRecord,
+} from "../store-types";
 import type { TurnEvent } from "../turn/events";
 
 export type ConversationEventBody =
@@ -40,6 +47,9 @@ export type ConversationEventBody =
       readonly target?: string;
       readonly provider?: string;
       readonly model?: string;
+      readonly artifactKind?: ArtifactKind;
+      readonly outputShape?: OutputShape;
+      readonly reasoningEffort?: ReasoningEffort;
     }
   | {
       readonly kind: "message_appended";
@@ -57,7 +67,14 @@ export type ConversationEventBody =
       readonly source: "model" | "manual" | "import" | "restore" | "merge";
       readonly action?: ConversationAction;
       readonly turnId?: string;
+      readonly mode?: TransformationMode;
+      readonly shape?: OutputShape;
       readonly versionAt: string;
+    }
+  | {
+      readonly kind: "verification_recorded";
+      readonly id: string;
+      readonly record: Omit<VerificationRecord, "evidence"> & { readonly evidenceTextHash: string | null };
     }
   | { readonly kind: "current_version_moved"; readonly id: string; readonly v: number }
   | {
@@ -186,4 +203,5 @@ export const CONVERSATION_EVENT_KINDS: readonly ConversationEventKind[] = [
   "advisory_link_removed",
   "turn_event",
   "model_call",
+  "verification_recorded",
 ];

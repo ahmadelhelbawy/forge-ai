@@ -95,6 +95,11 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   "FORGE-W009": { code: "FORGE-W009", name: "discovered_requirement_absent", severity: "warning", source: "deterministic" },
   "FORGE-W010": { code: "FORGE-W010", name: "generated_with_open_questions", severity: "warning", source: "deterministic" },
   "FORGE-W011": { code: "FORGE-W011", name: "generation_requires_approval", severity: "info", source: "deterministic" },
+  // Intake and output shape (spec.md §22.12, Product Sprint 2). W012 is `info`:
+  // a direct request is the user's right, and the finding exists so the
+  // assumptions it forced are on screen, not to discourage it.
+  "FORGE-W012": { code: "FORGE-W012", name: "generated_on_assumptions", severity: "info", source: "deterministic" },
+  "FORGE-W013": { code: "FORGE-W013", name: "staged_output_unreadable", severity: "warning", source: "deterministic" },
   // Evidence-based verification (spec.md §11.1, V2-G). All deterministic: the
   // verification layer has no judgement in it and no model boundary (EV-R1).
   // V001 is `info` because a package with no evidence yet is a legitimate,

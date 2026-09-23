@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { verifyVersion } from "@/lib/verify";
+import { recordVerification, verifyVersion } from "@/lib/verify";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
@@ -41,6 +41,8 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
 
   try {
     const result = await verifyVersion(convo, v, target, body.evidence);
+    // Kept, so a reload shows the last verdicts instead of an empty box.
+    const record = recordVerification(convo, { v: result.v, target, profileId: result.profileId, report: result.report, evidence: body.evidence });
     saveConversation(convo);
     const { report } = result;
     return NextResponse.json({
@@ -51,6 +53,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
       verdicts: report.verdicts,
       diagnostics: report.diagnostics,
       json: report.json,
+      evidenceKept: record.evidenceKept,
     });
   } catch (error) {
     saveConversation(convo);

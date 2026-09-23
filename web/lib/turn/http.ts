@@ -15,8 +15,12 @@ import {
   providerDiagnostic,
 } from "@/lib/diagnostics";
 import { currentPrompt, saveConversation, type Conversation } from "@/lib/store";
+import { isReasoningEffort } from "@/lib/store-types";
 import { buildDeps, stubDeps } from "@/lib/turn/deps";
 import type { TurnDeps } from "@/lib/turn/pipeline";
+import { ReasoningUnsupportedError } from "@/lib/reasoning";
+import { reasoningFor } from "@/lib/reasoning-resolve";
+import { isTransformationMode, type TransformationMode } from "forge/dist/conversation/intake.js";
 
 export interface TurnRequestBody {
   content?: unknown;
@@ -26,12 +30,17 @@ export interface TurnRequestBody {
   regenerate?: unknown;
   /** WS-R31: the explicit generate control. */
   generate?: unknown;
+  /** WS-R38: the mode chosen with the generate control. */
+  mode?: unknown;
+  /** WS-R43: the reasoning effort chosen in the header. */
+  reasoningEffort?: unknown;
 }
 
 export interface PreparedTurn {
   readonly content: string;
   readonly regenerate: boolean;
   readonly generate: boolean;
+  readonly mode?: TransformationMode;
   readonly before: string | null;
 }
 
@@ -48,6 +57,17 @@ export function prepareTurn(convo: Conversation, body: TurnRequestBody): Prepare
   const generate = body.generate === true;
   if (regenerate && generate) {
     return NextResponse.json({ error: "A turn is either a retry or a generate request, not both." }, { status: 400 });
+  }
+  if (body.mode !== undefined && body.mode !== null) {
+    if (!isTransformationMode(body.mode)) {
+      return NextResponse.json({ error: "`mode` must be polish, strengthen or rebuild." }, { status: 400 });
+    }
+    if (!generate) {
+      return NextResponse.json({ error: "A mode applies only to a generate request." }, { status: 400 });
+    }
+  }
+  if (body.reasoningEffort !== undefined && !isReasoningEffort(body.reasoningEffort)) {
+    return NextResponse.json({ error: "`reasoningEffort` must be default, low, medium or high." }, { status: 400 });
   }
   let content = typeof body.content === "string" ? body.content.trim() : "";
   // WS-R31: pressing Generate is itself the message. Its wording is FORGE's,
@@ -69,15 +89,30 @@ export function prepareTurn(convo: Conversation, body: TurnRequestBody): Prepare
   if (typeof body.target === "string" && body.target) convo.target = body.target;
   if (typeof body.provider === "string" && body.provider) convo.provider = body.provider;
   if (typeof body.model === "string") convo.model = body.model;
+  if (isReasoningEffort(body.reasoningEffort)) convo.reasoningEffort = body.reasoningEffort;
 
   if (convo.messages.length === 0 && convo.title === "New conversation") {
     convo.title = content.slice(0, 80);
   }
-  return { content, regenerate, generate, before: currentPrompt(convo) };
+  return {
+    content,
+    regenerate,
+    generate,
+    ...(isTransformationMode(body.mode) ? { mode: body.mode } : {}),
+    before: currentPrompt(convo),
+  };
 }
 
-export function depsFor(convo: Conversation, before: string | null): TurnDeps {
-  return process.env["FORGE_CHAT_STUB"] ? stubDeps(convo, before) : buildDeps(convo, before);
+export async function depsFor(convo: Conversation, before: string | null): Promise<TurnDeps> {
+  if (process.env["FORGE_CHAT_STUB"]) return stubDeps(convo, before);
+  return buildDeps(convo, before, await reasoningFor(convo));
+}
+
+/** A request the conversation's settings make impossible: a 400, not a provider failure. */
+export function settingsRefusal(convo: Conversation, error: unknown): NextResponse | null {
+  if (!(error instanceof ReasoningUnsupportedError)) return null;
+  saveConversation(convo);
+  return NextResponse.json({ error: error.message, conversationIntact: true }, { status: 400 });
 }
 
 /** The user-facing text and full diagnostic for a provider failure. */

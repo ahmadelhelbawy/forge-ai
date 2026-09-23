@@ -97,29 +97,55 @@ export async function compileVersion(
   target: string,
   options: { provider?: string; model?: string } & Pick<CompileOptions, "overlay"> = {},
 ): Promise<VersionCompilation> {
-  const profile = profileForTarget(target);
+  const [only] = await compileVersionForTargets(convo, v, [target], options);
+  return only!;
+}
+
+/** WS-R41: how many targets one request may name — the seven built-in profiles. */
+export const MAX_COMPILE_TARGETS = 7;
+
+/**
+ * Compile one version for several targets (WS-R41).
+ *
+ * The IR is obtained ONCE and `compile()` runs once per profile, so each
+ * result is exactly what a single-target compile of that profile produces and
+ * no target's output is derived from another's text. A refusal is per target:
+ * it is in that target's result and withholds nothing else.
+ */
+export async function compileVersionForTargets(
+  convo: Conversation,
+  v: number,
+  targets: readonly string[],
+  options: { provider?: string; model?: string } & Pick<CompileOptions, "overlay"> = {},
+): Promise<VersionCompilation[]> {
+  // Resolve every profile first: an unknown target is the request being wrong,
+  // and it should fail before a model call is spent on the IR.
+  const profiles = targets.map((target) => ({ target, profile: profileForTarget(target) }));
   const { ir, extracted } = await irForVersion(convo, v, {
     ...(options.provider !== undefined ? { provider: options.provider } : {}),
     ...(options.model !== undefined ? { model: options.model } : {}),
   });
   const taskSlug = taskSlugFor(ir);
-  const result = compile(ir, profile, {
-    taskSlug,
-    ...(options.overlay !== undefined ? { overlay: options.overlay } : {}),
+  const hash = semanticHash(ir);
+  return profiles.map(({ target, profile }, i) => {
+    const result = compile(ir, profile, {
+      taskSlug,
+      ...(options.overlay !== undefined ? { overlay: options.overlay } : {}),
+    });
+    return {
+      v,
+      target,
+      profileId: profile.id,
+      ir,
+      semanticHash: hash,
+      // Only the first result paid for an extraction, if any was paid at all.
+      extracted: extracted && i === 0,
+      artifacts: result.artifacts,
+      spans: result.spans,
+      diagnostics: result.diagnostics,
+      refused: result.refused,
+      tokenizer: result.tokenizer,
+      taskSlug,
+    };
   });
-
-  return {
-    v,
-    target,
-    profileId: profile.id,
-    ir,
-    semanticHash: semanticHash(ir),
-    extracted,
-    artifacts: result.artifacts,
-    spans: result.spans,
-    diagnostics: result.diagnostics,
-    refused: result.refused,
-    tokenizer: result.tokenizer,
-    taskSlug,
-  };
 }

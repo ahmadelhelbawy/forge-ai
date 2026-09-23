@@ -357,7 +357,8 @@ describe("model call accounting and budget (WS-R13, WS-R14, AC-031)", () => {
     const recorder = deps({ classification: classification("REVISE"), generation: envelope("new") });
     await executeTurn(convo, "revise it", recorder.deps);
     expect(recorder.calls()).toBe(2);
-    expect(TURN_CALL_BUDGET).toBe(3);
+    // WS-R13 (Sprint 2): classify + its repair + generate + one discovery repair.
+    expect(TURN_CALL_BUDGET).toBe(4);
   });
 
   it("records one ModelCallRecord per call, naming the boundary it served", async () => {

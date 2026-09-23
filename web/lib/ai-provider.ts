@@ -20,6 +20,7 @@ import { generateText, streamText, type LanguageModel } from "ai";
 
 import type { Protocol } from "./opencode-models";
 import { PROTOCOL_PATH } from "./opencode-models";
+import { reasoningCallOptions, type ReasoningRequest } from "./reasoning";
 
 export interface TransportSpec {
   readonly providerId: string;
@@ -32,6 +33,21 @@ export interface TransportSpec {
   readonly protocol: Protocol;
   /** Transport headers, including the stable conversation session id. */
   readonly headers: Readonly<Record<string, string>>;
+  /**
+   * WS-R42/WS-R43: set only when the model's support is declared or
+   * discovered. Absent means no reasoning parameter is sent at all.
+   */
+  readonly reasoning?: ReasoningRequest;
+}
+
+/** The per-call options a reasoning request changes; identical otherwise. */
+function callOptions(spec: TransportSpec, input: GenerateInput) {
+  const r = reasoningCallOptions(spec.reasoning, spec.providerId, input.maxTokens);
+  return {
+    maxOutputTokens: r.maxTokens,
+    ...(r.omitTemperature ? {} : { temperature: input.temperature }),
+    ...(r.providerOptions ? { providerOptions: r.providerOptions as never } : {}),
+  };
 }
 
 export interface GenerateInput {
@@ -107,8 +123,7 @@ export async function generate(spec: TransportSpec, input: GenerateInput): Promi
     model: buildModel(spec),
     system: input.system,
     prompt: input.prompt,
-    maxOutputTokens: input.maxTokens,
-    temperature: input.temperature,
+    ...callOptions(spec, input),
   });
   return { text: result.text, modelId: spec.modelId, latencyMs: Date.now() - started, finishReason: result.finishReason };
 }
@@ -132,8 +147,7 @@ export async function generateStream(spec: TransportSpec, input: StreamInput): P
     model: buildModel(spec),
     system: input.system,
     prompt: input.prompt,
-    maxOutputTokens: input.maxTokens,
-    temperature: input.temperature,
+    ...callOptions(spec, input),
     ...(input.signal ? { abortSignal: input.signal } : {}),
   });
   const text = await collectTextStream(result.fullStream, input.onChunk);

@@ -63,6 +63,10 @@ export type TurnEventBody =
       readonly boundaryId: string;
       readonly model: string;
       readonly latencyMs: number;
+      /** WS-R34: this call repaired the previous one's structured output. */
+      readonly repair?: boolean;
+      /** WS-R43: the reasoning effort sent with the call, when one was. */
+      readonly reasoningEffort?: string;
     }
   | { readonly kind: "message_appended"; readonly role: "user" | "assistant" }
   | { readonly kind: "version_created"; readonly v: number; readonly action: ConversationAction }

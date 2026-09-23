@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { loadConversation, saveConversation, currentPrompt } from "@/lib/store";
-import { depsFor, failure, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
+import { depsFor, settingsRefusal, failure, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
 import { executeTurn, type TurnDeps } from "@/lib/turn/pipeline";
 
 interface Params {
@@ -32,8 +32,10 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
 
   let deps: TurnDeps;
   try {
-    deps = depsFor(convo, prepared.before);
+    deps = await depsFor(convo, prepared.before);
   } catch (error) {
+    const refused = settingsRefusal(convo, error);
+    if (refused) return refused;
     // Configuration problems (no key, unknown model) are reported before the
     // user's message is touched.
     return failure(convo, error);
@@ -43,6 +45,7 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
     signal: request.signal,
     regenerate: prepared.regenerate,
     generate: prepared.generate,
+    ...(prepared.mode ? { mode: prepared.mode } : {}),
   });
   saveConversation(convo);
 

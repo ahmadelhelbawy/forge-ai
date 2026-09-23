@@ -7,6 +7,8 @@
  */
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
 import type { DiscoveryState } from "forge/dist/conversation/discovery.js";
+import type { TransformationMode } from "forge/dist/conversation/intake.js";
+import type { ArtifactKind, OutputShape } from "forge/dist/conversation/stages.js";
 import type { ModelCallRecord } from "forge/dist/model/provider.js";
 
 import type { TurnEvent } from "./turn/events";
@@ -27,6 +29,39 @@ export interface PromptVersion {
   readonly action?: ConversationAction;
   /** The turn that produced it (WS-R7). Absent on pre-V2 records. */
   readonly turnId?: string;
+  /** WS-R38: the transformation mode the generate request named, if any. */
+  readonly mode?: TransformationMode;
+  /** WS-R40: the output shape the version was written for. Absent means single. */
+  readonly shape?: OutputShape;
+}
+
+/** WS-R43: `default` sends no reasoning parameter at all. */
+export type ReasoningEffort = "default" | "low" | "medium" | "high";
+export const REASONING_EFFORTS: readonly ReasoningEffort[] = ["default", "low", "medium", "high"];
+export function isReasoningEffort(value: unknown): value is ReasoningEffort {
+  return typeof value === "string" && (REASONING_EFFORTS as readonly string[]).includes(value);
+}
+
+/**
+ * A verification the user ran (V2-G, persisted since Sprint 2).
+ *
+ * The evidence text is kept only when the secret scanner found nothing in it:
+ * evidence is untrusted, pasted by the user, and FORGE does not write a
+ * credential to disk because it arrived in a log. Redacting it instead would
+ * change the bytes the verdict's `evidence_hash` names, so the text is simply
+ * not kept and `evidenceKept` says so.
+ */
+export interface VerificationRecord {
+  readonly v: number;
+  readonly target: string;
+  readonly profileId: string;
+  readonly semanticId: string | null;
+  readonly packageValid: boolean;
+  readonly evidenceHash: string;
+  readonly evidence: string | null;
+  readonly evidenceKept: boolean;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly at: string;
 }
 
 /**
@@ -245,6 +280,14 @@ export interface Conversation {
   turnEvents: TurnEvent[];
   /** WS-R14. One record per model call the workspace made. */
   modelCalls: ModelCallRecord[];
+  /** WS-R39. Set only by a user action. */
+  artifactKind: ArtifactKind;
+  /** WS-R40. Set only by a user action. */
+  outputShape: OutputShape;
+  /** WS-R42/WS-R43. The effort requested for this conversation's model calls. */
+  reasoningEffort: ReasoningEffort;
+  /** Verifications run against this conversation's versions, oldest first. */
+  verifications: VerificationRecord[];
 }
 
 export interface ConversationSummary {

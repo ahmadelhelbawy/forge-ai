@@ -247,6 +247,9 @@ change requiring an update to this document, not a bug fix.
 | **FR-057** | Link requirements to repository files and tests by deterministic evidence only, keeping advisory links in a separate collection (`LK-R1`–`LK-R4`). | V2-H |
 | **FR-058** | Produce a deterministic requirement traceability matrix — requirement × provenance × lifecycle × files × tests × obligations × evidence × verdict — in the Studio and through `forge explain`, by joining existing data with no model call (`TM-R1`–`TM-R4`). | V2-H |
 | **FR-059** | Enter Discovery when intent is incomplete or exploratory, ask adaptive questions with an evolving brief, and write a prompt version only on an explicit user generate request, per §22.11. | Sprint 1 |
+| **FR-060** | Recognise a pasted, already-developed prompt deterministically and take a short path to a version — at most two material questions, a user-chosen transformation mode, and a direct path for an explicit "just do it" — per §22.12. | Sprint 2 |
+| **FR-061** | Let the user choose what artifact is being written (the agent's own prompt vs. instructions to build the agent) and its shape (one master prompt vs. dependent stages), and compile one version for several real target profiles in one request, per §22.12. | Sprint 2 |
+| **FR-062** | Offer a reasoning-effort control only for models whose support is declared or discovered, and send the provider-correct parameter for it, per §22.13. | Sprint 2 |
 
 ### 4.9 Model provider
 
@@ -509,6 +512,8 @@ with the same evidence requirement (INV-007).
 | `FORGE-W009` | `discovered_requirement_absent` | warning | deterministic | After an explicit generate, a goal, constraint or success criterion from the discovery brief is absent from the version by the presence rule of §22.8; cites the item (WS-R33) |
 | `FORGE-W010` | `generated_with_open_questions` | warning | deterministic | A version was generated while discovery still had unresolved questions; names every one (WS-R32) |
 | `FORGE-W011` | `generation_requires_approval` | info | deterministic | A classified `CREATE` or `REVISE` arrived while discovery was open; it resolved to `DISCOVER` and no version was written — only an explicit generate request writes one (WS-R31) |
+| `FORGE-W012` | `generated_on_assumptions` | info | deterministic | A version was written by a direct request without review; names every choice FORGE made on the user's behalf — mode, artifact kind, shape, target (WS-R37) |
+| `FORGE-W013` | `staged_output_unreadable` | warning | deterministic | Staged output was requested but the version does not parse as at least two stages whose dependencies point only backwards; the version is kept as one prompt and the reason is named (WS-R40) |
 | `FORGE-V001` | `obligation_unverified` | info | deterministic | An executable obligation has no accepted evidence record; its verdict is `UNVERIFIED` (EV-R4) |
 | `FORGE-V002` | `obligation_failed` | error | deterministic | An accepted evidence record for an executable obligation reports an exit code other than the expected one; cites the obligation, the exit code and the record (EV-R4) |
 | `FORGE-V003` | `evidence_package_mismatch` | warning | deterministic | An evidence record names a `package_semantic_id` other than the validated package's; the record is ignored and can never make an obligation `VERIFIED` (EV-R2) |
@@ -1181,8 +1186,11 @@ and no version are written.
 **WS-R13.** The per-turn model-call budget is declared and bounded. A simple
 revision costs one generation call plus at most one classification call and
 one bounded repair of that classification (`WS-R34`); an explicit generate
-request, and a discovery turn before any prompt exists (`WS-R31`), spend no
-classification call at all.
+request, a discovery turn before any prompt exists (`WS-R31`) and a pasted
+prompt (`WS-R37`) spend no classification call at all. A `DISCOVER` turn whose
+discovery object is unusable may spend **one** further repair call that returns
+that object alone (`WS-R34`), so the declared ceiling is four. A version-writing
+action is never repaired: a repair of a prompt is a second, unreviewed rewrite.
 Multi-call work (candidate generation, requirement checking) is opt-in or
 background and never on the critical path of an ordinary revision.
 
@@ -1492,7 +1500,7 @@ for each requirement — provenance, lifecycle, IR node, artifact spans, file an
 links, obligations, evidence, verdict — from the same matrix function the Studio
 uses, and marks advisory links as advisory. It adds no model call.
 
-### 22.11 Discovery (WS-R30–WS-R35)
+### 22.11 Discovery (WS-R30–WS-R35, WS-R44–WS-R46)
 
 > FORGE's job starts before the prompt. A user with a vague or strategic idea —
 > *"I want to build an AI agent but I don't know which"* — needs help working out
@@ -1534,9 +1542,17 @@ emits `FORGE-W010` naming every item.
 
 **WS-R33 — Discovered requirements are checked, not trusted.** After an explicit
 generate writes a version, each brief goal, constraint and success criterion is
-checked against it by the §22.8 presence rule. An absent item emits `FORGE-W009`
-(warning). This is advisory — brief items are FORGE's summaries, not pinned user
-text — and it never weakens the ledger (`WS-R27`).
+checked against it. An absent item is reported in **one** `FORGE-W009` (warning)
+naming every absent item. This is advisory — brief items are FORGE's summaries,
+not pinned user text — and it never weakens the ledger (`WS-R27`).
+*Amended in Sprint 2.* The check was the contiguous §22.8 presence rule, and the
+live Sprint 1 run reported three items, all three paraphrases rather than drops:
+a summary FORGE wrote is not wording the prompt owes verbatim. The rule for
+discovered items is now **content-word coverage**: an item is present when at
+least 80% of its content words (tokens of three or more characters outside a
+fixed stop-word list, with common inflections — *-s*, *-es*, *-ed*, *-ing*, a
+final *-e* — folded by a fixed rule) occur in the version. The pinned ledger keeps the strict
+contiguous rule — pinned text *is* the user's wording.
 
 **WS-R34 — Classification degrades boundedly and visibly.** The classifier's
 answer is parsed by a schema over every JSON object in the text (code fences
@@ -1545,11 +1561,114 @@ tolerated), taking the first object that validates. If none does, FORGE makes
 fails, the turn degrades per `WS-R4` with `FORGE-W001` citing both failures. The
 output is never reinterpreted: a bare word, a near-miss label or a misspelt action
 is a failure, not a guess.
+The same single repair applies to a `DISCOVER` turn's discovery object
+(*Sprint 2*): the repair call is shown the unusable answer as data and may
+return only `{"discovery": …}`; if that also fails the previous state is kept
+and `FORGE-W003` cites both problems.
 
 **WS-R35 — Discovery does not fabricate the present.** Discovery reasons from the
 user's own situation. When a decision genuinely needs current external facts
 (markets, prices, competitors) and FORGE has no research source, the response says
 so in `research_needed` rather than presenting model memory as research.
+
+**WS-R44 — A question is asked once.** Discovery records every question it has
+asked. A proposed question whose content words match an earlier one's (Jaccard
+≥ 0.8, same tokenisation as `WS-R33`) is dropped deterministically before it is
+shown, and a question is never shown twice in one update.
+
+**WS-R45 — Inferred is shown as inferred.** Each brief item is marked `stated`
+when at least 80% of its content words occur in the user's own messages, and
+`inferred` otherwise. The mark is computed, display-only, and never provenance:
+it does not enter an IR, the ledger or a package (`INV-016`). The Studio shows
+inferred items as FORGE's reading, not as facts the user gave.
+
+**WS-R46 — Discovery can be left and revisited.** The user may **close**
+discovery without generating; a closed discovery gates nothing, and classified
+actions behave as if it never opened. The user may reopen it. After a generate
+or a close the brief stays readable in the Studio — it is the record of how the
+prompt came to be, not scaffolding to discard.
+
+### 22.12 Intake, artifact kind and output shape (WS-R36–WS-R41)
+
+> A user who pastes a finished prompt has already done the discovery. Making them
+> sit through it again is a defect, and so is rewriting their prompt without
+> asking the one question that changes the result.
+
+**WS-R36 — Intake is read deterministically.** Before any classification, the
+first message of a conversation with no prompt is read by a pure function,
+`readIntake`. It reports `existing_prompt` when the message carries a body of at
+least 400 characters with at least two structural signals (a second-person role
+or task line, a markdown heading, three or more list items, a named section such
+as *constraints*, *rules*, *output* or *steps*, a fenced or quoted block);
+`direct` when the instruction around that body asks to skip review (*just
+improve*, *generate now*, *no questions*, *compile it for …* and the published
+list in `src/conversation/intake.ts`); the transformation mode its words name;
+and at most one target profile it names. No model is consulted and nothing in
+the message is reinterpreted beyond that list.
+
+**WS-R37 — The fast path.** An `existing_prompt` intake without `direct` opens
+discovery in the **refine** flavour and spends no classification call: the
+generation instruction asks for **at most two** questions, each one that would
+materially change the result, and says the prompt may already be ready. An
+`existing_prompt` intake **with** `direct` is an explicit generate request
+(`WS-R31`) — the user named the transition in words FORGE publishes — and the
+turn emits `FORGE-W012` naming every choice FORGE made on the user's behalf. A
+named target changes the conversation's target only in that case, and the change
+is one of the choices W012 names.
+
+**WS-R38 — Transformation modes.** An explicit generate may name a mode:
+`polish` (keep structure and wording; fix ambiguity, contradiction and error
+only), `strengthen` (keep intent and structure; add what is missing —
+constraints, success criteria, verification, edge cases) or `rebuild`
+(re-derive the structure from the underlying intent; every requirement of the
+source is carried). The mode is recorded on the version it writes. Without one,
+a generate from discovery uses no mode and a direct intake uses the mode its
+words name, else `strengthen`.
+
+**WS-R39 — Artifact kind.** A conversation's `artifactKind` is `unspecified`,
+`agent` (the prompt the agent itself runs with) or `builder` (instructions that
+tell a coding agent to build that agent). Only a user action sets it. Discovery
+may *suggest* a kind, which the UI offers for confirmation and never applies by
+itself; while it is `unspecified` and the request is ambiguous, discovery asks
+once (`WS-R44` keeps it once). Every generation instruction states the kind, and
+an `unspecified` kind at a direct generate is one of the choices W012 names.
+
+**WS-R40 — Output shape.** A conversation's `outputShape` is `single` (one
+master prompt) or `staged`. A staged version is still **one** version — one text,
+one hash, one ledger check (`WS-R7`, `WS-R25`) — written in a published form:
+`## Stage N — Title` headings, each optionally followed by `Depends on: Stage
+k[, Stage j]`. `parseStages` reads it deterministically and requires at least two
+stages numbered 1..n in order whose dependencies point only to earlier stages;
+anything else emits `FORGE-W013` and the version is shown as one prompt. For each
+pinned requirement and discovered item, FORGE reports which stages carry it by
+the same rules as `WS-R25` and `WS-R33`; an item no stage carries is already a
+W005 or W009.
+
+**WS-R41 — Several targets, one IR.** A compile request may name up to seven
+distinct target profiles. The version's IR is obtained once (`irForVersion`) and
+`compile()` runs once per profile; each result is byte-identical to a
+single-target compile of the same version for that profile, and a refusal for one
+target does not withhold the others. No target's output is derived from
+another's text.
+
+### 22.13 Reasoning effort (WS-R42–WS-R43)
+
+**WS-R42 — Offered only where it is known to work.** A model's reasoning-effort
+support is either **declared** (the preset tables in `web/lib/reasoning.ts`) or
+**discovered** from the provider's own model listing (OpenRouter's
+`supported_parameters`). Anything else — including every custom model id — is
+unsupported: the control is disabled with the reason, and a request that names
+an effort for such a model is refused with a 400 before any model call. FORGE
+never sends a reasoning parameter to a model not known to accept it.
+
+**WS-R43 — The provider's parameter, not a generic one.** Levels are `low`,
+`medium` and `high`; the default sends nothing. The wire form follows the
+model's protocol: `reasoning_effort` on OpenAI-compatible chat completions,
+`reasoning: {effort}` for OpenRouter, `reasoningEffort` on the Responses API, and
+an extended-thinking budget on Anthropic Messages, whose output cap is raised by
+the same budget so thinking cannot consume the answer (§22.11's measured
+failure). The chosen effort is persisted per conversation and recorded on the
+turn's model-call events.
 
 ---
 
@@ -1590,3 +1709,9 @@ so in `research_needed` rather than presenting model memory as research.
 | **AC-059** | While discovery is open, a classified `CREATE`/`REVISE` writes no version and emits `FORGE-W011`; only an explicit generate request writes one. | WS-R31 |
 | **AC-060** | An explicit generate with unresolved questions writes the version and emits `FORGE-W010` naming them; a discovered item absent from the version emits `FORGE-W009`. | WS-R32, WS-R33 |
 | **AC-061** | Malformed classifier output is repaired at most once; a second failure degrades to a read-only action with `FORGE-W001` citing both failures; no near-miss is reinterpreted. | WS-R34, WS-R4 |
+| **AC-062** | A pasted prompt opens refine discovery with no classification call and at most two questions; the same paste with a direct request writes a version with no classification call and emits `FORGE-W012` naming its assumptions. | WS-R36, WS-R37 |
+| **AC-063** | A generate naming a mode records it on the version, and each mode's instruction is distinct; `artifactKind` changes only through a user action. | WS-R38, WS-R39 |
+| **AC-064** | A staged version parses into ordered stages with backward dependencies or emits `FORGE-W013`; per-stage carry is reported for every pinned requirement. | WS-R40 |
+| **AC-065** | A multi-target compile makes at most one IR extraction and each target's artifacts are byte-identical to its single-target compile. | WS-R41 |
+| **AC-066** | No reasoning parameter reaches a model whose support is neither declared nor discovered; a request naming one is refused before any call; each supported protocol receives its own parameter. | WS-R42, WS-R43 |
+| **AC-067** | A repeated discovery question is dropped; brief items are marked stated or inferred deterministically; closing discovery lifts the gate and the brief stays readable after generate and close. | WS-R44–WS-R46 |

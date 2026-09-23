@@ -14,6 +14,10 @@ import { getTargetBrief, ProviderError, resolveCall, transportFor } from "@/lib/
 import type { Conversation } from "@/lib/store";
 import { renderBrief } from "forge/dist/conversation/discovery.js";
 import type { CompletionResult, TurnDeps } from "@/lib/turn/pipeline";
+import type { TransportSpec } from "@/lib/ai-provider";
+import type { ReasoningRequest } from "@/lib/reasoning";
+import { intakeTargets } from "@/lib/intake-targets";
+
 
 const ATTACH_BUDGET = 100_000;
 
@@ -25,9 +29,8 @@ const ATTACH_BUDGET = 100_000;
  * and the pipeline wants to iterate. The queue is bounded by nothing but the
  * response itself, which is already bounded by `maxOutputTokens`.
  */
-export function buildDeps(convo: Conversation, before: string | null): TurnDeps {
+export function buildDeps(convo: Conversation, before: string | null, reasoning?: ReasoningRequest): TurnDeps {
   const call = resolveCall(convo.provider, convo.model || undefined);
-  const brief = getTargetBrief(convo.target);
   let budget = ATTACH_BUDGET;
   const attachments = convo.attachments.map((a) => {
     const full = convo.attachmentContents[a.name] ?? "";
@@ -37,11 +40,16 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
   });
   // The conversation id IS the session: stable across every turn, retry and
   // revision of this conversation, and unique to it.
-  const spec = transportFor(call, convo.id);
+  const spec: TransportSpec = { ...transportFor(call, convo.id), ...(reasoning ? { reasoning } : {}) };
 
   return {
     providerId: call.providerId,
+    ...(reasoning ? { reasoningEffort: reasoning.effort } : {}),
+    intakeTargets: intakeTargets(),
     renderGeneration: (action, message, context) => {
+      // Read at render time: a direct intake may have changed the target
+      // after these deps were built (WS-R37).
+      const brief = getTargetBrief(convo.target);
       const history = convo.messages
         .slice(0, -1)
         .slice(-20)
@@ -57,6 +65,8 @@ export function buildDeps(convo: Conversation, before: string | null): TurnDeps 
           isFirstTurn: convo.messages.length <= 1,
           action,
           discovery: convo.discovery,
+          artifactKind: convo.artifactKind,
+          outputShape: convo.outputShape,
           ...(context ? { generation: context } : {}),
         }),
         user: history ? `${history}\n\nUser: ${message}` : message,
@@ -210,15 +220,20 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
 
   return {
     providerId: "stub",
-    renderGeneration: (action, message, context) => ({
-      system:
-        context?.explicitGenerate && convo.discovery
-          ? `stub:${action}\n${renderBrief(convo.discovery.brief).join("\n")}${
-              context.unresolved.length > 0 ? `\nAssumptions:\n${context.unresolved.map((q) => `- ${q}`).join("\n")}` : ""
-            }`
-          : `stub:${action}`,
-      user: message,
-    }),
+    intakeTargets: intakeTargets(),
+    renderGeneration: (action, message, context) => {
+      // The stub is a model, so what it "was told" travels the way a model's
+      // instruction does: as lines the stand-in carries into its answer.
+      const told = [
+        ...(context?.explicitGenerate && convo.discovery ? renderBrief(convo.discovery.brief) : []),
+        ...(context?.explicitGenerate && context.unresolved.length > 0
+          ? ["Assumptions:", ...context.unresolved.map((q) => `- ${q}`)]
+          : []),
+        ...(context?.mode ? [`Mode: ${context.mode}`] : []),
+        ...(convo.outputShape === "staged" && context?.explicitGenerate !== undefined && action !== "DISCOVER" ? ["[[staged]]"] : []),
+      ];
+      return { system: [`stub:${action}`, ...told].join("\n"), user: message };
+    },
     complete: async (request) => answer(request),
     async *streamComplete(request, signal) {
       const result = answer(request);
@@ -239,8 +254,13 @@ export function stubDeps(convo: Conversation, before: string | null): TurnDeps {
 
 /** The stub carries the discovered brief into a generated prompt, as a good model would. */
 function withBrief(prompt: string, system: string): string {
-  const [, ...brief] = system.split("\n");
-  return brief.length > 0 ? `${prompt}\n${brief.join("\n")}` : prompt;
+  const [, ...told] = system.split("\n");
+  const staged = told.includes("[[staged]]");
+  const lines = told.filter((l) => l !== "[[staged]]");
+  const body = lines.length > 0 ? `${prompt}\n${lines.join("\n")}` : prompt;
+  // WS-R40: a staged request gets the published form, so the stage parser and
+  // the per-stage carry are exercised offline on the real path.
+  return staged ? `## Stage 1 — Plan\nDepends on: none\n${body}\n\n## Stage 2 — Build\nDepends on: Stage 1\n${body}` : body;
 }
 
 /**

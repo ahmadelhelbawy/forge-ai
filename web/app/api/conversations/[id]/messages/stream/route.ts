@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { currentPrompt, loadConversation, saveConversation, type Conversation } from "@/lib/store";
 import { isTurnDelta } from "@/lib/turn/events";
-import { depsFor, failureReport, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
+import { depsFor, settingsRefusal, failureReport, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
 import { runTurn, type TurnDeps, type TurnResult } from "@/lib/turn/pipeline";
 
 interface Params {
@@ -93,8 +93,10 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
 
   let deps: TurnDeps;
   try {
-    deps = depsFor(convo, prepared.before);
+    deps = await depsFor(convo, prepared.before);
   } catch (error) {
+    const refused = settingsRefusal(convo, error);
+    if (refused) return refused;
     // A configuration problem is known before the user's message is touched,
     // so it is an ordinary HTTP error rather than a stream that opens to fail.
     saveConversation(convo);
@@ -121,6 +123,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
           signal: request.signal,
           regenerate: prepared.regenerate,
           generate: prepared.generate,
+          ...(prepared.mode ? { mode: prepared.mode } : {}),
         });
         let next = await iterator.next();
         while (!next.done) {

@@ -14,7 +14,8 @@
  */
 import { z } from "zod";
 
-import { containsSequence, tokenize } from "../critic/deterministic/ledger.js";
+import { tokenize } from "../critic/deterministic/ledger.js";
+import { contentWords, isCovered, sameQuestion } from "./coverage.js";
 
 const Text = z.string().trim().min(1).max(600);
 const Items = z.array(Text).max(12);
@@ -53,6 +54,11 @@ export const DiscoveryUpdateSchema = z.strictObject({
   ready: z.boolean().default(false),
   /** WS-R35: what current external research would be needed, if any. */
   research_needed: z.string().trim().min(1).max(600).nullable().default(null),
+  /**
+   * WS-R39: FORGE's reading of which artifact the user wants. A suggestion the
+   * UI offers for confirmation — never applied to the conversation by itself.
+   */
+  artifact_kind: z.enum(["agent", "builder"]).nullable().default(null),
 });
 export type DiscoveryUpdate = z.infer<typeof DiscoveryUpdateSchema>;
 
@@ -126,18 +132,49 @@ export function jsonObjects(text: string): unknown[] {
 
 /** The persisted discovery state of a conversation. */
 export interface DiscoveryState {
-  /** `open` gates every classified write (WS-R31); `generated` after an explicit generate. */
-  readonly status: "open" | "generated";
+  /**
+   * `open` gates every classified write (WS-R31); `generated` after an explicit
+   * generate; `closed` when the user left discovery without generating
+   * (WS-R46). Only `open` gates anything.
+   */
+  readonly status: "open" | "generated" | "closed";
+  /** `refine` when it opened on a pasted prompt (WS-R37); absent means explore. */
+  readonly flavor?: "explore" | "refine";
   readonly brief: DiscoveryBrief;
   readonly questions: readonly DiscoveryQuestion[];
   readonly ready: boolean;
   readonly research_needed: string | null;
+  /** WS-R39: the model's suggested artifact kind, awaiting the user's confirmation. */
+  readonly artifact_kind?: "agent" | "builder" | null;
+  /** WS-R44: every question shown so far, in order. Absent on pre-Sprint-2 states. */
+  readonly asked?: readonly string[];
   /** How many discovery turns have updated this state. */
   readonly turns: number;
 }
 
-export function openDiscovery(): DiscoveryState {
-  return { status: "open", brief: {}, questions: [], ready: false, research_needed: null, turns: 0 };
+export function openDiscovery(flavor: "explore" | "refine" = "explore"): DiscoveryState {
+  return { status: "open", flavor, brief: {}, questions: [], ready: false, research_needed: null, asked: [], turns: 0 };
+}
+
+/**
+ * WS-R44: drop every proposed question already asked in an earlier turn, or
+ * repeated within this update. Deterministic; the model is also shown the
+ * history, but that is a request, and this is the guarantee.
+ */
+export function freshQuestions(
+  asked: readonly string[],
+  proposed: readonly DiscoveryQuestion[],
+): { kept: DiscoveryQuestion[]; dropped: string[] } {
+  const kept: DiscoveryQuestion[] = [];
+  const dropped: string[] = [];
+  for (const q of proposed) {
+    if ([...asked, ...kept.map((k) => k.question)].some((prior) => sameQuestion(prior, q.question))) {
+      dropped.push(q.question);
+    } else {
+      kept.push(q);
+    }
+  }
+  return { kept, dropped };
 }
 
 /**
@@ -146,12 +183,17 @@ export function openDiscovery(): DiscoveryState {
  * the event log keeps every prior state, so nothing is lost from history.
  */
 export function applyDiscoveryUpdate(state: DiscoveryState, update: DiscoveryUpdate): DiscoveryState {
+  const asked = state.asked ?? [];
+  const { kept } = freshQuestions(asked, update.questions);
   return {
     status: "open",
+    ...(state.flavor ? { flavor: state.flavor } : {}),
     brief: update.brief,
-    questions: update.questions,
+    questions: kept,
     ready: update.ready,
     research_needed: update.research_needed,
+    artifact_kind: update.artifact_kind,
+    asked: [...asked, ...kept.map((q) => q.question)],
     turns: state.turns + 1,
   };
 }
@@ -179,16 +221,36 @@ export function discoveredRequirements(brief: DiscoveryBrief): Array<{ field: st
   ];
 }
 
-/** WS-R33: which discovered items are absent from a version, by the §22.8 presence rule. */
+/**
+ * WS-R33 (amended): which discovered items are absent from a version, by
+ * content-word coverage. The pinned ledger keeps the contiguous rule; this one
+ * exists because the brief is FORGE's paraphrase, not the user's wording.
+ */
 export function absentDiscoveredRequirements(
   brief: DiscoveryBrief,
   versionText: string,
 ): Array<{ field: string; text: string }> {
-  const haystack = tokenize(versionText);
-  return discoveredRequirements(brief).filter((item) => {
-    const needle = tokenize(item.text);
-    return needle.length > 0 && !containsSequence(haystack, needle);
-  });
+  const pool = new Set(contentWords(versionText));
+  return discoveredRequirements(brief).filter((item) => contentWords(item.text).length > 0 && !isCovered(item.text, pool));
+}
+
+export type BriefMark = "stated" | "inferred";
+
+/**
+ * WS-R45: mark each brief item `stated` when the user's own messages cover it,
+ * `inferred` otherwise. Display-only: the mark is never provenance and never
+ * enters an IR, the ledger or a package (INV-016).
+ */
+export function briefMarks(brief: DiscoveryBrief, userMessages: readonly string[]): Record<string, BriefMark> {
+  const pool = new Set(contentWords(userMessages.join("\n")));
+  const marks: Record<string, BriefMark> = {};
+  for (const [key] of BRIEF_LABELS) {
+    const value = brief[key];
+    if (value === undefined) continue;
+    const items = Array.isArray(value) ? value : [value];
+    for (const item of items) marks[item] = isCovered(item, pool) ? "stated" : "inferred";
+  }
+  return marks;
 }
 
 const BRIEF_LABELS: ReadonlyArray<readonly [keyof DiscoveryBrief, string]> = [

@@ -20,6 +20,8 @@ import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
+import type { TransformationMode } from "forge/dist/conversation/intake.js";
+import type { OutputShape } from "forge/dist/conversation/stages.js";
 import {
   checkRequirementLedger,
   ledgerFingerprint,
@@ -135,6 +137,10 @@ export function newConversation(partial: {
     versionIrs: [],
     turnEvents: [],
     modelCalls: [],
+    artifactKind: "unspecified",
+    outputShape: "single",
+    reasoningEffort: "default",
+    verifications: [],
   });
 }
 
@@ -184,7 +190,7 @@ export function addPromptVersion(
    * (ST-R6), and a turn id there would be a reference into the event log that
    * resolves to nothing.
    */
-  origin?: { action: ConversationAction; turnId?: string },
+  origin?: { action: ConversationAction; turnId?: string; mode?: TransformationMode; shape?: OutputShape },
 ): PromptVersion {
   const v = convo.promptVersions.length > 0 ? Math.max(...convo.promptVersions.map((p) => p.v)) + 1 : 1;
   const version: PromptVersion = Object.freeze({
@@ -194,6 +200,8 @@ export function addPromptVersion(
     at: new Date().toISOString(),
     ...(origin ? { action: origin.action } : {}),
     ...(origin?.turnId ? { turnId: origin.turnId } : {}),
+    ...(origin?.mode ? { mode: origin.mode } : {}),
+    ...(origin?.shape && origin.shape !== "single" ? { shape: origin.shape } : {}),
   });
   convo.promptVersions.push(version);
   convo.currentV = v;

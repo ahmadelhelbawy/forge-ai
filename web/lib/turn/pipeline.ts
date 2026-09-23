@@ -49,6 +49,8 @@ import {
   unresolvedQuestions,
   type DiscoveryState,
 } from "forge/dist/conversation/discovery.js";
+import { readIntake, type Intake, type IntakeTarget, type TransformationMode } from "forge/dist/conversation/intake.js";
+import { parseStages } from "forge/dist/conversation/stages.js";
 import type { LedgerCheckResult } from "forge/dist/critic/deterministic/ledger.js";
 import { diagnostic, measureEvidence, type Diagnostic } from "forge/dist/ir/diagnostic.js";
 import { sha256Hex, type ModelCallRecord } from "forge/dist/model/provider.js";
@@ -68,10 +70,17 @@ import {
 import type { TurnDelta, TurnEvent, TurnEventBody, TurnStreamItem } from "./events";
 
 /**
- * WS-R13: one classification, at most one repair of it (WS-R34), and one
- * generation. Declared, not implied. An explicit generate request spends one.
+ * WS-R13: one classification, at most one repair of it (WS-R34), one
+ * generation, and — on a DISCOVER turn only — at most one repair of the
+ * discovery object. Declared, not implied. An explicit generate request, a
+ * pasted prompt (WS-R37) and a discovery turn before any prompt exists spend no
+ * classification at all.
  */
-export const TURN_CALL_BUDGET = 3;
+export const TURN_CALL_BUDGET = 4;
+
+/** What the discovery repair may see of the unusable answer. */
+const DISCOVERY_REPAIR_SOURCE_LIMIT = 12_000;
+const DISCOVERY_REPAIR_MAX_TOKENS = 4000;
 
 /**
  * What the classifier sees of a long message.
@@ -113,11 +122,19 @@ export interface GenerationContext {
   readonly explicitGenerate: boolean;
   /** WS-R32: questions still open when generate was pressed. */
   readonly unresolved: readonly string[];
+  /** WS-R38: the transformation mode named for this generate, if any. */
+  readonly mode?: TransformationMode | null;
+  /** WS-R37: the user asked to skip review, in words FORGE publishes. */
+  readonly direct?: boolean;
 }
 
 export interface TurnDeps {
   /** Recorded on every call record (WS-R14). */
   readonly providerId: string;
+  /** WS-R43: the effort sent with every call of this turn, recorded on its events. */
+  readonly reasoningEffort?: string;
+  /** WS-R36: the target profiles a pasted prompt's instruction may name. */
+  readonly intakeTargets?: readonly IntakeTarget[];
   /** The workspace's system + user prompt for the resolved action. */
   renderGeneration(
     action: ConversationAction,
@@ -162,6 +179,8 @@ export interface TurnOptions {
    * way a version is written while discovery is open.
    */
   readonly generate?: boolean;
+  /** WS-R38: the transformation mode chosen with the generate control. */
+  readonly mode?: TransformationMode;
 }
 
 export interface TurnResult {
@@ -192,6 +211,8 @@ export interface TurnResult {
   readonly preservation: LedgerCheckResult | null;
   /** The conversation's discovery state after the turn (§22.11). */
   readonly discovery: DiscoveryState | null;
+  /** WS-R36: how the first message was read, when it was read at all. */
+  readonly intake: Intake | null;
   readonly diagnostics: readonly Diagnostic[];
   readonly events: readonly TurnEvent[];
 }
@@ -340,6 +361,7 @@ export async function* runTurn(
     regenerated,
     preservation: null,
     discovery: convo.discovery,
+    intake: null,
     diagnostics,
     events: emitted,
     ...over,
@@ -367,12 +389,25 @@ export async function* runTurn(
     let cited: readonly number[] = [];
     let degraded = false;
     let unsupported: readonly string[] = [];
-    const explicitGenerate = options.generate === true;
     let unresolved: string[] = [];
 
+    // ── Intake (WS-R36, WS-R37) ───────────────────────────────────────────
+    //
+    // A first message that is a developed prompt is read by a pure function,
+    // not asked of a model: its shape and its words are facts, and a paste the
+    // classifier sees is a paste that can argue with the classifier.
+    const intake: Intake | null =
+      !regenerated && options.generate !== true && !state.hasCurrentPrompt && convo.discovery === null
+        ? readIntake(message, deps.intakeTargets ?? [])
+        : null;
+    const direct = intake?.kind === "existing_prompt" && intake.direct;
+    const explicitGenerate = options.generate === true || direct;
+    const mode: TransformationMode | null = options.mode ?? (direct ? (intake?.mode ?? "strengthen") : null);
+
     if (explicitGenerate) {
-      // WS-R31: the user named the transition. No model decides it, so no
-      // classification call is spent and none can overrule it.
+      // WS-R31: the user named the transition — with the control, or (WS-R37)
+      // in words FORGE publishes. No model decides it, so no classification
+      // call is spent and none can overrule it.
       action = state.hasCurrentPrompt ? "REVISE" : "CREATE";
       unresolved = convo.discovery?.status === "open" ? unresolvedQuestions(convo.discovery) : [];
       yield push({ kind: "action_resolved", action, degraded: false, explicit: true });
@@ -386,6 +421,34 @@ export async function* runTurn(
           ),
         );
       }
+      if (direct && intake) {
+        const choices: string[] = [`mode ${mode}${intake.mode ? " (named in your message)" : " (FORGE's default)"}`];
+        if (intake.target && intake.target !== convo.target) {
+          choices.push(`target changed from ${convo.target} to ${intake.target} (named in your message)`);
+          convo.target = intake.target;
+        } else {
+          choices.push(`target ${convo.target}`);
+        }
+        choices.push(
+          convo.artifactKind === "unspecified"
+            ? "artifact kind not chosen — the model states which it assumed"
+            : `artifact kind ${convo.artifactKind}`,
+        );
+        choices.push(`output shape ${convo.outputShape}`);
+        note(
+          diagnostic(
+            "FORGE-W012",
+            `You asked to skip review, so FORGE wrote the prompt directly with these choices: ${choices.join("; ")}. Change any of them and generate again if they are wrong.`,
+            [measureEvidence("assumed_choices", choices.length, "choices")],
+          ),
+        );
+      }
+    } else if (intake?.kind === "existing_prompt") {
+      // WS-R37: a pasted prompt already did the discovery. Refine discovery
+      // asks at most two material questions, and no classification is spent.
+      action = "DISCOVER";
+      convo.discovery = openDiscovery("refine");
+      yield push({ kind: "action_resolved", action, degraded: false });
     } else if (state.discoveryOpen && !state.hasCurrentPrompt) {
       // WS-R31: with discovery open and no prompt, every action the state can
       // express resolves to DISCOVER, so asking a model would only add latency
@@ -459,6 +522,7 @@ export async function* runTurn(
           boundaryId: CONVERSATION_CLASSIFY_ID,
           model: response.model,
           latencyMs: response.latencyMs,
+          ...(deps.reasoningEffort ? { reasoningEffort: deps.reasoningEffort } : {}),
         });
       }
 
@@ -536,7 +600,7 @@ export async function* runTurn(
       stage: "generating",
       label: writesVersion(action) ? STAGE_LABELS.generating : DISCUSSION_GENERATING_LABEL,
     });
-    const rendered = deps.renderGeneration(action, message, { explicitGenerate, unresolved });
+    const rendered = deps.renderGeneration(action, message, { explicitGenerate, unresolved, mode, direct });
     const request: CompletionRequest = {
       system: rendered.system,
       user: rendered.user,
@@ -593,6 +657,7 @@ export async function* runTurn(
       boundaryId: CONVERSATION_GENERATE_ID,
       model: response.model,
       latencyMs: response.latencyMs,
+      ...(deps.reasoningEffort ? { reasoningEffort: deps.reasoningEffort } : {}),
     });
     checkCancelled();
     checkLedgerIntact();
@@ -650,7 +715,36 @@ export async function* runTurn(
 
     // ── Discovery state (WS-R30) ──────────────────────────────────────────
     if (action === "DISCOVER") {
-      const { update, problem } = readDiscoveryUpdate(response.text);
+      let { update, problem } = readDiscoveryUpdate(response.text);
+      if (update === null) {
+        // WS-R34 applied to discovery: ONE bounded repair, which may return
+        // only the discovery object. The reply the user already saw stays;
+        // nothing a repair returns can become a version (DISCOVER is read-only).
+        const firstProblem = problem;
+        const repairPrompt = renderDiscoveryRepairPrompt(response.text, firstProblem ?? "invalid");
+        const repaired = await deps.complete({
+          system: "You are FORGE's discovery formatter. You return JSON only.",
+          user: repairPrompt,
+          maxTokens: DISCOVERY_REPAIR_MAX_TOKENS,
+          temperature: 0,
+        });
+        recordModelCall(convo, {
+          ...callRecord(CONVERSATION_GENERATE_ID, CONVERSATION_GENERATE_VERSION, deps.providerId, repaired, repairPrompt),
+          repairs: 1,
+        });
+        yield push({
+          kind: "model_call",
+          boundaryId: CONVERSATION_GENERATE_ID,
+          model: repaired.model,
+          latencyMs: repaired.latencyMs,
+          repair: true,
+          ...(deps.reasoningEffort ? { reasoningEffort: deps.reasoningEffort } : {}),
+        });
+        checkCancelled();
+        checkLedgerIntact();
+        ({ update, problem } = readDiscoveryUpdate(repaired.text));
+        if (update === null) problem = `${firstProblem}; after one repair: ${problem}`;
+      }
       if (update !== null) {
         convo.discovery = applyDiscoveryUpdate(convo.discovery ?? openDiscovery(), update);
         yield push({
@@ -675,18 +769,43 @@ export async function* runTurn(
     let version: PromptVersion | null = null;
     const before = currentPrompt(convo);
     if (proposed !== null && proposed !== before && writesVersion(action)) {
-      version = addPromptVersion(convo, proposed, "model", { action, turnId });
+      version = addPromptVersion(convo, proposed, "model", {
+        action,
+        turnId,
+        ...(mode ? { mode } : {}),
+        shape: convo.outputShape,
+      });
       yield push({ kind: "version_created", v: version.v, action });
+      if (convo.outputShape === "staged") {
+        // WS-R40: a staged version is still one version. If it does not parse,
+        // it is shown as one prompt and the reason is named — never repaired.
+        const parsed = parseStages(version.text);
+        if (!parsed.ok) {
+          note(
+            diagnostic(
+              "FORGE-W013",
+              `Staged output was requested, but version ${version.v} is not readable as stages: ${parsed.reason}. It is shown as one prompt.`,
+              [measureEvidence("stage_parse_failures", 1, "versions")],
+            ),
+          );
+        }
+      }
     }
 
     // ── Discovery coverage and close (WS-R31, WS-R33) ─────────────────────
     if (version !== null && explicitGenerate && convo.discovery !== null) {
-      for (const item of absentDiscoveredRequirements(convo.discovery.brief, version.text)) {
+      const absent = absentDiscoveredRequirements(convo.discovery.brief, version.text);
+      if (absent.length > 0) {
+        // WS-R33 (amended): one finding naming every absent item, not one per
+        // item — a wall of near-identical warnings is noise, and noise is how
+        // a real drop gets ignored.
         note(
           diagnostic(
             "FORGE-W009",
-            `The discovered ${item.field} "${item.text}" does not appear in version ${version.v} by the presence rule of §22.8. It may have been paraphrased or dropped; check it.`,
-            [measureEvidence("absent_discovered_requirements", 1, "items")],
+            `${absent.length} discovered item(s) are not covered by version ${version.v} (at least 80% of an item's content words must appear): ` +
+              absent.map((item) => `${item.field} "${item.text}"`).join("; ") +
+              ". They may be paraphrased or dropped; check them.",
+            [measureEvidence("absent_discovered_requirements", absent.length, "items")],
           ),
         );
       }
@@ -719,7 +838,7 @@ export async function* runTurn(
     convo.messages.push({ role: "assistant", content: reply, at: new Date().toISOString() });
     yield push({ kind: "message_appended", role: "assistant" });
     yield push({ kind: "turn_completed", action, versionCreated: version !== null });
-    return result({ action, reply, version, degraded, streamed, preservation, discovery: convo.discovery });
+    return result({ action, reply, version, degraded, streamed, preservation, discovery: convo.discovery, intake });
   } catch (error) {
     // WS-R12: a cancelled turn and a failed turn end in the same place. The
     // user's message stays; no assistant message and no version are written.
@@ -743,4 +862,26 @@ export async function executeTurn(
   let next = await iterator.next();
   while (!next.done) next = await iterator.next();
   return next.value;
+}
+
+/**
+ * The one discovery repair (WS-R34 applied to §22.11). It states the error and
+ * the required shape, quotes the unusable answer as data, and asks for the
+ * discovery object alone — so a repair cannot carry a prompt, a reply or
+ * anything else back into the turn.
+ */
+export function renderDiscoveryRepairPrompt(previous: string, problem: string): string {
+  return [
+    "Your previous answer's `discovery` object could not be used.",
+    `Problem: ${problem}`,
+    "",
+    "Return ONLY one JSON object of exactly this shape — no prose, no fences:",
+    '{"discovery": {"brief": {"goal": "...", "constraints": ["..."], "success_criteria": ["..."], "open_questions": ["..."]}, "questions": [{"question": "...", "options": ["..."]}], "ready": false, "research_needed": null, "artifact_kind": null}}',
+    "Rules: brief fields are optional strings or string lists (at most 12 items, 600 characters each); at most 3 questions with at most 8 options each; ready is true or false; research_needed and artifact_kind are null, or a string (artifact_kind: \"agent\" or \"builder\").",
+    "",
+    "Your previous answer, as data:",
+    "<<<PREVIOUS",
+    previous.slice(0, DISCOVERY_REPAIR_SOURCE_LIMIT),
+    "PREVIOUS>>>",
+  ].join("\n");
 }
