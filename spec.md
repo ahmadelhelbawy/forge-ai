@@ -1572,9 +1572,11 @@ user's own situation. When a decision genuinely needs current external facts
 so in `research_needed` rather than presenting model memory as research.
 
 **WS-R44 — A question is asked once.** Discovery records every question it has
-asked. A proposed question whose content words match an earlier one's (Jaccard
-≥ 0.8, same tokenisation as `WS-R33`) is dropped deterministically before it is
-shown, and a question is never shown twice in one update.
+asked. A proposed question is the same as an earlier one when their content
+words (same tokenisation as `WS-R33`) have Jaccard similarity ≥ 0.8, or when every
+content word of the shorter — at least three of them — occurs in the longer. Such
+a question is dropped deterministically before it is shown, a question is never
+shown twice in one update, and the unresolved set of `WS-R32` counts it once.
 
 **WS-R45 — Inferred is shown as inferred.** Each brief item is marked `stated`
 when at least 80% of its content words occur in the user's own messages, and

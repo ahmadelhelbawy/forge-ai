@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { briefMarks } from "forge/dist/conversation/discovery.js";
-import { isArtifactKind, isOutputShape } from "forge/dist/conversation/stages.js";
+import { briefMarks, discoveredRequirements, unresolvedQuestions } from "forge/dist/conversation/discovery.js";
+import { isArtifactKind, isOutputShape, parseStages, stageCarry } from "forge/dist/conversation/stages.js";
 
 import { currentPrompt, loadConversation, deleteConversation, saveConversation } from "@/lib/store";
 import { isReasoningEffort } from "@/lib/store-types";
@@ -15,9 +15,30 @@ export async function GET(_request: Request, { params }: Params): Promise<NextRe
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const { attachmentContents: _dropped, ...rest } = convo;
   void _dropped;
+  const prompt = currentPrompt(convo);
+  const version = convo.promptVersions.find((p) => p.v === convo.currentV);
+  // WS-R40: the stage view is computed here, by the one parser, so the browser
+  // never re-implements the rule. Offered for a version written as staged, or
+  // any version that parses as stages.
+  let stages: unknown = null;
+  if (prompt) {
+    const parsed = parseStages(prompt);
+    if (parsed.ok) {
+      const items = [
+        ...convo.ledger.map((e) => ({ text: e.text, kind: "pinned" as const })),
+        ...(convo.discovery ? discoveredRequirements(convo.discovery.brief).map((i) => ({ text: i.text, kind: "discovered" as const })) : []),
+      ];
+      stages = { ok: true, stages: parsed.stages, carry: stageCarry(parsed.stages, items) };
+    } else if (version?.shape === "staged") {
+      stages = { ok: false, reason: parsed.reason };
+    }
+  }
   return NextResponse.json({
     ...rest,
-    prompt: currentPrompt(convo),
+    prompt,
+    stages,
+    // WS-R32: the same de-duplicated set a generate would name in W010.
+    discoveryUnresolved: unresolvedQuestions(convo.discovery),
     // WS-R45: computed on read, display-only, never stored and never provenance.
     discoveryMarks: convo.discovery
       ? briefMarks(

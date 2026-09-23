@@ -13,6 +13,7 @@ import {
   Lightbulb,
   Maximize2,
   Minimize2,
+  PanelRightClose,
   Pencil,
   Pin,
   RotateCcw,
@@ -37,7 +38,9 @@ import {
   type PreservationReport,
   type PromptCandidate,
   type PromptVersion,
+  type StagesWire,
   type TargetInfo,
+  type VerificationRecordWire,
 } from "@/lib/api";
 import { CompilePanel } from "./CompilePanel";
 import { DiscoveryBrief } from "./DiscoveryPanel";
@@ -46,6 +49,19 @@ import { estimateTokens } from "@/lib/diff";
 interface Props {
   /** §22.11: the evolving brief, shown before and beside the prompt. */
   discovery: DiscoveryWire | null;
+  /** WS-R45: each brief item marked stated or inferred. */
+  discoveryMarks: Record<string, "stated" | "inferred">;
+  /** WS-R40: the current version read as stages, when it is staged. */
+  stages: StagesWire | null;
+  /** Persisted verifications, newest last. */
+  verifications: VerificationRecordWire[];
+  tab: StudioTab;
+  onTabChange: (tab: StudioTab) => void;
+  maximized: boolean;
+  onToggleMaximize: () => void;
+  onClose: () => void;
+  /** WS-R46: reopen a closed or generated discovery. */
+  onReopenDiscovery: () => void;
   conversationId: string | null;
   prompt: string | null;
   versions: PromptVersion[];
@@ -77,15 +93,7 @@ interface Props {
   onArtifactsChanged: () => Promise<void>;
 }
 
-type Tab = "prompt" | "history" | "requirements" | "candidates" | "compile";
-/** How much room the Studio takes. A prompt is the artifact, not a sidebar. */
-type Width = "docked" | "wide" | "focus";
-
-const WIDTH_CLASS: Record<Width, string> = {
-  docked: "w-[420px]",
-  wide: "w-[46vw] min-w-[420px]",
-  focus: "w-full",
-};
+export type StudioTab = "brief" | "prompt" | "history" | "requirements" | "candidates" | "compile";
 
 function shortHash(hash: string | undefined): string {
   return hash && hash.startsWith("sha256:") ? hash.slice(7, 15) : "";
@@ -176,6 +184,15 @@ function Editor({
  */
 export function PromptStudio({
   discovery,
+  discoveryMarks,
+  stages,
+  verifications,
+  tab: requestedTab,
+  onTabChange: setTab,
+  maximized,
+  onToggleMaximize,
+  onClose,
+  onReopenDiscovery,
   conversationId,
   prompt,
   versions,
@@ -196,8 +213,9 @@ export function PromptStudio({
   onUnpin,
   onArtifactsChanged,
 }: Props): React.JSX.Element {
-  const [tab, setTab] = useState<Tab>("prompt");
-  const [width, setWidth] = useState<Width>("docked");
+  // The Brief tab exists only while there is a discovery to show.
+  const tab: StudioTab = requestedTab === "brief" && !discovery ? "prompt" : requestedTab;
+  const [stageView, setStageView] = useState(true);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -497,12 +515,12 @@ export function PromptStudio({
   return (
     <aside
       data-testid="prompt-studio"
-      data-width={width}
-      className={`flex ${WIDTH_CLASS[width]} shrink-0 flex-col border-l border-ink-800 bg-ink-900`}
+      data-maximized={maximized}
+      className="flex h-full w-full min-w-0 flex-col border-l border-white/[0.06] bg-ink-900/95"
     >
-      <div className="flex items-center gap-1 border-b border-ink-800 px-3 py-2">
+      <div className="flex h-11 shrink-0 items-center gap-1 border-b border-white/[0.06] px-3">
         <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-200">
-          Prompt Studio
+          Studio
           {drafting ? (
             // Deliberately unnumbered. The version number is not knowable
             // while text is still arriving: the WS-R3 check can still block
@@ -557,42 +575,55 @@ export function PromptStudio({
           </button>
         )}
         <button
-          title={width === "docked" ? "Widen the Studio" : width === "wide" ? "Full screen" : "Dock the Studio"}
+          title={maximized ? "Restore the Studio" : "Maximize the Studio"}
+          aria-label={maximized ? "Restore the Studio" : "Maximize the Studio"}
           data-testid="studio-width"
-          onClick={() => setWidth(width === "docked" ? "wide" : width === "wide" ? "focus" : "docked")}
+          onClick={onToggleMaximize}
           className={iconButton}
         >
-          {width === "focus" ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+          {maximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+        </button>
+        <button title="Hide the Studio" aria-label="Hide the Studio" onClick={onClose} className={iconButton}>
+          <PanelRightClose size={15} />
         </button>
       </div>
 
-      <div className="flex gap-1 border-b border-ink-800 px-3 py-1.5 text-[12.5px]">
-        {([
-          ["prompt", "Prompt", null],
-          ["history", "History", versions.length],
-          ["requirements", "Requirements", ledger.length],
-          ["candidates", "Candidates", candidates.length],
-          ["compile", "Compile", null],
-        ] as const).map(([key, label, count]) => (
+      <div role="tablist" aria-label="Studio" className="no-scrollbar flex shrink-0 gap-0.5 overflow-x-auto border-b border-white/[0.06] px-2 text-[12.5px]">
+        {(
+          [
+            ...(discovery ? ([["brief", "Brief", null]] as const) : []),
+            ["prompt", "Prompt", null],
+            ["history", "History", versions.length],
+            ["requirements", "Requirements", ledger.length],
+            ["candidates", "Alternatives", candidates.length],
+            ["compile", "Contract", verifications.length || null],
+          ] as ReadonlyArray<readonly [StudioTab, string, number | null]>
+        ).map(([key, label, count]) => (
           <button
             key={key}
+            role="tab"
+            aria-selected={tab === key}
             data-testid={`studio-tab-${key}`}
             onClick={() => setTab(key)}
-            className={`rounded-md px-2.5 py-1 transition-colors ${
-              tab === key ? "bg-ink-700 text-slate-100" : "text-slate-400 hover:text-slate-200"
+            className={`relative shrink-0 whitespace-nowrap px-2.5 py-2.5 transition-colors ${
+              tab === key ? "text-slate-100" : "text-slate-400 hover:text-slate-200"
             }`}
           >
             {label}
             {count ? <span className="ml-1.5 font-mono text-[11px] text-slate-500">{count}</span> : null}
+            {tab === key ? <span aria-hidden className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-400" /> : null}
           </button>
         ))}
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2.5">
+        {tab === "brief" && discovery ? (
+          <DiscoveryBrief discovery={discovery} marks={discoveryMarks} onReopen={onReopenDiscovery} />
+        ) : null}
         {tab === "prompt" ? (
           !conversationId || (!prompt && !drafting) ? (
             discovery ? (
-              <DiscoveryBrief discovery={discovery} />
+              <DiscoveryBrief discovery={discovery} marks={discoveryMarks} onReopen={onReopenDiscovery} />
             ) : (
             <div className="py-10 text-center text-[13px] leading-relaxed text-slate-500">
               No prompt yet.
@@ -602,8 +633,13 @@ export function PromptStudio({
             )
           ) : (
             <>
+              {!editing && !drafting && stages ? (
+                <StageToolbar stages={stages} stageView={stageView} onToggle={() => setStageView(!stageView)} />
+              ) : null}
               {editing ? (
                 <Editor value={draft} onChange={setDraft} onSave={save} readOnly={saving} />
+              ) : !drafting && stages?.ok && stageView ? (
+                <StageList stages={stages} />
               ) : (
                 <pre
                   data-testid={drafting ? "prompt-draft-text" : "prompt-text"}
@@ -1278,9 +1314,105 @@ export function PromptStudio({
             targets={targets}
             defaultTarget={target}
             hasPrompt={Boolean(prompt)}
+            verifications={verifications}
+            onVerified={onArtifactsChanged}
           />
         ) : null}
       </div>
     </aside>
+  );
+}
+
+/** WS-R40: the stage view's header — how many stages, or why it is not staged. */
+function StageToolbar({
+  stages,
+  stageView,
+  onToggle,
+}: {
+  stages: StagesWire;
+  stageView: boolean;
+  onToggle: () => void;
+}): React.JSX.Element {
+  if (!stages.ok) {
+    return (
+      <div data-testid="stages-unreadable" className="mb-2 rounded-md border border-amber-800/40 bg-amber-950/20 px-2.5 py-1.5 text-[12px] text-amber-200/90">
+        Staged output was requested, but this version is not readable as stages ({stages.reason}). Shown as one prompt.
+      </div>
+    );
+  }
+  return (
+    <div className="mb-2 flex items-center gap-2 text-[12px] text-slate-400">
+      <Layers size={13} className="text-accent-300" />
+      <span>
+        {stages.stages.length} stages, run in order
+      </span>
+      <div className="flex-1" />
+      <button onClick={onToggle} data-testid="stage-view-toggle" className="rounded px-2 py-0.5 text-slate-300 hover:bg-white/[0.05]">
+        {stageView ? "Show full text" : "Show stages"}
+      </button>
+    </div>
+  );
+}
+
+/** Each stage as its own copyable prompt, with what it depends on and what it carries. */
+function StageList({ stages }: { stages: Extract<StagesWire, { ok: true }> }): React.JSX.Element {
+  const [copied, setCopied] = useState<number | null>(null);
+  const uncarried = stages.carry.filter((c) => c.stages.length === 0);
+  return (
+    <div data-testid="stage-list" className="space-y-3">
+      {stages.stages.map((stage) => {
+        const carried = stages.carry.filter((c) => c.stages.includes(stage.n));
+        return (
+          <section key={stage.n} className="rounded-lg border border-white/[0.07] bg-ink-850/70">
+            <header className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-2">
+              <span className="font-mono text-[11px] text-slate-500">{stage.n}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-100">{stage.title}</span>
+              <span className="text-[11px] text-slate-500">
+                {stage.dependsOn.length > 0 ? `after ${stage.dependsOn.map((d) => `stage ${d}`).join(", ")}` : "starts here"}
+              </span>
+              <button
+                title={`Copy stage ${stage.n}`}
+                aria-label={`Copy stage ${stage.n}`}
+                onClick={() => {
+                  void navigator.clipboard?.writeText(stage.text).then(() => {
+                    setCopied(stage.n);
+                    window.setTimeout(() => setCopied(null), 1200);
+                  });
+                }}
+                className="rounded p-1 text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
+              >
+                {copied === stage.n ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+              </button>
+            </header>
+            <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap px-3 py-2 font-mono text-[12px] leading-relaxed text-slate-200">
+              {stage.text}
+            </pre>
+            {carried.length > 0 ? (
+              <div className="border-t border-white/[0.06] px-3 py-1.5 text-[11.5px] text-slate-400">
+                Carries:{" "}
+                {carried.map((c) => (
+                  <span key={c.text} className="mr-1.5 inline-block">
+                    <span className={c.kind === "pinned" ? "text-accent-300" : "text-slate-300"}>{c.kind === "pinned" ? "pinned" : "brief"}</span>{" "}
+                    “{c.text.length > 60 ? `${c.text.slice(0, 60)}…` : c.text}”
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        );
+      })}
+      {uncarried.length > 0 ? (
+        <div className="rounded-md border border-rose-900/50 bg-rose-950/20 px-3 py-2 text-[12px] text-rose-200">
+          Not carried by any stage:
+          <ul className="ml-4 mt-1 list-disc">
+            {uncarried.map((c) => (
+              <li key={c.text}>
+                {c.kind === "pinned" ? "Pinned" : "Brief"}: {c.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }

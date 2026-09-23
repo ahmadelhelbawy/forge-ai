@@ -1,11 +1,18 @@
 "use client";
 
-import { Download, Hammer, Package } from "lucide-react";
+import { Check, Download, Hammer, History, Package } from "lucide-react";
 import { useState } from "react";
 
 import { DiagnosticList } from "./DiagnosticList";
 import { TraceabilityPanel } from "./TraceabilityPanel";
-import { api, type CompileResponse, type PackageResponse, type TargetInfo, type VerifyResponse } from "@/lib/api";
+import {
+  api,
+  type CompileResponse,
+  type PackageResponse,
+  type TargetInfo,
+  type VerificationRecordWire,
+  type VerifyResponse,
+} from "@/lib/api";
 
 /**
  * The compile surface (V2-R step 9).
@@ -24,21 +31,31 @@ import { api, type CompileResponse, type PackageResponse, type TargetInfo, type 
  * there are none.
  *
  * Compiling writes no prompt version. The prose stays the truth (WS-R2); this
- * is a read of it.
+ * is a read of it. Several targets compile from ONE IR through the real
+ * compiler, one profile each (WS-R41) — never one output renamed for another.
  */
 export function CompilePanel({
   conversationId,
   targets,
   defaultTarget,
   hasPrompt,
+  verifications,
+  onVerified,
 }: {
   conversationId: string | null;
   targets: TargetInfo[];
   defaultTarget: string;
   hasPrompt: boolean;
+  verifications: VerificationRecordWire[];
+  onVerified: () => Promise<void>;
 }): React.JSX.Element {
-  const [target, setTarget] = useState(defaultTarget);
-  const [result, setResult] = useState<CompileResponse | null>(null);
+  // `generic` is not a profile; the compile path maps it, and so does the default here.
+  const initial = defaultTarget === "generic" ? "claude-code" : defaultTarget;
+  const [target, setTarget] = useState(initial);
+  const [selected, setSelected] = useState<string[]>([initial]);
+  const [results, setResults] = useState<CompileResponse[]>([]);
+  const [active, setActive] = useState<string | null>(null);
+  const result = results.find((r) => r.target === active) ?? results[0] ?? null;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
@@ -55,12 +72,14 @@ export function CompilePanel({
     setBusy(true);
     setError(null);
     try {
-      const compiled = await api.compileVersion(conversationId, { target });
-      setResult(compiled);
-      setOpen(compiled.artifacts[0]?.path ?? null);
+      const { results: compiled } = await api.compileTargets(conversationId, { targets: selected });
+      setResults(compiled);
+      setActive(compiled[0]?.target ?? null);
+      setOpen(compiled[0]?.artifacts[0]?.path ?? null);
+      if (compiled[0]) setTarget(compiled[0].target);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setResult(null);
+      setResults([]);
     } finally {
       setBusy(false);
     }
@@ -94,6 +113,7 @@ export function CompilePanel({
     setError(null);
     try {
       setVerdicts(await api.verifyVersion(conversationId, { target, evidence }));
+      await onVerified();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setVerdicts(null);
@@ -127,43 +147,101 @@ export function CompilePanel({
   }
 
   const shown = result?.artifacts.find((a) => a.path === open) ?? result?.artifacts[0] ?? null;
+  const profiles = targets.filter((t) => t.id !== "generic");
+  const last = verifications.at(-1) ?? null;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div>
+        <div className="mb-1.5 text-[11.5px] font-medium text-slate-500">Compile for</div>
+        <div data-testid="compile-targets" className="flex flex-wrap gap-1.5">
+          {profiles.map((t) => {
+            const on = selected.includes(t.id);
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="checkbox"
+                aria-checked={on}
+                data-testid={`compile-target-${t.id}`}
+                onClick={() =>
+                  setSelected((current) =>
+                    on ? (current.length > 1 ? current.filter((x) => x !== t.id) : current) : [...current, t.id],
+                  )
+                }
+                className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                  on ? "border-accent-400 bg-accent-500/15 text-slate-50" : "border-white/[0.09] text-slate-400 hover:border-white/[0.18] hover:text-slate-200"
+                }`}
+              >
+                {on ? <Check size={11} /> : null}
+                {t.displayName}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={run}
+          disabled={busy}
+          data-testid="compile-run"
+          className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-[12.5px] font-medium text-white transition-colors hover:bg-accent-600 disabled:opacity-40"
+        >
+          <Hammer size={13} /> {busy ? "Compiling…" : selected.length > 1 ? `Compile ${selected.length} targets` : "Compile"}
+        </button>
+        <div className="flex-1" />
         <select
           value={target}
           onChange={(e) => setTarget(e.target.value)}
           data-testid="compile-target"
-          className="flex-1 rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[12.5px] text-slate-200 focus:border-accent-500 focus:outline-none"
+          aria-label="Target to package and verify"
+          title="The target the Execution Package is built for"
+          className="h-8 rounded-md border border-white/[0.08] bg-ink-850 px-2 text-[12.5px] text-slate-200 focus:border-accent-400 focus:outline-none"
         >
-          {targets.map((t) => (
+          {profiles.map((t) => (
             <option key={t.id} value={t.id}>
               {t.displayName}
             </option>
           ))}
         </select>
         <button
-          onClick={run}
-          disabled={busy}
-          data-testid="compile-run"
-          className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-[12.5px] text-white transition-colors hover:bg-accent-400 disabled:opacity-40"
-        >
-          <Hammer size={13} /> {busy ? "Compiling…" : "Compile"}
-        </button>
-        <button
           onClick={() => void buildPackage()}
           disabled={packaging}
           data-testid="package-run"
           title="Build a portable Execution Package: artifacts, requirements, verification obligations, provenance and diagnostics"
-          className="flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-900 px-3 py-1.5 text-[12.5px] text-slate-300 transition-colors hover:border-ink-600 hover:text-slate-100 disabled:opacity-40"
+          className="flex items-center gap-1.5 rounded-md border border-white/[0.1] bg-ink-850 px-3 py-1.5 text-[12.5px] text-slate-200 transition-colors hover:border-white/[0.2] disabled:opacity-40"
         >
           <Package size={13} /> {packaging ? "Packaging…" : "Package"}
         </button>
       </div>
 
+      {last ? (
+        <div data-testid="last-verification" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-white/[0.07] bg-ink-850/60 px-3 py-2 text-[12px] text-slate-400">
+          <History size={12} className="text-slate-500" />
+          <span>
+            Last verified {new Date(last.at).toLocaleString()} · v{last.v} · {last.profileId}
+          </span>
+          <span className="text-emerald-400">{last.counts["VERIFIED"] ?? 0} verified</span>
+          <span className={last.counts["FAILED"] ? "text-rose-400" : "text-slate-500"}>{last.counts["FAILED"] ?? 0} failed</span>
+          <span className="text-slate-500">
+            {last.counts["UNVERIFIED"] ?? 0} unverified · {last.counts["REVIEW_REQUIRED"] ?? 0} need review
+          </span>
+          {!last.packageValid ? <span className="text-rose-300">package rejected</span> : null}
+          <div className="flex-1" />
+          {last.evidenceKept && last.evidence ? (
+            <button onClick={() => setEvidence(last.evidence ?? "")} className="rounded px-1.5 text-slate-300 hover:bg-white/[0.05]">
+              Load evidence
+            </button>
+          ) : (
+            <span title="The pasted evidence contained something the secret scanner flagged, so FORGE did not store it.">
+              evidence not stored
+            </span>
+          )}
+        </div>
+      ) : null}
+
       {pkg ? (
-        <div data-testid="package-result" className="space-y-1.5 rounded-lg border border-ink-700 bg-ink-900 px-3.5 py-2.5">
+        <div data-testid="package-result" className="space-y-1.5 rounded-lg border border-white/[0.07] bg-ink-850/60 px-3.5 py-2.5">
           <div className="font-mono text-[11px] text-slate-500">
             Execution Package · {pkg.profileId} · v{pkg.v} · {pkg.semanticId.slice(7, 19)}
             {pkg.refused ? " · compilation refused" : ""}
@@ -253,13 +331,36 @@ export function CompilePanel({
       ) : null}
 
       {error ? (
-        <div className="rounded-lg border border-red-900/60 bg-red-950/30 px-3.5 py-2.5 text-[13px] text-red-200/90">
+        <div className="rounded-lg border border-rose-900/60 bg-rose-950/30 px-3.5 py-2.5 text-[13px] text-rose-200/90">
           {error}
         </div>
       ) : null}
 
       {/* V2-H: governance, repository linkage and the traceability matrix. */}
       <TraceabilityPanel conversationId={conversationId} target={target} evidence={evidence} />
+
+      {results.length > 1 ? (
+        <div role="tablist" aria-label="Compiled targets" className="flex flex-wrap gap-1 border-b border-white/[0.06] pb-1.5">
+          {results.map((r) => (
+            <button
+              key={r.target}
+              role="tab"
+              aria-selected={result?.target === r.target}
+              data-testid={`compiled-${r.target}`}
+              onClick={() => {
+                setActive(r.target);
+                setOpen(r.artifacts[0]?.path ?? null);
+              }}
+              className={`rounded-md px-2 py-1 text-[12px] transition-colors ${
+                result?.target === r.target ? "bg-ink-700 text-slate-50" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              {targets.find((t) => t.id === r.target)?.displayName ?? r.target}
+              {r.refused ? <span className="ml-1 text-amber-300">refused</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {result ? (
         <>
@@ -316,7 +417,7 @@ export function CompilePanel({
               </div>
               <pre
                 data-testid="compile-artifact"
-                className="whitespace-pre-wrap rounded-lg border border-ink-700 bg-ink-950 px-3 py-2.5 font-mono text-[12px] leading-relaxed text-slate-200"
+                className="whitespace-pre-wrap rounded-lg border border-white/[0.07] bg-ink-950 px-3 py-2.5 font-mono text-[12px] leading-relaxed text-slate-200"
               >
                 {shown.content}
               </pre>

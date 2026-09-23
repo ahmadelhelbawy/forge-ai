@@ -18,6 +18,7 @@ import { coverage, isCovered, sameQuestion } from "../../src/conversation/covera
 import {
   absentDiscoveredRequirements,
   applyDiscoveryUpdate,
+  unresolvedQuestions,
   briefMarks,
   openDiscovery,
   parseDiscoveryUpdate,
@@ -451,6 +452,15 @@ describe("discovery quality (AC-067)", () => {
     expect(second.questions.map((x) => x.question)).toEqual(["Who approves the output?"]);
     expect(second.asked).toHaveLength(2);
     expect(sameQuestion("Who approves the output?", "Which budget do you have?")).toBe(false);
+  });
+
+  it("counts a restated open question once (WS-R32 with the WS-R44 rule)", () => {
+    const state = {
+      ...openDiscovery(),
+      questions: [q("Which accounting software do the firms use?")],
+      brief: { open_questions: ["Which accounting software do the firms use today?", "Who approves sending?"] },
+    };
+    expect(unresolvedQuestions(state)).toEqual(["Which accounting software do the firms use?", "Who approves sending?"]);
   });
 
   it("marks brief items stated or inferred from the user's own words (WS-R45)", () => {

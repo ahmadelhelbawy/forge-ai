@@ -143,10 +143,13 @@ function secretsPath(): string {
   return join(dataDir(), "providers.secrets");
 }
 
+let warnedInsecureSecret = false;
+
 function appSecret(): { secret: string; insecureDefault: boolean } {
   const configured = process.env["FORGE_APP_SECRET"];
   if (configured && configured.length >= 16) return { secret: configured, insecureDefault: false };
-  if (!configured) {
+  if (!configured && !warnedInsecureSecret) {
+    warnedInsecureSecret = true;
     console.warn("[forge] FORGE_APP_SECRET is not set — provider secrets use an insecure dev key. Set it in production.");
   }
   return { secret: configured && configured.length > 0 ? configured : "forge-dev-secret--change-me", insecureDefault: true };

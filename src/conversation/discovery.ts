@@ -201,12 +201,11 @@ export function applyDiscoveryUpdate(state: DiscoveryState, update: DiscoveryUpd
 /** WS-R32: the brief's open questions plus the outstanding ones, de-duplicated, in order. */
 export function unresolvedQuestions(state: DiscoveryState | null): string[] {
   if (state === null) return [];
-  const seen = new Set<string>();
   const out: string[] = [];
-  for (const q of [...(state.brief.open_questions ?? []), ...state.questions.map((x) => x.question)]) {
-    const key = tokenize(q).join(" ");
-    if (key === "" || seen.has(key)) continue;
-    seen.add(key);
+  for (const q of [...state.questions.map((x) => x.question), ...(state.brief.open_questions ?? [])]) {
+    if (tokenize(q).length === 0) continue;
+    // WS-R44's rule: a re-worded copy of a question is the same question.
+    if (out.some((prior) => sameQuestion(prior, q))) continue;
     out.push(q);
   }
   return out;

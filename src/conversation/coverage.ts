@@ -87,5 +87,9 @@ export function similarity(a: string, b: string): number {
 
 /** WS-R44: the same question, however it was re-worded. */
 export function sameQuestion(a: string, b: string): boolean {
-  return similarity(a, b) >= QUESTION_SIMILARITY;
+  if (similarity(a, b) >= QUESTION_SIMILARITY) return true;
+  // A copy with a word added ("…today?") is still the same question.
+  const [shorter, longer] = [contentWords(a), contentWords(b)].sort((x, y) => x.length - y.length) as [string[], string[]];
+  const pool = new Set(longer);
+  return shorter.length >= 3 && shorter.every((w) => pool.has(w));
 }

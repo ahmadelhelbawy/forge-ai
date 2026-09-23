@@ -86,6 +86,12 @@ export function prepareTurn(convo: Conversation, body: TurnRequestBody): Prepare
     return NextResponse.json({ error: "Message too large (200k character limit)." }, { status: 413 });
   }
 
+  if (typeof body.provider === "string" && !body.provider && !convo.provider && !process.env["FORGE_CHAT_STUB"]) {
+    return NextResponse.json(
+      { error: "No model is selected yet. Choose a provider and model in the header, then send again." },
+      { status: 400 },
+    );
+  }
   if (typeof body.target === "string" && body.target) convo.target = body.target;
   if (typeof body.provider === "string" && body.provider) convo.provider = body.provider;
   if (typeof body.model === "string") convo.model = body.model;

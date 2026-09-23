@@ -30,6 +30,46 @@ export interface PromptVersion {
   turnId?: string;
   /** The hash that names this version's text (V2-C, WS-R17). */
   textHash?: string;
+  /** WS-R38: the transformation mode the generate named. */
+  mode?: TransformationModeWire;
+  /** WS-R40: the shape it was written for; absent means single. */
+  shape?: OutputShapeWire;
+}
+
+export type TransformationModeWire = "polish" | "strengthen" | "rebuild";
+export type OutputShapeWire = "single" | "staged";
+export type ArtifactKindWire = "unspecified" | "agent" | "builder";
+export type ReasoningEffortWire = "default" | "low" | "medium" | "high";
+
+/** WS-R42: whether a model accepts a reasoning setting, and why not when it does not. */
+export interface ReasoningAvailabilityWire {
+  supported: boolean;
+  levels: Array<Exclude<ReasoningEffortWire, "default">>;
+  source: "declared" | "discovered" | null;
+  wire: string | null;
+  reason: string | null;
+}
+
+/** A persisted verification (V2-G, kept since Sprint 2). */
+export interface VerificationRecordWire {
+  v: number;
+  target: string;
+  profileId: string;
+  semanticId: string | null;
+  packageValid: boolean;
+  evidenceHash: string;
+  evidence: string | null;
+  evidenceKept: boolean;
+  counts: Record<string, number>;
+  at: string;
+}
+
+export interface ConversationSettingsWire {
+  artifactKind: ArtifactKindWire;
+  outputShape: OutputShapeWire;
+  reasoningEffort: ReasoningEffortWire;
+  target: string;
+  discovery: DiscoveryWire | null;
 }
 
 /** WS-R8: an alternative artifact inside one conversation. */
@@ -212,7 +252,28 @@ export interface ConversationDetail {
   prompt: string | null;
   /** §22.11. Null until the first discovery turn. */
   discovery?: DiscoveryWire | null;
+  /** WS-R45: each brief item marked stated or inferred, computed on read. */
+  discoveryMarks?: Record<string, "stated" | "inferred">;
+  /** WS-R32: the questions a generate would state as assumptions. */
+  discoveryUnresolved?: string[];
+  artifactKind?: ArtifactKindWire;
+  outputShape?: OutputShapeWire;
+  reasoningEffort?: ReasoningEffortWire;
+  verifications?: VerificationRecordWire[];
+  /** WS-R40: the current version read as stages, when it is staged. */
+  stages?: StagesWire | null;
 }
+
+export interface StageWire {
+  n: number;
+  title: string;
+  dependsOn: number[];
+  text: string;
+}
+
+export type StagesWire =
+  | { ok: true; stages: StageWire[]; carry: Array<{ text: string; kind: "pinned" | "discovered"; stages: number[] }> }
+  | { ok: false; reason: string };
 
 /** §22.11: FORGE's evolving understanding. Model-authored, validated, never user-stated. */
 export interface DiscoveryBriefWire {
@@ -228,11 +289,16 @@ export interface DiscoveryBriefWire {
 }
 
 export interface DiscoveryWire {
-  status: "open" | "generated";
+  status: "open" | "generated" | "closed";
+  /** WS-R37: `refine` when it opened on a pasted prompt. */
+  flavor?: "explore" | "refine";
   brief: DiscoveryBriefWire;
   questions: Array<{ question: string; options: string[] }>;
   ready: boolean;
   research_needed: string | null;
+  /** WS-R39: FORGE's reading of the artifact kind, awaiting confirmation. */
+  artifact_kind?: "agent" | "builder" | null;
+  asked?: string[];
   turns: number;
 }
 
@@ -266,6 +332,17 @@ export interface TurnOutcome {
   /** Layer 1's verdict on the version this turn wrote, or null (WS-R25). */
   preservation?: PreservationReport | null;
   diagnostics?: DiagnosticWire[];
+}
+
+export interface TurnInput {
+  content?: string;
+  target?: string;
+  provider?: string;
+  model?: string;
+  regenerate?: boolean;
+  generate?: boolean;
+  mode?: TransformationModeWire;
+  reasoningEffort?: ReasoningEffortWire;
 }
 
 export interface StreamHandlers {
@@ -435,6 +512,7 @@ export interface VerifyResponse {
   verdicts: ObligationVerdictWire[];
   diagnostics: DiagnosticWire[];
   json: string;
+  evidenceKept?: boolean;
 }
 
 /** V2-H: one link a deterministic rule derived (LK-R1). `advisory` is always false. */
@@ -552,10 +630,32 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  /** WS-R41: one IR, one real compile per target. */
+  compileTargets: (id: string, input: { targets: string[]; v?: number }) =>
+    request<{ v: number; results: CompileResponse[] }>(`/api/conversations/${id}/compile`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  /** WS-R39/WS-R40/WS-R43/WS-R46: the user's own settings for a conversation. */
+  updateConversation: (
+    id: string,
+    input: Partial<{
+      artifactKind: ArtifactKindWire;
+      outputShape: OutputShapeWire;
+      reasoningEffort: ReasoningEffortWire;
+      target: string;
+      discovery: "close" | "reopen";
+    }>,
+  ) =>
+    request<ConversationSettingsWire>(`/api/conversations/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
+  reasoning: (provider: string, model: string) =>
+    request<ReasoningAvailabilityWire>(
+      `/api/settings/reasoning?provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}`,
+    ),
   deleteConversation: (id: string) => request<{ deleted: boolean }>(`/api/conversations/${id}`, { method: "DELETE" }),
   sendMessage: (
     id: string,
-    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean; generate?: boolean },
+    input: TurnInput,
   ) => request<TurnOutcome>(`/api/conversations/${id}/messages`, { method: "POST", body: JSON.stringify(input) }),
   /**
    * Send a message and read the turn as it happens (WS-R10).
@@ -570,7 +670,7 @@ export const api = {
    */
   streamMessage: async (
     id: string,
-    input: { content?: string; target?: string; provider?: string; model?: string; regenerate?: boolean; generate?: boolean },
+    input: TurnInput,
     handlers: StreamHandlers = {},
     signal?: AbortSignal,
   ): Promise<TurnOutcome> => {

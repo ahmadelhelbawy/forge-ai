@@ -1,24 +1,43 @@
 "use client";
 
-import { AlertTriangle, FlaskConical, Settings as SettingsIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  FlaskConical,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatPanel } from "./ChatPanel";
-import { PromptStudio } from "./PromptStudio";
+import { PipelineRail, type RailStage } from "./PipelineRail";
+import { PromptStudio, type StudioTab } from "./PromptStudio";
+import { Resizer } from "./Resizer";
 import { SettingsModal } from "./SettingsModal";
 import { Sidebar } from "./Sidebar";
 import {
   api,
+  type ArtifactKindWire,
   type ConversationDetail,
   type ConversationSummary,
   type DiagnosticWire,
   type ModelOption,
+  type OutputShapeWire,
   type PinnedRequirement,
   type PreservationReport,
   type PromptVersion,
+  type ReasoningAvailabilityWire,
+  type ReasoningEffortWire,
   type TargetInfo,
+  type TransformationModeWire,
 } from "@/lib/api";
 import { resolveSelection, type ProviderDefault, type Selection, type SelectionRef } from "@/lib/model-selection";
+import { useMediaQuery, usePref } from "@/lib/prefs";
+
+const LEFT = { min: 200, max: 420, initial: 256 };
+const RIGHT = { min: 360, max: 900, initial: 460 };
 
 export function Workspace(): React.JSX.Element {
   const [targets, setTargets] = useState<TargetInfo[]>([]);
@@ -68,6 +87,25 @@ export function Workspace(): React.JSX.Element {
   const abortRef = useRef<AbortController | null>(null);
   const [advanced, setAdvanced] = useState(false);
   const [catalogReady, setCatalogReady] = useState(false);
+
+  // ── Workspace layout: per-browser preferences (lib/prefs) ───────────────
+  const narrow = useMediaQuery("(max-width: 1099px)");
+  const [leftOpen, setLeftOpen] = usePref("leftOpen", true);
+  const [rightOpen, setRightOpen] = usePref("rightOpen", true);
+  const [leftWidth, setLeftWidth] = usePref("leftWidth", LEFT.initial);
+  const [rightWidth, setRightWidth] = usePref("rightWidth", RIGHT.initial);
+  const [studioMax, setStudioMax] = usePref("studioMax", false);
+  const [studioTab, setStudioTab] = usePref<StudioTab>("studioTab", "prompt");
+  // On a narrow screen the side panels are drawers, closed until asked for.
+  const [leftDrawer, setLeftDrawer] = useState(false);
+  const [rightDrawer, setRightDrawer] = useState(false);
+
+  // ── Conversation settings the user owns (WS-R39, WS-R40, WS-R43) ────────
+  // Kept locally before a conversation exists, then applied to it on creation.
+  const [draftKind, setDraftKind] = useState<ArtifactKindWire>("unspecified");
+  const [draftShape, setDraftShape] = useState<OutputShapeWire>("single");
+  const [defaultEffort, setDefaultEffort] = usePref<ReasoningEffortWire>("reasoningEffort", "default");
+  const [reasoning, setReasoning] = useState<ReasoningAvailabilityWire | null>(null);
 
   const providerAvailable = models.length > 0;
 
@@ -170,6 +208,7 @@ export function Workspace(): React.JSX.Element {
 
   const select = useCallback(async (id: string) => {
     setActiveId(id);
+    setLeftDrawer(false);
     setError(null);
     // Turn-scoped, so they do not follow the user into another conversation.
     setDiagnostics([]);
@@ -244,14 +283,21 @@ export function Workspace(): React.JSX.Element {
    * rendered afterwards. That is what makes a cancel leave nothing behind —
    * there is no client state that could survive as a phantom message.
    */
+  const artifactKind: ArtifactKindWire = detail?.artifactKind ?? draftKind;
+  const outputShape: OutputShapeWire = detail?.outputShape ?? draftShape;
+  const effort: ReasoningEffortWire = detail?.reasoningEffort ?? defaultEffort;
+
   const runTurn = useCallback(
-    async (input: { content?: string; regenerate?: boolean; generate?: boolean }) => {
+    async (input: { content?: string; regenerate?: boolean; generate?: boolean; mode?: TransformationModeWire }) => {
       let id = activeId;
       if (!id) {
         try {
           const created = await api.createConversation({ target, provider, model });
           id = created.id;
           setActiveId(id);
+          if (draftKind !== "unspecified" || draftShape !== "single") {
+            await api.updateConversation(id, { artifactKind: draftKind, outputShape: draftShape });
+          }
         } catch (e) {
           setError(e instanceof Error ? e.message : String(e));
           return;
@@ -274,7 +320,14 @@ export function Workspace(): React.JSX.Element {
       try {
         const outcome = await api.streamMessage(
           id,
-          { ...input, target, provider, model },
+          {
+            ...input,
+            target,
+            provider,
+            model,
+            // WS-R42: only an effort the model is known to accept is sent.
+            reasoningEffort: reasoning?.supported ? effort : "default",
+          },
           {
             onEvent: (event) => {
               if (event.kind === "stage" && event.label) setStageLabel(event.label);
@@ -318,15 +371,71 @@ export function Workspace(): React.JSX.Element {
         setStreamingPrompt("");
       }
     },
-    [activeId, target, provider, model, reload],
+    [activeId, target, provider, model, reload, draftKind, draftShape, reasoning, effort],
   );
 
   const send = useCallback((text: string) => runTurn({ content: text }), [runTurn]);
   const retry = useCallback(() => runTurn({ regenerate: true }), [runTurn]);
   // WS-R31: the only way out of discovery. The server words the message.
   const generate = useCallback(
-    () => runTurn({ generate: true, content: "Generate the prompt from what we have discussed." }),
+    (mode?: TransformationModeWire) =>
+      runTurn({
+        generate: true,
+        content: mode
+          ? `Generate the prompt (${mode}) from what we have discussed.`
+          : "Generate the prompt from what we have discussed.",
+        ...(mode ? { mode } : {}),
+      }),
     [runTurn],
+  );
+
+  /** WS-R39/WS-R40/WS-R43/WS-R46: a user setting, saved on the conversation. */
+  const updateSettings = useCallback(
+    async (patch: Parameters<typeof api.updateConversation>[1]) => {
+      if (!activeId) {
+        if (patch.artifactKind) setDraftKind(patch.artifactKind);
+        if (patch.outputShape) setDraftShape(patch.outputShape);
+        if (patch.reasoningEffort) setDefaultEffort(patch.reasoningEffort);
+        return;
+      }
+      try {
+        await api.updateConversation(activeId, patch);
+        if (patch.reasoningEffort) setDefaultEffort(patch.reasoningEffort);
+        await reload(activeId);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [activeId, reload, setDefaultEffort],
+  );
+
+  // WS-R42: ask the server whether the chosen model takes a reasoning setting.
+  useEffect(() => {
+    if (!provider || !model || customModel) {
+      setReasoning(
+        customModel
+          ? { supported: false, levels: [], source: null, wire: null, reason: "FORGE has no record that a custom model id accepts a reasoning setting, so it sends none." }
+          : null,
+      );
+      return;
+    }
+    let live = true;
+    api
+      .reasoning(provider, model)
+      .then((r) => live && setReasoning(r))
+      .catch(() => live && setReasoning(null));
+    return () => {
+      live = false;
+    };
+  }, [provider, model, customModel]);
+
+  const openStudio = useCallback(
+    (stage: RailStage | StudioTab) => {
+      setStudioTab(stage === "brief" ? "brief" : (stage as StudioTab));
+      if (narrow) setRightDrawer(true);
+      else setRightOpen(true);
+    },
+    [narrow, setStudioTab, setRightOpen],
   );
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
@@ -404,6 +513,24 @@ export function Workspace(): React.JSX.Element {
     [activeId],
   );
 
+  // Ctrl/Cmd+B toggles conversations, Ctrl/Cmd+. toggles the Studio.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "b") {
+        e.preventDefault();
+        if (narrow) setLeftDrawer((v) => !v);
+        else setLeftOpen(!leftOpen);
+      } else if (e.key === ".") {
+        e.preventDefault();
+        if (narrow) setRightDrawer((v) => !v);
+        else setRightOpen(!rightOpen);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [narrow, leftOpen, rightOpen, setLeftOpen, setRightOpen]);
+
   const groupedModels = (): Array<{ provider: string; label: string; models: ModelOption[] }> => {
     const groups = new Map<string, { label: string; models: ModelOption[] }>();
     for (const m of models) {
@@ -415,64 +542,149 @@ export function Workspace(): React.JSX.Element {
   };
 
   const selectedValue = customModel ? "__custom" : `${provider}|||${model}`;
+  const control =
+    "h-8 rounded-md border border-white/[0.08] bg-ink-850 px-2 text-[12.5px] text-slate-200 transition-colors hover:border-white/[0.14] focus:border-accent-400 focus:outline-none disabled:opacity-50";
+  const iconToggle =
+    "flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-100";
+
+  const showLeft = narrow ? leftDrawer : leftOpen;
+  const showRight = narrow ? rightDrawer : rightOpen;
+
+  const sidebar = (
+    <Sidebar conversations={conversations} activeId={activeId} onSelect={select} onNew={create} onDelete={remove} />
+  );
+  const studio = (
+    <PromptStudio
+      conversationId={activeId}
+      prompt={detail?.prompt ?? null}
+      discovery={detail?.discovery ?? null}
+      discoveryMarks={detail?.discoveryMarks ?? {}}
+      stages={detail?.stages ?? null}
+      versions={versions}
+      candidates={detail?.candidates ?? []}
+      currentV={detail?.currentV ?? 0}
+      streamingPrompt={sending ? streamingPrompt : ""}
+      provider={provider}
+      model={model}
+      advanced={advanced}
+      ledger={ledger}
+      preservation={preservation}
+      proposals={proposals}
+      targets={targets}
+      target={target}
+      verifications={detail?.verifications ?? []}
+      tab={studioTab}
+      onTabChange={setStudioTab}
+      maximized={studioMax && !narrow}
+      onToggleMaximize={() => setStudioMax(!studioMax)}
+      onClose={() => (narrow ? setRightDrawer(false) : setRightOpen(false))}
+      onSaveEdit={saveEdit}
+      onRestore={restore}
+      onPin={pin}
+      onUnpin={unpin}
+      onArtifactsChanged={refreshArtifacts}
+      onReopenDiscovery={() => void updateSettings({ discovery: "reopen" })}
+    />
+  );
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center gap-3 border-b border-ink-800 bg-ink-900 px-4 py-2">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Target</div>
-        <select
-          value={target}
-          onChange={(e) => setTarget(e.target.value)}
-          className="rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[13px] text-slate-200 focus:border-accent-500 focus:outline-none"
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-ink-950/80 px-2 backdrop-blur">
+        <button
+          onClick={() => (narrow ? setLeftDrawer(!leftDrawer) : setLeftOpen(!leftOpen))}
+          title={showLeft ? "Hide conversations (Ctrl+B)" : "Show conversations (Ctrl+B)"}
+          aria-label={showLeft ? "Hide conversations" : "Show conversations"}
+          data-testid="toggle-left"
+          className={iconToggle}
         >
-          {targets.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.displayName}
-            </option>
-          ))}
-        </select>
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Model</div>
-        {customModel ? (
-          <input
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            onBlur={() => persistSelection(provider, model, true)}
-            placeholder="Custom model ID"
-            spellCheck={false}
-            autoFocus
-            className="w-56 rounded-md border border-accent-500/60 bg-ink-800 px-2 py-1.5 font-mono text-[12.5px] text-slate-200 placeholder:text-slate-600 focus:outline-none"
-          />
-        ) : (
-          <select
-            value={models.some((m) => m.provider === provider && m.id === model) ? selectedValue : ""}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === "__custom") {
-                setCustomModel(true);
-                return;
-              }
-              const [nextProvider, ...rest] = value.split("|||");
-              const nextModel = rest.join("|||");
-              if (nextProvider && nextModel) {
-                applyPair(nextProvider, nextModel);
-                persistSelection(nextProvider, nextModel, false);
-              }
+          {showLeft ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+        </button>
+        <div className="flex items-center gap-2 pr-2">
+          <svg aria-hidden viewBox="0 0 32 32" className="h-6 w-6">
+            <rect width="32" height="32" rx="7" fill="#1c2128" />
+            <path d="M10 8h13v3.2h-9.4v3.6h8v3.2h-8V24H10z" fill="#e4e7ec" />
+            <circle cx="23.5" cy="22.5" r="2.5" fill="#f5a55b" />
+          </svg>
+          <span className="text-[13px] font-semibold tracking-[0.08em] text-slate-100">FORGE</span>
+        </div>
+        <div className="hidden min-w-0 overflow-hidden border-l border-white/[0.06] pl-2 lg:block">
+          <PipelineRail
+            input={{
+              discovery: detail?.discovery ?? null,
+              versions: versions.length,
+              pinned: ledger.length,
+              verifications: detail?.verifications ?? [],
+              busy: sending,
             }}
-            className="max-w-72 rounded-md border border-ink-700 bg-ink-800 px-2 py-1.5 text-[13px] text-slate-200 focus:border-accent-500 focus:outline-none"
+            onOpen={openStudio}
+          />
+        </div>
+        <div className="flex-1" />
+
+        <label className="flex items-center gap-1.5">
+          <span className="hidden text-[11.5px] text-slate-500 lg:inline">Target</span>
+          <select
+            value={target}
+            onChange={(e) => {
+              setTarget(e.target.value);
+              if (activeId) void updateSettings({ target: e.target.value });
+            }}
+            aria-label="Target agent"
+            className={`${control} max-w-40`}
           >
-            {models.length === 0 ? <option value="">No models available</option> : null}
-            {groupedModels().map((g) => (
-              <optgroup key={g.provider} label={g.label}>
-                {g.models.map((m) => (
-                  <option key={`${m.provider}|||${m.id}`} value={`${m.provider}|||${m.id}`}>
-                    {m.displayName}
-                  </option>
-                ))}
-              </optgroup>
+            {targets.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.displayName}
+              </option>
             ))}
-            <option value="__custom">Custom model ID…</option>
           </select>
-        )}
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="hidden text-[11.5px] text-slate-500 lg:inline">Model</span>
+          {customModel ? (
+            <input
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              onBlur={() => persistSelection(provider, model, true)}
+              placeholder="Custom model ID"
+              aria-label="Custom model ID"
+              spellCheck={false}
+              autoFocus
+              className={`${control} w-48 border-accent-400/60 font-mono`}
+            />
+          ) : (
+            <select
+              value={models.some((m) => m.provider === provider && m.id === model) ? selectedValue : ""}
+              aria-label="Model"
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === "__custom") {
+                  setCustomModel(true);
+                  return;
+                }
+                const [nextProvider, ...rest] = value.split("|||");
+                const nextModel = rest.join("|||");
+                if (nextProvider && nextModel) {
+                  applyPair(nextProvider, nextModel);
+                  persistSelection(nextProvider, nextModel, false);
+                }
+              }}
+              className={`${control} max-w-56`}
+            >
+              {models.length === 0 ? <option value="">No models available</option> : null}
+              {groupedModels().map((g) => (
+                <optgroup key={g.provider} label={g.label}>
+                  {g.models.map((m) => (
+                    <option key={`${m.provider}|||${m.id}`} value={`${m.provider}|||${m.id}`}>
+                      {m.displayName}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              <option value="__custom">Custom model ID…</option>
+            </select>
+          )}
+        </label>
         {customModel ? (
           <button
             onClick={() => {
@@ -484,118 +696,182 @@ export function Workspace(): React.JSX.Element {
               applySelection(next);
               if (next) persistSelection(next.provider, next.model, false);
             }}
-            className="rounded-md border border-ink-700 px-2 py-1.5 text-[12px] text-slate-400 hover:text-slate-200"
+            className={`${control} text-slate-400`}
           >
             List
           </button>
         ) : null}
-        <div className="flex-1" />
+        <label
+          className="flex items-center gap-1.5"
+          title={
+            reasoning?.supported
+              ? `Reasoning effort — ${reasoning.source === "discovered" ? "support reported by the provider" : "support documented for this model"}.`
+              : (reasoning?.reason ?? "Checking whether this model accepts a reasoning setting…")
+          }
+        >
+          <span className="hidden text-[11.5px] text-slate-500 lg:inline">Effort</span>
+          <select
+            value={reasoning?.supported ? effort : "default"}
+            disabled={!reasoning?.supported}
+            aria-label="Reasoning effort"
+            data-testid="reasoning-effort"
+            onChange={(e) => void updateSettings({ reasoningEffort: e.target.value as ReasoningEffortWire })}
+            className={`${control} w-[92px]`}
+          >
+            <option value="default">{reasoning?.supported ? "Default" : "N/A"}</option>
+            {(reasoning?.levels ?? []).map((level) => (
+              <option key={level} value={level}>
+                {level[0]!.toUpperCase() + level.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="mx-1 h-5 w-px bg-white/[0.08]" />
         <button
           onClick={() => {
             setSettingsTab("providers");
             setSettingsOpen(true);
           }}
-          title="Settings"
-          className="flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800 px-2.5 py-1.5 text-[12.5px] text-slate-400 transition-colors hover:text-slate-200"
+          title="Providers and models"
+          aria-label="Settings"
+          className={iconToggle}
         >
-          <SettingsIcon size={14} />
-          Settings
+          <SettingsIcon size={16} />
         </button>
         <button
           onClick={() => setAdvanced((v) => !v)}
-          title="Show the Advanced panel (structure inspection)"
-          className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12.5px] transition-colors ${
-            advanced
-              ? "border-accent-500/60 bg-accent-500/10 text-accent-400"
-              : "border-ink-700 bg-ink-800 text-slate-400 hover:text-slate-200"
-          }`}
+          title="Advanced: show structure inspection in the Studio"
+          aria-label="Advanced"
+          aria-pressed={advanced}
+          className={`${iconToggle} ${advanced ? "bg-accent-500/15 text-accent-300" : ""}`}
         >
-          <FlaskConical size={14} />
-          Advanced
+          <FlaskConical size={16} />
         </button>
-        <div
-          title={providerAvailable ? "Model provider reachable" : "No provider configured"}
-          className={`h-2.5 w-2.5 rounded-full ${providerAvailable ? "bg-green-400" : "bg-red-400"}`}
+        <span
+          role="status"
+          title={providerAvailable ? "A model provider is connected" : "No provider configured"}
+          className={`mx-1 h-2 w-2 rounded-full ${providerAvailable ? "bg-emerald-400" : "bg-rose-400"}`}
         />
+        <button
+          onClick={() => (narrow ? setRightDrawer(!rightDrawer) : setRightOpen(!rightOpen))}
+          title={showRight ? "Hide the Studio (Ctrl+.)" : "Show the Studio (Ctrl+.)"}
+          aria-label={showRight ? "Hide the Studio" : "Show the Studio"}
+          data-testid="toggle-right"
+          className={iconToggle}
+        >
+          {showRight ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+        </button>
       </header>
 
       {error ? (
-        <div className="flex items-start gap-2 border-b border-red-900/60 bg-red-950/40 px-4 py-2 text-[13px] text-red-200">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-          <div className="flex-1">{error}</div>
-          <button onClick={() => setError(null)} className="text-red-300/70 hover:text-red-200">
+        <div role="alert" className="flex items-start gap-2 border-b border-rose-900/50 bg-rose-950/40 px-4 py-2 text-[13px] text-rose-100">
+          <AlertTriangle size={15} className="mt-0.5 shrink-0 text-rose-300" />
+          <div className="min-w-0 flex-1 whitespace-pre-wrap break-words">{error}</div>
+          <button onClick={() => setError(null)} className="text-rose-300/80 hover:text-rose-100">
             Dismiss
           </button>
         </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         {catalogReady && !providerAvailable && !activeId ? (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="max-w-md rounded-xl border border-ink-700 bg-ink-900 p-8 text-center">
-              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-ink-700 font-mono text-lg font-bold text-slate-200">
-                F
-              </div>
-              <div className="text-[15px] font-semibold text-slate-100">No AI provider connected</div>
+          <div className="workbench flex flex-1 items-center justify-center p-4">
+            <div className="max-w-md rounded-xl border border-white/[0.08] bg-ink-900/90 p-8 text-center">
+              <div className="text-[15px] font-semibold text-slate-100">Connect a model to start</div>
               <p className="mt-2 text-[13px] leading-relaxed text-slate-400">
-                FORGE needs a model to chat with. Connect Anthropic, OpenAI, Google, xAI, OpenCode Go,
-                OpenRouter — or any OpenAI-compatible endpoint — then pick a model and start.
+                FORGE needs a model to talk with. Connect Anthropic, OpenAI, Google, xAI, OpenCode Go,
+                OpenRouter — or any OpenAI-compatible endpoint — then pick a model.
               </p>
               <button
                 onClick={() => {
                   setSettingsTab("providers");
                   setSettingsOpen(true);
                 }}
-                className="mt-4 rounded-lg bg-accent-500 px-5 py-2 text-[13.5px] font-medium text-white hover:bg-accent-400"
+                className="mt-4 rounded-lg bg-accent-500 px-5 py-2 text-[13.5px] font-medium text-white hover:bg-accent-600"
               >
-                Connect provider
+                Connect a provider
               </button>
             </div>
           </div>
         ) : (
           <>
-            <Sidebar conversations={conversations} activeId={activeId} onSelect={select} onNew={create} onDelete={remove} />
-            <ChatPanel
-              messages={detail?.messages ?? []}
-              attachments={detail?.attachments ?? []}
-              sending={sending}
-              ready
-              providerAvailable={providerAvailable}
-              streamingReply={streamingReply}
-              pendingUserMessage={pendingUserMessage}
-              stageLabel={stageLabel}
-              startedAt={startedAt}
-              diagnostics={diagnostics}
-              onSend={send}
-              discovery={detail?.discovery ?? null}
-              onGenerate={generate}
-              onAttach={attach}
-              onStop={stop}
-              onRetry={retry}
-              canRetry={canRetry && !sending && (detail?.messages.length ?? 0) > 0}
-            />
-            <PromptStudio
-              conversationId={activeId}
-              prompt={detail?.prompt ?? null}
-              discovery={detail?.discovery ?? null}
-              versions={versions}
-              candidates={detail?.candidates ?? []}
-              currentV={detail?.currentV ?? 0}
-              streamingPrompt={sending ? streamingPrompt : ""}
-              provider={provider}
-              model={model}
-              advanced={advanced}
-              ledger={ledger}
-              preservation={preservation}
-              proposals={proposals}
-              targets={targets}
-              target={target}
-              onSaveEdit={saveEdit}
-              onRestore={restore}
-              onPin={pin}
-              onUnpin={unpin}
-              onArtifactsChanged={refreshArtifacts}
-            />
+            {narrow ? (
+              leftDrawer ? (
+                <>
+                  <div className="absolute inset-0 z-30 bg-black/50" onClick={() => setLeftDrawer(false)} aria-hidden />
+                  <div className="absolute inset-y-0 left-0 z-40 w-[min(300px,85vw)] animate-fade-in shadow-2xl">{sidebar}</div>
+                </>
+              ) : null
+            ) : leftOpen && !studioMax ? (
+              <>
+                <div style={{ width: leftWidth }} className="shrink-0">
+                  {sidebar}
+                </div>
+                <Resizer
+                  label="Resize conversations"
+                  side="left"
+                  width={leftWidth}
+                  min={LEFT.min}
+                  max={LEFT.max}
+                  defaultWidth={LEFT.initial}
+                  onResize={setLeftWidth}
+                />
+              </>
+            ) : null}
+
+            {!(studioMax && showRight && !narrow) ? (
+              <ChatPanel
+                messages={detail?.messages ?? []}
+                attachments={detail?.attachments ?? []}
+                sending={sending}
+                ready={catalogReady && Boolean(provider) && Boolean(model.trim())}
+                providerAvailable={providerAvailable || !catalogReady}
+                streamingReply={streamingReply}
+                pendingUserMessage={pendingUserMessage}
+                stageLabel={stageLabel}
+                startedAt={startedAt}
+                diagnostics={diagnostics}
+                onSend={send}
+                discovery={detail?.discovery ?? null}
+                hasPrompt={Boolean(detail?.prompt)}
+                unresolvedCount={detail?.discoveryUnresolved?.length ?? 0}
+                artifactKind={artifactKind}
+                outputShape={outputShape}
+                onSettings={(patch) => void updateSettings(patch)}
+                onGenerate={generate}
+                onCloseDiscovery={() => void updateSettings({ discovery: "close" })}
+                onAttach={attach}
+                onStop={stop}
+                onRetry={retry}
+                canRetry={canRetry && !sending && (detail?.messages.length ?? 0) > 0}
+              />
+            ) : null}
+
+            {narrow ? (
+              rightDrawer ? (
+                <>
+                  <div className="absolute inset-0 z-30 bg-black/50" onClick={() => setRightDrawer(false)} aria-hidden />
+                  <div className="absolute inset-y-0 right-0 z-40 w-[min(560px,96vw)] animate-fade-in shadow-2xl">{studio}</div>
+                </>
+              ) : null
+            ) : rightOpen ? (
+              <>
+                {!studioMax ? (
+                  <Resizer
+                    label="Resize the Studio"
+                    side="right"
+                    width={rightWidth}
+                    min={RIGHT.min}
+                    max={RIGHT.max}
+                    defaultWidth={RIGHT.initial}
+                    onResize={setRightWidth}
+                  />
+                ) : null}
+                <div style={studioMax ? undefined : { width: rightWidth }} className={studioMax ? "min-w-0 flex-1" : "shrink-0"}>
+                  {studio}
+                </div>
+              </>
+            ) : null}
           </>
         )}
       </div>
