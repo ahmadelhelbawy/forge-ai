@@ -465,8 +465,15 @@ export function Workspace(): React.JSX.Element {
   const saveEdit = useCallback(
     async (text: string) => {
       if (!activeId) return;
-      await api.savePrompt(activeId, text);
-      await reload(activeId);
+      try {
+        await api.savePrompt(activeId, text);
+        await reload(activeId);
+      } catch (e) {
+        // Shown, then rethrown so the editor stays open with the draft: a
+        // failed save that closed the editor would lose the user's text.
+        setError(`Your edit was not saved: ${e instanceof Error ? e.message : String(e)}`);
+        throw e;
+      }
     },
     [activeId, reload],
   );
@@ -474,8 +481,12 @@ export function Workspace(): React.JSX.Element {
   const restore = useCallback(
     async (v: number) => {
       if (!activeId) return;
-      await api.restoreVersion(activeId, v);
-      await reload(activeId);
+      try {
+        await api.restoreVersion(activeId, v);
+        await reload(activeId);
+      } catch (e) {
+        setError(`Version ${v} was not restored: ${e instanceof Error ? e.message : String(e)}`);
+      }
     },
     [activeId, reload],
   );

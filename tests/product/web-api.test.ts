@@ -2069,4 +2069,56 @@ describe.skipIf(!WEB_E2E)("Sprint 2 product surface over HTTP", () => {
     expect(typeof res.body["reason"]).toBe("string");
     expect((await api(BASE, "/api/settings/reasoning")).status).toBe(400);
   });
+
+  // ── Pre-release hardening: the request guard (web/middleware.ts) ──────────
+  it("refuses a cross-origin write, allows a same-origin one", async () => {
+    const cross = await api(BASE, "/api/conversations", {
+      method: "POST",
+      body: "{}",
+      headers: { origin: "https://evil.example" },
+    });
+    expect(cross.status).toBe(403);
+    const site = await api(BASE, "/api/conversations", {
+      method: "POST",
+      body: "{}",
+      headers: { "sec-fetch-site": "cross-site" },
+    });
+    expect(site.status).toBe(403);
+    const same = await api(BASE, "/api/conversations", {
+      method: "POST",
+      body: "{}",
+      headers: { origin: new URL(BASE).origin },
+    });
+    expect(same.status).toBe(201);
+  });
+
+  it("refuses an unknown Host (DNS rebinding) on reads too", async () => {
+    const { request } = await import("node:http");
+    const url = new URL(`${BASE}/api/conversations`);
+    const status = await new Promise<number>((resolve, reject) => {
+      const req = request(
+        { host: url.hostname, port: url.port, path: url.pathname, headers: { host: "rebind.evil.example:3210" } },
+        (res) => {
+          res.resume();
+          resolve(res.statusCode ?? 0);
+        },
+      );
+      req.on("error", reject);
+      req.end();
+    });
+    expect(status).toBe(403);
+  });
+
+  it("never sends a saved key to an endpoint the request chose", async () => {
+    await api(BASE, "/api/settings/providers/openai", {
+      method: "PUT",
+      body: JSON.stringify({ apiKey: "saved-key-do-not-leak", baseURL: STUB_BASE, enabled: true }),
+    });
+    const tested = await api(BASE, "/api/settings/providers/openai/test", {
+      method: "POST",
+      body: JSON.stringify({ baseURL: "http://127.0.0.1:9/collect" }),
+    });
+    expect(tested.status).toBe(400);
+    expect(String(tested.body["message"] ?? "")).toMatch(/enter the API key again/);
+  });
 });

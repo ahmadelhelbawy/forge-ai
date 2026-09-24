@@ -269,8 +269,11 @@ describe("WS-R38 — transformation modes (AC-063)", () => {
         discovery,
         generation: { explicitGenerate: true, unresolved: ["Which agent runs it?"], mode },
       });
-    expect(render("polish")).toContain("do NOT write them into it");
-    expect(render("strengthen")).toContain("State each one in the prompt");
+    expect(render("polish")).toContain("do not write these into it");
+    // WS-R32 (amended): open items are decided, never written as questions.
+    expect(render("strengthen")).toContain("write the prompt as if it had been decided");
+    expect(render("strengthen")).toContain("Never write these as questions");
+    expect(render("polish")).not.toContain("'Assumptions' heading in the prompt");
   });
 });
 

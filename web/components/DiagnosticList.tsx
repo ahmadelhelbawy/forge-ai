@@ -72,10 +72,16 @@ export function DiagnosticList({
   diagnostics: DiagnosticWire[];
 }): React.JSX.Element | null {
   if (diagnostics.length === 0) return null;
+  // Only something the user may need to act on is styled as a problem. An
+  // info finding records what happened — a choice the user made, a default
+  // FORGE took — and reads as a note, not an alert: a deliberate Generate
+  // should not look like a failed one.
+  const findings = diagnostics.filter((d) => d.severity !== "info");
+  const notes = diagnostics.filter((d) => d.severity === "info");
 
   return (
     <div data-testid="turn-diagnostics" className="space-y-2">
-      {diagnostics.map((d, i) => {
+      {findings.map((d, i) => {
         const style = STYLES[d.severity] ?? STYLES.info;
         const Icon = style.icon;
         const evidence = d.evidence ?? [];
@@ -98,7 +104,7 @@ export function DiagnosticList({
                       shown rather than flattened away. */}
                   <span className="font-mono text-[11px] text-slate-600">{d.source}</span>
                 </div>
-                <p className={`mt-1 ${style.text}`}>{d.message}</p>
+                <p className={`mt-1 break-words ${style.text}`}>{d.message}</p>
                 {evidence.length > 0 ? (
                   <ul className="mt-1.5 space-y-0.5 font-mono text-[11px] text-slate-500">
                     {evidence.map((item, j) => (
@@ -111,6 +117,24 @@ export function DiagnosticList({
           </div>
         );
       })}
+      {notes.length > 0 ? (
+        <ul className="space-y-1" aria-label="Notes">
+          {notes.map((d, i) => (
+            <li
+              key={`${d.code}-${i}`}
+              data-testid="turn-diagnostic"
+              data-code={d.code}
+              data-severity={d.severity}
+              className="flex items-start gap-2 px-1 text-[12px] leading-relaxed text-slate-500"
+            >
+              <Info size={12} className="mt-[3px] shrink-0 text-slate-600" aria-hidden="true" />
+              <span className="min-w-0 break-words">
+                {d.message} <span className="font-mono text-[10.5px] text-slate-600">{d.code}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

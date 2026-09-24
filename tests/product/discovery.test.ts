@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { parseClassifyOutput } from "../../src/conversation/classify.js";
 import {
   absentDiscoveredRequirements,
+  coverageItems,
   parseDiscoveryUpdate,
 } from "../../src/conversation/discovery.js";
 import { addPromptVersion, loadConversation, newConversation, saveConversation, type Conversation } from "../../web/lib/store";
@@ -222,6 +223,30 @@ describe("WS-R31–WS-R33 — the explicit generate gate (AC-059, AC-060)", () =
     expect(w009.some((m) => m.includes("Onboarding time drops by half"))).toBe(true);
   });
 
+  it("finalises: W010 is info, open questions become `decided`, a cited paraphrase passes and a contradiction is reported (hardening pass)", async () => {
+    const convo = await readyConversation();
+    const brief = convo.discovery!.brief;
+    const items = coverageItems(brief);
+    const prompt = [
+      "Automate client onboarding for small accounting firms.",
+      "Spend no more than $200 per month on tooling.",
+      "Success means new clients are fully onboarded in half the time it takes today.",
+    ].join("\n");
+    const lines = prompt.split("\n");
+    const line = { goal: lines[0]!, constraint: lines[1]!, "success criterion": lines[2]! } as Record<string, string>;
+    const coverage = items.map((item) => ({ item: item.id, quote: line[item.field]! }));
+    const s = scripted({ generate: [JSON.stringify({ reply: "ok", prompt, coverage })] });
+    const result = await executeTurn(convo, "generate", s.deps, { generate: true });
+    const w010 = result.diagnostics.find((d) => d.code === "FORGE-W010");
+    expect(w010?.severity).toBe("info");
+    expect(convo.discovery!.status).toBe("generated");
+    expect(convo.discovery!.decided).toContain("Which accounting software do the firms use?");
+    expect(convo.discovery!.coverage?.v).toBe(1);
+    // Every item was carried, by words or by a verified citation: nothing to warn about.
+    expect(convo.discovery!.coverage!.items.every((i) => i.status === "worded" || i.status === "cited")).toBe(true);
+    expect(result.diagnostics.map((d) => d.code)).not.toContain("FORGE-W009");
+  });
+
   it("leaves discovery open when the generate request produced no prompt", async () => {
     const convo = await readyConversation();
     const result = await executeTurn(convo, "generate", scripted({ generate: ['{"reply":"I need more","prompt":null}'] }).deps, { generate: true });
@@ -311,7 +336,8 @@ describe("the real generation prompt carries discovery forward", () => {
     });
     expect(system).toContain("THE USER PRESSED GENERATE");
     expect(system).toContain("  - Must run on a budget under 200 dollars a month");
-    expect(system).toContain("UNRESOLVED");
+    expect(system).toContain("LEFT OPEN");
+    expect(system).toContain("CHECKLIST");
     expect(system).toContain("- Which accounting software do the firms use?");
     // A classified CREATE with no approval gets none of it.
     expect(buildSystemPrompt({ ...base, action: "CREATE", discovery: convo.discovery })).not.toContain("THE USER PRESSED GENERATE");

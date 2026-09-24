@@ -143,7 +143,13 @@ export function classifyFailure(d: ProviderDiagnostic): string {
       d.providerMessage ? ` (${d.providerMessage})` : ""
     }`;
   }
-  if (/credit|billing|quota|balance|prepayment|insufficient|payment|depleted/.test(text)) {
+  // Money only when the provider says money. "insufficient permissions" or a
+  // bare "quota" in a 400 is not a bill, and telling the user it is sends
+  // them to the wrong fix.
+  if (
+    d.httpStatus === 402 ||
+    /credit|billing|balance|prepayment|payment|depleted|insufficient[_ ](funds|quota|balance|credit)|exceeded your (current )?quota/.test(text)
+  ) {
     return `${d.provider} rejected the request for billing reasons, not a bad key.`;
   }
   // An entitlement refusal ("requires explicit opt in") arrives as 403 but is
@@ -158,6 +164,14 @@ export function classifyFailure(d: ProviderDiagnostic): string {
   if (d.httpStatus === 429) return `${d.provider} is rate-limiting this key.`;
   if (d.httpStatus === 404 || /not supported|does not exist|unknown model/.test(text)) {
     return `Model "${d.model ?? "unknown"}" was rejected by this endpoint.`;
+  }
+  if (/timeouterror|aborted due to timeout|timed out/.test(text)) {
+    return `${d.provider} did not answer in time — the call was stopped. Retry, or choose a faster model.`;
+  }
+  if (d.httpStatus !== undefined && d.httpStatus >= 500) {
+    return `${d.provider} failed on its side (HTTP ${d.httpStatus}) — nothing is wrong with your key; retry shortly.${
+      d.providerMessage ? ` (${d.providerMessage})` : ""
+    }`;
   }
   if (/fetch failed|enotfound|econnrefused|etimedout|socket hang up/.test(text)) {
     return "Endpoint unreachable — check the base URL and network.";

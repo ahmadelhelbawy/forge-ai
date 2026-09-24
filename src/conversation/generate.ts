@@ -113,7 +113,7 @@ export interface EnvelopeStreamReader {
   raw(): string;
 }
 
-type ReaderState = "before" | "object" | "key" | "colon" | "value" | "string" | "scalar" | "done";
+type ReaderState = "before" | "object" | "key" | "colon" | "value" | "string" | "scalar" | "nested" | "done";
 
 const STREAMED_FIELDS: readonly string[] = ["reply", "prompt"];
 const ESCAPES: Readonly<Record<string, string>> = {
@@ -151,6 +151,11 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
   let state: ReaderState = "before";
   let key = "";
   let emitting = false;
+  // For a nested value (the `coverage` array an explicit generate may add):
+  // skipped, bracket by bracket, so a field after it still streams.
+  let depth = 0;
+  let nestedString = false;
+  let nestedEscape = false;
 
   function readStringBody(deltas: EnvelopeDelta[]): boolean {
     // Returns true when the closing quote was consumed.
@@ -240,9 +245,14 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
           return true;
         }
         if (ch === "{" || ch === "[") {
-          // Nested structure: not an envelope this reader can follow.
-          state = "done";
-          return false;
+          // A nested value is never streamed; it is skipped whole and read
+          // after the call from the full text, like everything else.
+          emitting = false;
+          depth = 0;
+          nestedString = false;
+          nestedEscape = false;
+          state = "nested";
+          return true;
         }
         emitting = false;
         state = "scalar";
@@ -253,6 +263,28 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
         emitting = false;
         state = "object";
         return true;
+      }
+      case "nested": {
+        while (at < buffer.length) {
+          const ch = buffer[at] as string;
+          at += 1;
+          if (nestedString) {
+            if (nestedEscape) nestedEscape = false;
+            else if (ch === "\\") nestedEscape = true;
+            else if (ch === '"') nestedString = false;
+            continue;
+          }
+          if (ch === '"') nestedString = true;
+          else if (ch === "{" || ch === "[") depth += 1;
+          else if (ch === "}" || ch === "]") {
+            depth -= 1;
+            if (depth === 0) {
+              state = "object";
+              return true;
+            }
+          }
+        }
+        return false;
       }
       case "scalar": {
         while (at < buffer.length && !/[,}]/.test(buffer[at] as string)) at += 1;

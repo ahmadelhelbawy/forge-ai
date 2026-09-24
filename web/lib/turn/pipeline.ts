@@ -41,9 +41,12 @@ import {
   createEnvelopeStreamReader,
   parseEnvelope,
 } from "forge/dist/conversation/generate.js";
+import { checkCoverage, parseCoverageClaims } from "forge/dist/conversation/coverage.js";
 import {
-  absentDiscoveredRequirements,
   applyDiscoveryUpdate,
+  briefMarks,
+  coverageItems,
+  jsonObjects,
   openDiscovery,
   readDiscoveryUpdate,
   unresolvedQuestions,
@@ -106,6 +109,8 @@ export interface CompletionRequest {
   readonly user: string;
   readonly maxTokens: number;
   readonly temperature: number;
+  /** The turn's cancel signal, so Stop interrupts a call in flight. */
+  readonly signal?: AbortSignal;
 }
 
 export interface CompletionResult {
@@ -415,7 +420,8 @@ export async function* runTurn(
         note(
           diagnostic(
             "FORGE-W010",
-            `Generating with ${unresolved.length} unresolved question(s); each is stated as an assumption in the prompt: ` +
+            `You chose to generate with ${unresolved.length} question(s) still open, so FORGE decided them ` +
+              `(a stated assumption only where a wrong guess would matter): ` +
               unresolved.map((q) => `"${q}"`).join("; "),
             [measureEvidence("unresolved_questions", unresolved.length, "questions")],
           ),
@@ -470,6 +476,7 @@ export async function* runTurn(
               user: prompt,
               maxTokens: CONVERSATION_CLASSIFY_MAX_TOKENS,
               temperature: 0,
+              ...(options.signal ? { signal: options.signal } : {}),
             });
           } catch (error) {
             push({
@@ -512,6 +519,8 @@ export async function* runTurn(
         );
       } catch (error) {
         if (error instanceof TurnCancelled) throw error;
+        // A Stop that aborted the call in flight is a cancel, not a failed classification.
+        if (options.signal?.aborted) throw new TurnCancelled();
         if (error instanceof LedgerTamperedError || error instanceof GovernanceTamperedError) throw error;
         // WS-R4: the least destructive action, never "let the model decide".
         degraded = true;
@@ -701,7 +710,11 @@ export async function* runTurn(
       note(
         diagnostic(
           "FORGE-W003",
-          "The response was not a readable FORGE envelope, so it was kept as chat and no prompt version was written.",
+          response.finishReason === "length"
+            ? `The model (${response.model}) was cut off at its output budget (${CHAT_MAX_TOKENS} tokens) before finishing, ` +
+                "so the answer was kept as chat and no prompt version was written. Retry, ask for a shorter prompt, " +
+                "or choose a model with a larger output limit."
+            : "The response was not a readable FORGE envelope, so it was kept as chat and no prompt version was written.",
           [measureEvidence("unreadable_responses", 1, "responses")],
         ),
       );
@@ -737,6 +750,7 @@ export async function* runTurn(
           user: repairPrompt,
           maxTokens: DISCOVERY_REPAIR_MAX_TOKENS,
           temperature: 0,
+          ...(options.signal ? { signal: options.signal } : {}),
         });
         recordModelCall(convo, {
           ...callRecord(CONVERSATION_GENERATE_ID, CONVERSATION_GENERATE_VERSION, deps.providerId, repaired, repairPrompt),
@@ -804,23 +818,51 @@ export async function* runTurn(
 
     // ── Discovery coverage and close (WS-R31, WS-R33) ─────────────────────
     if (version !== null && explicitGenerate && convo.discovery !== null) {
-      const absent = absentDiscoveredRequirements(convo.discovery.brief, version.text);
-      if (absent.length > 0) {
-        // WS-R33 (amended): one finding naming every absent item, not one per
-        // item — a wall of near-identical warnings is noise, and noise is how
-        // a real drop gets ignored.
+      // WS-R33 (amended): words with polarity first, then the model's cited
+      // passage, verified verbatim. Only an item with neither — or one whose
+      // only carrying passages negate it — is reported.
+      const coverage = checkCoverage(
+        coverageItems(convo.discovery.brief),
+        version.text,
+        parseCoverageClaims(jsonObjects(response.text)),
+      );
+      const marks = briefMarks(
+        convo.discovery.brief,
+        convo.messages.filter((m) => m.role === "user").map((m) => m.content),
+      );
+      const flagged = coverage.filter((item) => item.status === "absent" || item.status === "contradicted");
+      if (flagged.length > 0) {
+        // One finding naming every flagged item, not one per item — a wall of
+        // near-identical warnings is noise, and noise is how a real drop gets ignored.
         note(
           diagnostic(
             "FORGE-W009",
-            `${absent.length} discovered item(s) are not covered by version ${version.v} (at least 80% of an item's content words must appear): ` +
-              absent.map((item) => `${item.field} "${item.text}"`).join("; ") +
-              ". They may be paraphrased or dropped; check them.",
-            [measureEvidence("absent_discovered_requirements", absent.length, "items")],
+            `${flagged.length} discovered item(s) may not be carried by version ${version.v}: ` +
+              flagged
+                .map(
+                  (item) =>
+                    `${item.field} "${item.text}" (${marks[item.text] === "stated" ? "from your words" : "FORGE's inference"}) — ` +
+                    (item.status === "absent"
+                      ? "not found"
+                      : `the passage that carries its words appears to negate it: "${item.passage ?? ""}"`),
+                )
+                .join("; ") +
+              ". Add it with a revision, or ignore this if the prompt handles it differently on purpose.",
+            [measureEvidence("uncarried_discovered_requirements", flagged.length, "items")],
           ),
         );
       }
+      convo.discovery = { ...convo.discovery, coverage: { v: version.v, items: coverage } };
       if (convo.discovery.status === "open") {
-        convo.discovery = { ...convo.discovery, status: "generated", questions: [], ready: false };
+        convo.discovery = {
+          ...convo.discovery,
+          status: "generated",
+          questions: [],
+          ready: false,
+          // What the user chose to leave open: from here it is a record of
+          // what FORGE decided for them, not an interview still in progress.
+          ...(unresolved.length > 0 ? { decided: unresolved } : {}),
+        };
         yield push({ kind: "discovery_updated", status: "generated", questions: 0, ready: false });
       }
     }
@@ -852,7 +894,7 @@ export async function* runTurn(
   } catch (error) {
     // WS-R12: a cancelled turn and a failed turn end in the same place. The
     // user's message stays; no assistant message and no version are written.
-    if (error instanceof TurnCancelled) {
+    if (error instanceof TurnCancelled || options.signal?.aborted) {
       yield push({ kind: "turn_cancelled" });
       return result({ cancelled: true });
     }

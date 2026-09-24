@@ -15,7 +15,7 @@ import { writesVersion } from "forge/dist/conversation/actions.js";
 import { parseEnvelope } from "forge/dist/conversation/generate.js";
 
 import type { ConversationAction } from "forge/dist/conversation/actions.js";
-import { renderBrief, type DiscoveryState } from "forge/dist/conversation/discovery.js";
+import { coverageItems, renderBrief, type DiscoveryState } from "forge/dist/conversation/discovery.js";
 import type { TransformationMode } from "forge/dist/conversation/intake.js";
 import type { ArtifactKind, OutputShape } from "forge/dist/conversation/stages.js";
 import type { TargetBrief } from "./forge.js";
@@ -92,6 +92,7 @@ export function buildSystemPrompt(ctx: TurnContext): string {
     lines.push(
       "",
       "THE USER ASKED TO SKIP REVIEW. Write the prompt now, from the prompt they pasted. Do not ask questions.",
+      ...FINAL_OUTPUT_RULES,
       "In `reply`, list under a heading 'Assumptions' every choice you made that the user did not state (including which kind of artifact you wrote), in one short line each.",
     );
   }
@@ -254,26 +255,50 @@ export const STAGED_INSTRUCTIONS: readonly string[] = [
   "- Carry every requirement into each stage that needs it: restate it there rather than pointing at another stage. A requirement no stage carries is dropped.",
 ];
 
+/**
+ * What an explicit generate writes, whether it came from discovery or from a
+ * direct request. The user pressed Generate: the artifact is the deliverable,
+ * not another step in the interview.
+ */
+export const FINAL_OUTPUT_RULES: readonly string[] = [
+  "THE PROMPT IS THE FINAL ARTIFACT. The user will paste it into the target as-is. So:",
+  "- Write the artifact itself — never a plan for writing it, and never a prompt that asks the agent to gather requirements the brief already settles.",
+  "- No commentary about the prompt inside the prompt (no \"This prompt…\", \"Note to user\", \"As requested\"), no restated brief, no questions to the user.",
+  "- Every sentence must change what the agent does. Cut generic filler (\"be helpful\", \"use best practices\", \"ensure high quality\").",
+  "- State each assumption once, in one short section at most, and only when a wrong guess would change the result.",
+];
+
 /** An approved generate after discovery (WS-R31–WS-R33). */
 function generateInstructions(
   state: DiscoveryState,
   unresolved: readonly string[],
   mode: TransformationMode | null,
 ): string[] {
+  const items = coverageItems(state.brief);
   const lines = [
-    "THE USER PRESSED GENERATE. Write the prompt now, from the conversation and this DISCOVERED BRIEF.",
-    "Carry every goal, constraint and success criterion into the prompt, using the brief's own wording where you can — FORGE checks that each one is present.",
+    "THE USER PRESSED GENERATE. Discovery is over: do not ask anything. Write the final prompt now, from the conversation and this DISCOVERED BRIEF.",
     "",
     "DISCOVERED BRIEF:",
     ...renderBrief(state.brief),
+    "",
+    ...FINAL_OUTPUT_RULES,
   ];
   if (unresolved.length > 0) {
     lines.push(
       "",
-      mode === "polish"
-        ? "UNRESOLVED — the user chose to generate before these were answered. POLISH adds nothing to the prompt, so do NOT write them into it: list them in `reply` as open questions:"
-        : "UNRESOLVED — the user chose to generate before these were answered. State each one in the prompt as an explicit assumption or open question, and mention them in `reply`:",
+      "LEFT OPEN — the user chose to generate before these were answered. They are yours to decide, not to repeat:",
       ...unresolved.map((q) => `- ${q}`),
+      mode === "polish"
+        ? "POLISH adds nothing to the prompt, so do not write these into it. In `reply`, under 'Decided for you', say in one line each how the prompt as written handles them."
+        : "For each: choose the most sensible default consistent with the brief and write the prompt as if it had been decided. Only where a wrong default would materially change the result, add it as one line under a short 'Assumptions' heading in the prompt. Never write these as questions. In `reply`, under 'Decided for you', list each decision in one line.",
+    );
+  }
+  if (items.length > 0) {
+    lines.push(
+      "",
+      "CHECKLIST — every item must be carried by the prompt, in your own words if they are better:",
+      ...items.map((item) => `- ${item.id} (${item.field}): ${item.text}`),
+      'Add one more key to the JSON object, AFTER "prompt": "coverage": [{"item": "<id>", "quote": "<the exact sentence from your prompt that carries it, copied verbatim>"}] — one entry per checklist item you carried. FORGE looks each quote up in the prompt, so copy it exactly. Omit an item you did not carry rather than quoting something unrelated.',
     );
   }
   return lines;

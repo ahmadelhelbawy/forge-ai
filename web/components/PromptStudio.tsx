@@ -294,6 +294,8 @@ export function PromptStudio({
     try {
       await onSaveEdit(draft);
       setEditing(false);
+    } catch {
+      // The workspace has already shown why; stay in the editor so the draft survives.
     } finally {
       setSaving(false);
     }

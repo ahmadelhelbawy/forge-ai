@@ -3,7 +3,7 @@
 import { Compass, FileText, RotateCcw, Sparkles, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type { ArtifactKindWire, DiscoveryWire, TransformationModeWire } from "@/lib/api";
+import type { ArtifactKindWire, CoverageItemWire, DiscoveryWire, TransformationModeWire } from "@/lib/api";
 
 const MODES: ReadonlyArray<{ mode: TransformationModeWire; label: string; hint: string }> = [
   { mode: "polish", label: "Polish", hint: "Keep its structure and wording; fix ambiguity, contradictions and errors only." },
@@ -243,10 +243,57 @@ const LABELS: ReadonlyArray<readonly [keyof DiscoveryWire["brief"], string]> = [
   ["open_questions", "Open questions"],
 ];
 
-function Item({ text, mark }: { text: string; mark: "stated" | "inferred" | undefined }): React.JSX.Element {
+const COVERAGE_TEXT: Record<CoverageItemWire["status"], { label: string; title: string; tone: string }> = {
+  worded: {
+    label: "in prompt",
+    title: "The prompt carries this item's words, with the same meaning (no negation flipped).",
+    tone: "border-accent-400/25 text-accent-300",
+  },
+  cited: {
+    label: "in prompt · cited",
+    title: "Paraphrased. The model pointed at the passage below and FORGE found it word for word in the prompt — whether it means the same is the model's claim; check it.",
+    tone: "border-accent-400/25 text-accent-300",
+  },
+  contradicted: {
+    label: "may contradict",
+    title: "The passage that carries this item's words appears to negate it. Check the passage below.",
+    tone: "border-amber-700/50 text-amber-300",
+  },
+  absent: {
+    label: "not found",
+    title: "Neither this item's words nor a verified citation are in the prompt. Ask FORGE to add it, or ignore it if you dropped it on purpose.",
+    tone: "border-amber-700/50 text-amber-300",
+  },
+};
+
+function Item({
+  text,
+  mark,
+  coverage,
+}: {
+  text: string;
+  mark: "stated" | "inferred" | undefined;
+  coverage?: CoverageItemWire | undefined;
+}): React.JSX.Element {
+  const c = coverage ? COVERAGE_TEXT[coverage.status] : null;
   return (
     <span>
       {text}
+      {c ? (
+        <span
+          title={c.title}
+          data-testid="brief-coverage"
+          data-status={coverage!.status}
+          className={`ml-1.5 whitespace-nowrap rounded border px-1 py-px align-middle text-[10.5px] ${c.tone}`}
+        >
+          {c.label}
+        </span>
+      ) : null}
+      {coverage?.passage && coverage.status !== "worded" ? (
+        <span className="mt-0.5 block border-l-2 border-white/[0.08] pl-2 text-[11.5px] italic leading-snug text-slate-500">
+          “{coverage.passage}”
+        </span>
+      ) : null}
       {mark === "inferred" ? (
         <span
           title="FORGE's reading — your messages do not say this. Correct it by answering in the chat."
@@ -274,13 +321,23 @@ export function DiscoveryBrief({
   marks?: Record<string, "stated" | "inferred">;
   onReopen?: () => void;
 }): React.JSX.Element {
+  const generated = discovery.status === "generated";
   const rows = LABELS.filter(([k]) => {
+    // After a generate, open questions are no longer an interview: they are
+    // shown once, below, as what FORGE decided (WS-R32).
+    if (k === "open_questions" && generated && discovery.decided) return false;
     const v = discovery.brief[k];
     return Array.isArray(v) ? v.length > 0 : Boolean(v);
   });
+  const coverageByText = new Map((discovery.coverage?.items ?? []).map((c) => [c.text, c]));
+  const flagged = (discovery.coverage?.items ?? []).filter((c) => c.status === "absent" || c.status === "contradicted");
   const inferred = Object.values(marks).filter((m) => m === "inferred").length;
   const status =
-    discovery.status === "open" ? "Discovering" : discovery.status === "generated" ? "Prompt generated from this brief" : "Discovery closed";
+    discovery.status === "open"
+      ? "Discovering"
+      : generated
+        ? `Prompt generated from this brief${discovery.coverage ? ` (version ${discovery.coverage.v})` : ""}`
+        : "Discovery closed";
   return (
     <div data-testid="discovery-brief" className="space-y-3 py-1">
       <div className="flex items-center gap-2">
@@ -309,19 +366,37 @@ export function DiscoveryBrief({
                 <ul className="ml-4 list-disc space-y-0.5 text-[13px] leading-relaxed text-slate-200">
                   {v.map((item) => (
                     <li key={item}>
-                      <Item text={item} mark={marks[item]} />
+                      <Item text={item} mark={marks[item]} coverage={coverageByText.get(item)} />
                     </li>
                   ))}
                 </ul>
               ) : (
                 <div className="text-[13px] leading-relaxed text-slate-200">
-                  <Item text={v ?? ""} mark={v ? marks[v] : undefined} />
+                  <Item text={v ?? ""} mark={v ? marks[v] : undefined} coverage={v ? coverageByText.get(v) : undefined} />
                 </div>
               )}
             </div>
           );
         })
       )}
+      {generated && discovery.decided && discovery.decided.length > 0 ? (
+        <div data-testid="brief-decided">
+          <div className="mb-0.5 text-[11.5px] font-medium text-slate-500">Decided for you at generate</div>
+          <ul className="ml-4 list-disc space-y-0.5 text-[13px] leading-relaxed text-slate-400">
+            {discovery.decided.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+          <p className="mt-1 text-[11.5px] text-slate-500">
+            You generated before these were answered, so FORGE chose sensible defaults — the reply to that turn says which. Reopen discovery to answer any of them.
+          </p>
+        </div>
+      ) : null}
+      {discovery.coverage && flagged.length === 0 ? (
+        <p className="text-[11.5px] text-slate-500">
+          Every goal, constraint and success criterion is in version {discovery.coverage.v}. Cited items are the model&apos;s paraphrases, found word for word in the prompt.
+        </p>
+      ) : null}
       <p className="border-t border-white/[0.06] pt-2 text-[11.5px] leading-relaxed text-slate-500">
         FORGE&apos;s summary of the conversation, not your words
         {inferred > 0 ? ` — ${inferred} item${inferred === 1 ? " is" : "s are"} FORGE's inference, marked above` : ""}. It never becomes a

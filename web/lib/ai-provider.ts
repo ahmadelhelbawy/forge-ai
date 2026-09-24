@@ -55,7 +55,16 @@ export interface GenerateInput {
   readonly prompt: string;
   readonly maxTokens: number;
   readonly temperature: number;
+  /** The user's Stop. A non-streamed call honours it too, not only between calls. */
+  readonly signal?: AbortSignal;
 }
+
+/**
+ * A non-streamed call that has not answered in this long has failed: a hung
+ * connection must end the turn with a reason, not leave it spinning. Generous
+ * because reasoning models were measured at 17–47 s for a classification.
+ */
+export const MODEL_CALL_TIMEOUT_MS = 240_000;
 
 export interface GenerateResult {
   readonly text: string;
@@ -71,7 +80,6 @@ export interface GenerateResult {
 export interface StreamInput extends GenerateInput {
   /** Called with each text chunk as it arrives. */
   onChunk(text: string): void;
-  readonly signal?: AbortSignal;
 }
 
 /** The full URL a spec will call — for diagnostics, never for the request. */
@@ -119,10 +127,12 @@ function buildModel(spec: TransportSpec): LanguageModel {
  */
 export async function generate(spec: TransportSpec, input: GenerateInput): Promise<GenerateResult> {
   const started = Date.now();
+  const timeout = AbortSignal.timeout(MODEL_CALL_TIMEOUT_MS);
   const result = await generateText({
     model: buildModel(spec),
     system: input.system,
     prompt: input.prompt,
+    abortSignal: input.signal ? AbortSignal.any([input.signal, timeout]) : timeout,
     ...callOptions(spec, input),
   });
   return { text: result.text, modelId: spec.modelId, latencyMs: Date.now() - started, finishReason: result.finishReason };

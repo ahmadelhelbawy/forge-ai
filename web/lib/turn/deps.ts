@@ -78,6 +78,7 @@ export function buildDeps(convo: Conversation, before: string | null, reasoning?
         prompt: request.user,
         maxTokens: request.maxTokens,
         temperature: request.temperature,
+        ...(request.signal ? { signal: request.signal } : {}),
       });
       return {
         text: response.text,

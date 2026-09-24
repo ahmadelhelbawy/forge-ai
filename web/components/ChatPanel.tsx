@@ -16,6 +16,7 @@ import { Markdown } from "@/lib/markdown";
 
 import { DiagnosticList } from "./DiagnosticList";
 import { DiscoveryPanel } from "./DiscoveryPanel";
+import { MicButton } from "./MicButton";
 
 interface Props {
   messages: ChatMessage[];
@@ -121,6 +122,7 @@ export function ChatPanel({
   canRetry,
 }: Props): React.JSX.Element {
   const [draft, setDraft] = useState("");
+  const [dictating, setDictating] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -141,6 +143,7 @@ export function ChatPanel({
   }, [sending, startedAt]);
 
   const send = (): void => {
+    if (dictating) return;
     const text = draft.trim();
     if (!text || sending || !ready) return;
     setDraft("");
@@ -326,6 +329,8 @@ export function ChatPanel({
                   : "Describe your idea, or paste a prompt of any size…"
             }
             disabled={!ready || sending}
+            // While dictating, the recognizer owns the text; it is editable again the moment it stops.
+            readOnly={dictating}
             className="block max-h-60 min-h-[72px] w-full resize-y rounded-t-xl bg-transparent px-3.5 pb-1 pt-3 text-[14px] leading-relaxed text-slate-100 placeholder:text-slate-600 focus:outline-none disabled:opacity-50"
           />
           <div className="flex items-center gap-1.5 px-2 pb-2">
@@ -341,6 +346,7 @@ export function ChatPanel({
                 if (files.length > 0) onAttach(files);
               }}
             />
+            <MicButton draft={draft} onDraft={setDraft} disabled={!ready || sending} onListening={setDictating} />
             <button
               title="Attach text, markdown or code files (scanned for secrets before storage)"
               aria-label="Attach files"
@@ -396,7 +402,7 @@ export function ChatPanel({
             <span className="hidden text-[11px] text-slate-600 2xl:inline">Enter to send · Shift+Enter for a new line</span>
             <button
               onClick={send}
-              disabled={!draft.trim() || sending || !ready}
+              disabled={!draft.trim() || sending || !ready || dictating}
               aria-label="Send"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-500 text-white transition-colors hover:bg-accent-600 disabled:bg-ink-700 disabled:text-slate-500"
               title="Send"

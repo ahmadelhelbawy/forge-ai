@@ -15,7 +15,7 @@
 import { z } from "zod";
 
 import { tokenize } from "../critic/deterministic/ledger.js";
-import { contentWords, isCovered, sameQuestion } from "./coverage.js";
+import { contentWords, isCovered, sameQuestion, type CoverageItem, type ItemCoverage } from "./coverage.js";
 
 const Text = z.string().trim().min(1).max(600);
 const Items = z.array(Text).max(12);
@@ -150,6 +150,17 @@ export interface DiscoveryState {
   readonly asked?: readonly string[];
   /** How many discovery turns have updated this state. */
   readonly turns: number;
+  /**
+   * WS-R33 (amended): how the version an explicit generate wrote carries each
+   * discovered item. Display and diagnosis only — never provenance, never the
+   * ledger. Absent until a generate from discovery.
+   */
+  readonly coverage?: { readonly v: number; readonly items: readonly ItemCoverage[] };
+  /**
+   * WS-R32: the questions still open when the user generated anyway. From
+   * then on they are a record of what FORGE decided, not an open interview.
+   */
+  readonly decided?: readonly string[];
 }
 
 export function openDiscovery(flavor: "explore" | "refine" = "explore"): DiscoveryState {
@@ -232,6 +243,18 @@ export function discoveredRequirements(brief: DiscoveryBrief): Array<{ field: st
     ...(brief.constraints ?? []).map((text) => ({ field: "constraint", text })),
     ...(brief.success_criteria ?? []).map((text) => ({ field: "success criterion", text })),
   ];
+}
+
+/**
+ * The items WS-R33 checks, each with the short id the generation instruction
+ * shows the model, so a citation can name the item it covers.
+ */
+export function coverageItems(brief: DiscoveryBrief): CoverageItem[] {
+  const out: CoverageItem[] = [];
+  if (brief.goal) out.push({ id: "G1", field: "goal", text: brief.goal });
+  (brief.constraints ?? []).forEach((text, i) => out.push({ id: `C${i + 1}`, field: "constraint", text }));
+  (brief.success_criteria ?? []).forEach((text, i) => out.push({ id: `S${i + 1}`, field: "success criterion", text }));
+  return out;
 }
 
 /**

@@ -300,6 +300,18 @@ export interface DiscoveryWire {
   artifact_kind?: "agent" | "builder" | null;
   asked?: string[];
   turns: number;
+  /** WS-R33 (amended): how the generated version carries each discovered item. */
+  coverage?: { v: number; items: CoverageItemWire[] };
+  /** WS-R32: the questions left open when the user generated anyway. */
+  decided?: string[];
+}
+
+export interface CoverageItemWire {
+  id: string;
+  field: string;
+  text: string;
+  status: "worded" | "cited" | "contradicted" | "absent";
+  passage?: string;
 }
 
 /** The wire form of a turn event. Mirrors `web/lib/turn/events.ts`. */

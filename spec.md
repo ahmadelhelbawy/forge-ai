@@ -509,8 +509,8 @@ with the same evidence requirement (INV-007).
 | `FORGE-W006` | `semantic_drift` | warning | judged | A statement in one version's Task IR vanished or changed meaning in another's, and no pinned entry covers it; cites both versions' statements (WS-R26) |
 | `FORGE-W007` | `candidate_duplicate_rejected` | warning | deterministic | A generated alternative's prose is token-identical to another candidate or to the base it was derived from; the alternative is rejected rather than offered as a choice that is not one (WS-R8, ST-R5) |
 | `FORGE-W008` | `stated_requirement_demoted` | warning | deterministic | A requirement expressed in the user's own input reaches the artifact only as an assumption or an open question, never as a goal, constraint, non-goal or deliverable; cites the user's wording and the node that carries it (INV-016) |
-| `FORGE-W009` | `discovered_requirement_absent` | warning | deterministic | After an explicit generate, a goal, constraint or success criterion from the discovery brief is absent from the version by the presence rule of §22.8; cites the item (WS-R33) |
-| `FORGE-W010` | `generated_with_open_questions` | warning | deterministic | A version was generated while discovery still had unresolved questions; names every one (WS-R32) |
+| `FORGE-W009` | `discovered_requirement_absent` | warning | deterministic | After an explicit generate, a goal, constraint or success criterion from the discovery brief is carried by the version neither in its words (with the same polarity) nor by a verified citation, or the only passages carrying its words negate it; names every such item and whether the user stated it or FORGE inferred it (WS-R33) |
+| `FORGE-W010` | `generated_with_open_questions` | info | deterministic | The user generated while discovery still had unresolved questions — an explicit choice, not a fault; names every one FORGE then decided (WS-R32) |
 | `FORGE-W011` | `generation_requires_approval` | info | deterministic | A classified `CREATE` or `REVISE` arrived while discovery was open; it resolved to `DISCOVER` and no version was written — only an explicit generate request writes one (WS-R31) |
 | `FORGE-W012` | `generated_on_assumptions` | info | deterministic | A version was written by a direct request without review; names every choice FORGE made on the user's behalf — mode, artifact kind, shape, target (WS-R37) |
 | `FORGE-W013` | `staged_output_unreadable` | warning | deterministic | Staged output was requested but the version does not parse as at least two stages whose dependencies point only backwards; the version is kept as one prompt and the reason is named (WS-R40) |
@@ -1534,13 +1534,23 @@ resolves to `DISCOVER`, so no classification call is made at all: the answer is
 known, and a reasoning model was measured spending 17–47 s and sometimes its whole
 output budget to reach it.
 
-**WS-R32 — Generating with unresolved questions is allowed and loud.** The
+**WS-R32 — Generating with unresolved questions is allowed and recorded.** The
 unresolved set is computed deterministically: the brief's open questions plus the
 outstanding questions. When it is non-empty at an explicit generate request, the
-generation instruction lists it as assumptions to state in the prompt, and the turn
-emits `FORGE-W010` naming every item. Under the `polish` mode (`WS-R38`), which adds
-nothing, they are stated in the reply instead of the prompt — the live Sprint 2 run
-showed a polish doubling a prompt by writing them in.
+generation instruction hands it to the model **to decide**: each item gets the most
+sensible default consistent with the brief, the prompt is written as if it had been
+decided, and only a default whose error would materially change the result is
+written into the prompt, once, as an assumption. Questions are never written into
+the prompt; the decisions are listed in the reply. The turn emits `FORGE-W010`
+(info) naming every item, and the set is kept on the discovery state as `decided`.
+Under the `polish` mode (`WS-R38`), which adds nothing, the decisions are stated in
+the reply only — the live Sprint 2 run showed a polish doubling a prompt by writing
+them in.
+*Amended in the pre-release hardening pass.* W010 was a warning and the
+instruction asked for every open item to be written into the prompt. Live use
+showed the combination made a deliberate Generate read as a failed operation and
+filled the final prompt with question boilerplate. Pressing Generate is the user's
+decision that the interview is over; it is recorded, not warned about.
 
 **WS-R33 — Discovered requirements are checked, not trusted.** After an explicit
 generate writes a version, each brief goal, constraint and success criterion is
@@ -1555,6 +1565,24 @@ least 80% of its content words (tokens of three or more characters outside a
 fixed stop-word list, with common inflections — *-s*, *-es*, *-ed*, *-ing*, a
 final *-e* — folded by a fixed rule) occur in the version. The pinned ledger keeps the strict
 contiguous rule — pinned text *is* the user's wording.
+*Amended again in the pre-release hardening pass.* Overlap alone failed both
+ways: a faithful paraphrase shares few words, and a contradiction ("store raw
+audio" for "never store raw audio") shares all of them. Each item is now
+classified, in this order, by `checkCoverage` (`src/conversation/coverage.ts`):
+`worded` — one passage (a line or sentence) covers 80% of its content words and
+**polarity agrees** (a word is negated when a negation token precedes it by at most
+four tokens in the same clause; polarity disagrees when more than half the shared
+words differ); `cited` — the generation response's `coverage` array names the item
+and quotes a passage that FORGE finds verbatim in the version (whitespace and
+markdown emphasis ignored, 8–800 characters) and whose polarity agrees;
+`contradicted` — the only carrying passages disagree in polarity; `worded` — the
+pre-amendment whole-text rule, kept last so nothing is reported that was not
+before unless a polarity conflict was found; else `absent`. W009 names the
+`absent` and `contradicted` items. A citation proves the passage exists, not that
+it means the same thing: the Studio shows the quoted passage beside each item and
+labels it the model's citation. The per-item result is kept on the discovery state
+as `coverage` for the version it describes. None of it is provenance, none of it
+reaches the ledger (`WS-R27`), and it is labelled advisory wherever it is shown.
 
 **WS-R34 — Classification degrades boundedly and visibly.** The classifier's
 answer is parsed by a schema over every JSON object in the text (code fences
@@ -1713,7 +1741,7 @@ turn's model-call events.
 | **AC-057** | The traceability matrix is byte-identical for fixed inputs, makes no model call, keeps superseded rows, and joins each V2-G verdict to the requirements whose IR nodes its obligation `satisfies`. | TM-R1–TM-R4 |
 | **AC-058** | A turn classified `DISCOVER` writes no version, whatever the model returns, and persists a validated discovery state that survives reload. | WS-R30, WS-R2 |
 | **AC-059** | While discovery is open, a classified `CREATE`/`REVISE` writes no version and emits `FORGE-W011`; only an explicit generate request writes one. | WS-R31 |
-| **AC-060** | An explicit generate with unresolved questions writes the version and emits `FORGE-W010` naming them; a discovered item absent from the version emits `FORGE-W009`. | WS-R32, WS-R33 |
+| **AC-060** | An explicit generate with unresolved questions writes the version and emits `FORGE-W010` (info) naming them; a discovered item absent from the version, or carried only by a passage that negates it, emits `FORGE-W009`; a faithful paraphrase the response cites verbatim does not. | WS-R32, WS-R33 |
 | **AC-061** | Malformed classifier output is repaired at most once; a second failure degrades to a read-only action with `FORGE-W001` citing both failures; no near-miss is reinterpreted. | WS-R34, WS-R4 |
 | **AC-062** | A pasted prompt opens refine discovery with no classification call and at most two questions; the same paste with a direct request writes a version with no classification call and emits `FORGE-W012` naming its assumptions. | WS-R36, WS-R37 |
 | **AC-063** | A generate naming a mode records it on the version, and each mode's instruction is distinct; `artifactKind` changes only through a user action. | WS-R38, WS-R39 |

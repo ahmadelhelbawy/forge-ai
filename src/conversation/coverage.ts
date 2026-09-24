@@ -93,3 +93,173 @@ export function sameQuestion(a: string, b: string): boolean {
   const pool = new Set(longer);
   return shorter.length >= 3 && shorter.every((w) => pool.has(w));
 }
+
+// ── Discovered-item coverage with polarity and citations (WS-R33, amended) ──
+//
+// Word overlap alone fails both ways: a faithful paraphrase ("keep answers
+// under 150 words" for "responses must be short") shares almost no words, and
+// a contradiction ("store raw audio" for "never store raw audio") shares all
+// of them. The check below keeps overlap as the first, model-free test, adds a
+// fixed polarity rule so shared words with opposite negation never count as
+// carried, and accepts a paraphrase only when the generating model CITED the
+// passage that carries it and FORGE finds that passage verbatim in the version.
+// A citation proves the passage exists, not that it means the same thing: it
+// is shown to the user as the model's claim, and the status says so.
+
+/** Tokens that negate the words after them. `t` is what `n't` tokenizes to. */
+const NEGATIONS: ReadonlySet<string> = new Set([
+  "not", "never", "no", "without", "nor", "none", "neither", "cannot", "avoid", "avoids", "avoiding",
+  "forbid", "forbids", "forbidden", "prohibit", "prohibits", "prohibited", "exclude", "excluding", "t",
+]);
+/** How many tokens after a negation it still governs. Fixed, published. */
+export const NEGATION_SCOPE = 4;
+
+/** Content words of a passage, each with whether a negation governs it. */
+function polarity(text: string): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  // Clause boundaries end a negation's scope.
+  for (const clause of text.split(/[.;:!?\n]+|\bbut\b/i)) {
+    const tokens = tokenize(clause);
+    let lastNegation = -Infinity;
+    tokens.forEach((token, i) => {
+      if (NEGATIONS.has(token)) {
+        lastNegation = i;
+        return;
+      }
+      if (token.length < 3 || STOP_WORDS.has(token)) return;
+      const word = stem(token);
+      const negated = i - lastNegation <= NEGATION_SCOPE;
+      // A word both asserted and negated in one passage counts as asserted.
+      out.set(word, (out.get(word) ?? true) && negated);
+    });
+  }
+  return out;
+}
+
+/**
+ * True when more than half of the content words an item and a passage share
+ * are negated in one and not the other — "never store audio" against "store
+ * audio for 30 days". Deterministic and deliberately conservative: a single
+ * disagreeing word is not enough.
+ */
+export function polarityConflict(item: string, passage: string): boolean {
+  const a = polarity(item);
+  const b = polarity(passage);
+  let shared = 0;
+  let disagree = 0;
+  for (const [word, negated] of a) {
+    const other = b.get(word);
+    if (other === undefined) continue;
+    shared += 1;
+    if (other !== negated) disagree += 1;
+  }
+  return shared > 0 && disagree * 2 > shared;
+}
+
+/** The passages of a prompt: lines, split further at sentence ends. */
+export function passages(text: string): string[] {
+  return text
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((p) => p.trim())
+    .filter((p) => tokenize(p).length > 0);
+}
+
+/** A discovered item the generating model says a passage carries. */
+export interface CoverageClaim {
+  readonly item: string;
+  readonly quote: string;
+}
+
+/** A discovered item, with the id the generation instruction gave it. */
+export interface CoverageItem {
+  readonly id: string;
+  readonly field: string;
+  readonly text: string;
+}
+
+/**
+ * - `worded`: its content words are carried, with the same polarity.
+ * - `cited`: the model cited a passage, FORGE found it verbatim, and it does
+ *   not contradict the item — a paraphrase, taken on the model's word.
+ * - `contradicted`: the only passages that carry its words negate it.
+ * - `absent`: neither its words nor a verifiable citation.
+ */
+export type CoverageStatus = "worded" | "cited" | "contradicted" | "absent";
+
+export interface ItemCoverage extends CoverageItem {
+  readonly status: CoverageStatus;
+  /** The passage that carries (or contradicts) it, when there is one. */
+  readonly passage?: string;
+}
+
+/** Bounds on a citation: long enough to mean something, short enough to be one passage. */
+const QUOTE_MIN = 8;
+const QUOTE_MAX = 800;
+
+/**
+ * Overlap for WS-R33 excludes negation words: whether an item is negated is
+ * the polarity rule's question, and counting "never" as a word to find made a
+ * contradiction ("store raw audio" for "never store raw audio") read as a
+ * mere omission.
+ */
+function itemWords(text: string): string[] {
+  return contentWords(text).filter((w) => !NEGATIONS.has(w));
+}
+
+function carries(item: string, pool: ReadonlySet<string>): boolean {
+  const words = itemWords(item);
+  return words.length > 0 && words.filter((w) => pool.has(w)).length / words.length >= COVERAGE_THRESHOLD;
+}
+
+function normalise(text: string): string {
+  return text.replace(/[*_`>#]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** WS-R33 (amended): how each discovered item is carried by a version. */
+export function checkCoverage(
+  items: readonly CoverageItem[],
+  versionText: string,
+  claims: readonly CoverageClaim[],
+): ItemCoverage[] {
+  const parts = passages(versionText);
+  const whole = new Set(contentWords(versionText));
+  const haystack = normalise(versionText);
+  return items.map((item): ItemCoverage => {
+    if (itemWords(item.text).length === 0) return { ...item, status: "worded" };
+    const carrying = parts.filter((p) => carries(item.text, new Set(contentWords(p))));
+    const agreeing = carrying.find((p) => !polarityConflict(item.text, p));
+    if (agreeing !== undefined) return { ...item, status: "worded", passage: agreeing };
+    for (const claim of claims) {
+      if (claim.item !== item.id) continue;
+      const quote = normalise(claim.quote);
+      if (quote.length < QUOTE_MIN || quote.length > QUOTE_MAX || !haystack.includes(quote)) continue;
+      if (polarityConflict(item.text, claim.quote)) return { ...item, status: "contradicted", passage: claim.quote.trim() };
+      return { ...item, status: "cited", passage: claim.quote.trim() };
+    }
+    if (carrying.length > 0) return { ...item, status: "contradicted", passage: carrying[0] };
+    // The pre-amendment rule, words scattered across the whole prompt, is kept
+    // as the last resort so this check never reports more than it used to —
+    // unless a polarity conflict was found above.
+    if (carries(item.text, whole)) return { ...item, status: "worded" };
+    return { ...item, status: "absent" };
+  });
+}
+
+/**
+ * Read the `coverage` array a generate response may carry beside its
+ * envelope. Anything malformed is ignored item by item: a claim is only ever
+ * a pointer FORGE then checks, so a bad one costs nothing but its own credit.
+ */
+export function parseCoverageClaims(objects: readonly unknown[]): CoverageClaim[] {
+  const out: CoverageClaim[] = [];
+  for (const object of objects) {
+    const list = (object as { coverage?: unknown }).coverage;
+    if (!Array.isArray(list)) continue;
+    for (const entry of list) {
+      if (typeof entry !== "object" || entry === null) continue;
+      const { item, quote } = entry as { item?: unknown; quote?: unknown };
+      if (typeof item === "string" && typeof quote === "string") out.push({ item, quote });
+    }
+  }
+  return out;
+}

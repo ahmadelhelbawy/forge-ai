@@ -27,10 +27,19 @@ PORT=3000 FORGE_DATA_DIR=./data pnpm --dir web start
 | `FORGE_SESSION_HEADER` | gateway-dependent | Random-UUID routing header (e.g. `x-opencode-session` for OpenCode Zen) |
 | `PORT` | no | Default 3000 |
 | `FORGE_DATA_DIR` | no | Conversation store (default `./data`, created on boot) |
-| `FORGE_APP_SECRET` | later | Reserved for auth |
+| `FORGE_APP_SECRET` | recommended | Encrypts provider keys saved from Settings (AES-256-GCM, `providers.secrets`). Without it FORGE warns and uses a local fallback |
+| `FORGE_ALLOWED_HOSTS` | when not on localhost | Comma-separated `host` or `host:port` names FORGE answers on. Every other `Host` is refused (DNS-rebinding guard) |
+| `FORGE_REPO_ROOTS` | for repository binding | Directories a conversation may bind; binding is refused when unset |
 
-Keys live ONLY in server environment. `/api/health` and `/api/providers`
-report availability booleans, never values.
+Keys come from the server environment or from Settings, where they are
+stored encrypted. No API response returns a key: `/api/health` and
+`/api/providers` report availability booleans, and Settings shows a masked
+key. A saved key is only ever sent to its saved endpoint.
+
+**FORGE has no login.** `web/middleware.ts` refuses cross-origin writes and
+unknown `Host` names, which closes drive-by attacks from a browser, but anyone
+who can reach the port can use FORGE and its stored keys. Bind it to
+localhost, or put it behind an authenticating proxy.
 
 ## Docker (minimal)
 

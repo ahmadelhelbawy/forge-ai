@@ -93,7 +93,7 @@ export const DIAGNOSTIC_REGISTRY = Object.freeze({
   // Discovery (spec.md §22.11, Product Sprint 1). All deterministic: the gate,
   // the unresolved set and the coverage check are facts about FORGE's state.
   "FORGE-W009": { code: "FORGE-W009", name: "discovered_requirement_absent", severity: "warning", source: "deterministic" },
-  "FORGE-W010": { code: "FORGE-W010", name: "generated_with_open_questions", severity: "warning", source: "deterministic" },
+  "FORGE-W010": { code: "FORGE-W010", name: "generated_with_open_questions", severity: "info", source: "deterministic" },
   "FORGE-W011": { code: "FORGE-W011", name: "generation_requires_approval", severity: "info", source: "deterministic" },
   // Intake and output shape (spec.md §22.12, Product Sprint 2). W012 is `info`:
   // a direct request is the user's right, and the finding exists so the

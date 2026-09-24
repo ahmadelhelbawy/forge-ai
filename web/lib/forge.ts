@@ -137,7 +137,18 @@ export function resolveCall(
       providerId,
     );
   }
-  const apiKey = (overrides?.apiKey?.trim() || eff.apiKey).trim();
+  const suppliedKey = overrides?.apiKey?.trim() ?? "";
+  const overriddenURL = overrides?.baseURL ? overrides.baseURL.trim() : "";
+  if (!suppliedKey && overriddenURL && overriddenURL !== (eff.baseURL ?? "")) {
+    // The stored key is never sent to an endpoint the request chose: that
+    // pairing is how a caller exfiltrates the key (a test against
+    // https://attacker/…). A new endpoint is tested with a key typed for it.
+    throw new ProviderError(
+      `To test ${eff.displayName} against a different base URL, enter the API key again — the saved key is only sent to the saved endpoint.`,
+      providerId,
+    );
+  }
+  const apiKey = (suppliedKey || eff.apiKey).trim();
   if (!apiKey) {
     throw new ProviderError(
       `No API key configured for ${eff.displayName}. Open Settings > AI Providers to add one.`,
