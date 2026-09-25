@@ -591,6 +591,7 @@ export async function* runTurn(
     // ── RESTORE is deterministic: move the pointer, spend no model call ────
     if (action === "RESTORE") {
       const target = cited[0] as number;
+      checkCancelled();
       convo.currentV = target;
       yield push({ kind: "current_version_moved", v: target });
       const reply = `Restored version ${target}. It is the current prompt again; nothing was rewritten.`;
@@ -808,6 +809,9 @@ export async function* runTurn(
     yield push({ kind: "stage", stage: "saving", label: STAGE_LABELS.saving });
     let version: PromptVersion | null = null;
     const before = currentPrompt(convo);
+    // Every `yield` is a point where a Stop can land; the last one before a
+    // write must be honoured, or a cancelled turn still saves a version (WS-R12).
+    checkCancelled();
     if (proposed !== null && proposed !== before && writesVersion(action)) {
       version = addPromptVersion(convo, proposed, "model", {
         action,

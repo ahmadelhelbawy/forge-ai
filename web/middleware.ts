@@ -70,7 +70,9 @@ export function middleware(request: NextRequest): NextResponse {
       } catch {
         originHost = null;
       }
-      if (originHost !== host?.toLowerCase()) {
+      // Same origin, or an origin the operator allowlisted (a reverse proxy
+      // that rewrites Host sees the public name only in Origin).
+      if (originHost !== host?.toLowerCase() && !(originHost && allowedHost(originHost) && !LOCAL_HOSTS.has(hostname(originHost)))) {
         return NextResponse.json({ error: "Cross-origin request refused." }, { status: 403 });
       }
     } else {

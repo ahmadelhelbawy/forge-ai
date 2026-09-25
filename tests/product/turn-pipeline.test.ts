@@ -656,6 +656,29 @@ describe("a cancel mid-stream writes nothing (WS-R12, AC-036)", () => {
     );
   });
 
+  it("a Stop pressed while 'Verifying' or 'Saving' is shown still writes nothing (hardening pass)", async () => {
+    for (const stage of ["verifying", "saving"]) {
+      const convo = conversationWithPrompt();
+      const controller = new AbortController();
+      const iterator = runTurn(
+        convo,
+        "revise it",
+        deps({ classification: classification("REVISE"), generation: envelope("A PROMPT THAT MUST NOT BE SAVED") }).deps,
+        { signal: controller.signal },
+      );
+      let next = await iterator.next();
+      while (!next.done) {
+        // The consumer sees the stage, then the user presses Stop before it asks for more.
+        const item = next.value as { kind?: string; stage?: string };
+        if (item.kind === "stage" && item.stage === stage) controller.abort();
+        next = await iterator.next();
+      }
+      expect(next.value.cancelled, stage).toBe(true);
+      expect(convo.promptVersions, stage).toHaveLength(1);
+      expect(currentPrompt(convo), stage).toBe("the original prompt");
+    }
+  });
+
   it("records the model call it actually made, because it did happen (WS-R14)", async () => {
     const convo = conversationWithPrompt();
     const controller = new AbortController();

@@ -63,6 +63,12 @@ describe("discovered-item coverage (WS-R33 amended)", () => {
     );
   });
 
+  it("prefers an agreeing citation over a conflicting one, in any order", () => {
+    const bad = { item: "C1", quote: "Store raw audio for 30 days so agents can replay calls." };
+    const good = { item: "C1", quote: "Keep every answer under 150 words." };
+    expect(statusOf("C1", [bad, good])).toBe("cited");
+  });
+
   it("still reports a genuine omission", () => {
     expect(statusOf("C3")).toBe("absent");
   });

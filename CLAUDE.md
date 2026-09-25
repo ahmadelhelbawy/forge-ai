@@ -35,7 +35,7 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-25 at the pre-release hardening commit — **1337 tests passing
+Verified 2026-09-25 at the pre-release hardening commit — **1339 tests passing
 (94 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
 HTTP product suite plus browser acceptance green twice in a row
 (`web/scripts/e2e.sh`, **93/93** + **7/7** browser checks), the frozen P1.6

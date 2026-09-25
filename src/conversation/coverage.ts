@@ -229,13 +229,17 @@ export function checkCoverage(
     const carrying = parts.filter((p) => carries(item.text, new Set(contentWords(p))));
     const agreeing = carrying.find((p) => !polarityConflict(item.text, p));
     if (agreeing !== undefined) return { ...item, status: "worded", passage: agreeing };
+    // Every verified citation is considered: one that agrees wins over one
+    // that conflicts, whatever order the model listed them in.
+    let conflicting: string | null = null;
     for (const claim of claims) {
       if (claim.item !== item.id) continue;
       const quote = normalise(claim.quote);
       if (quote.length < QUOTE_MIN || quote.length > QUOTE_MAX || !haystack.includes(quote)) continue;
-      if (polarityConflict(item.text, claim.quote)) return { ...item, status: "contradicted", passage: claim.quote.trim() };
-      return { ...item, status: "cited", passage: claim.quote.trim() };
+      if (!polarityConflict(item.text, claim.quote)) return { ...item, status: "cited", passage: claim.quote.trim() };
+      conflicting ??= claim.quote.trim();
     }
+    if (conflicting !== null) return { ...item, status: "contradicted", passage: conflicting };
     if (carrying.length > 0) return { ...item, status: "contradicted", passage: carrying[0] };
     // The pre-amendment rule, words scattered across the whole prompt, is kept
     // as the last resort so this check never reports more than it used to —
