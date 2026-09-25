@@ -1549,8 +1549,9 @@ non-streamed calls; truthful failure classes (billing only when money is named,
 5xx, timeout, HTML error pages named); compile/package reachable for
 anthropic-messages models on a gateway; conversation restored on reload; the
 New-conversation race; Save/Restore failures surfaced; browser acceptance on
-every `e2e.sh` (`web/scripts/browser-acceptance.mjs`). Live run in
-`evals/hardening/`.
+every `e2e.sh` (`web/scripts/browser-acceptance.mjs`); the run log read
+incrementally and the index rebuilt in one transaction (a 2,218-event store:
+list and version reads 31 s → 50 ms). Live run in `evals/hardening/`.
 **Deviation:** `playwright-core` added as a web dev dependency (browser acceptance
 had no reproducible runner). It downloads nothing; it drives the installed Chromium.
 **Not done:** V2-I (one-command start, Docker, release) remains next.

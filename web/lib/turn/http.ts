@@ -7,6 +7,7 @@
  * between them.
  */
 import { NextResponse } from "next/server";
+import { ProviderError } from "forge/dist/model/provider.js";
 
 import {
   classifyFailure,
@@ -153,4 +154,18 @@ export function failure(convo: Conversation, error: unknown): NextResponse {
     },
     { status: 502 },
   );
+}
+
+/**
+ * The error text a non-turn route (compile, package, verify) returns. A
+ * provider failure goes through the same classifier as a chat failure; any
+ * other error — invalid evidence, an unknown target — is FORGE's own message,
+ * returned as written and not logged as a provider failure.
+ */
+export function routeErrorMessage(convo: Conversation, error: unknown, stage: string): string {
+  const e = error as { provider?: unknown; statusCode?: unknown } | null;
+  const fromProvider =
+    error instanceof ProviderError || (typeof e === "object" && e !== null && typeof e.statusCode === "number");
+  if (fromProvider) return failureReport(convo, error, stage).message;
+  return error instanceof Error ? error.message : String(error);
 }

@@ -25,7 +25,7 @@ Offline, the same critical flows now also run in a real browser on every
 | **G** package → evidence → verify | Package built (`kimi-k3`; on `qwen3.8-flash` the extraction spent its whole output budget — the error now says so). Evidence: `v1` VERIFIED, `v3` FAILED (exit 1), `v2`/`v4` UNVERIFIED, `v5` REVIEW_REQUIRED; a record naming a forged package id ignored with `FORGE-V003`. |
 | **J** unknown model | 502 with a named cause; no blank assistant message. The message was not kept server-side (by design for a configuration error) — the composer now hands it back. |
 
-## Defects the live run found (all fixed unless marked)
+## Defects the live and browser runs found (all fixed unless marked)
 
 1. **W003 on a Discovery turn that lost nothing.** 1 in 4 answers from `qwen3.8-flash` was invalid JSON after a complete reply; the user saw an amber warning and, before the fix, the raw JSON as the chat message. Now: trailing commas are tolerated (the one lossless syntactic repair), the recovered reply is shown, W003 names the parse error and is emitted only when something was lost.
 2. **Discovery brief described the interview, not the agent** ("Clarify the scope…", "Identify the primary task" as success criteria). Instruction fixed; round 2 produced a real goal.
@@ -35,6 +35,8 @@ Offline, the same critical flows now also run in a real browser on every
 6. **Generate wrote into a different conversation** when a message was sent while *New conversation* was still being created (browser acceptance). Composer now disabled during the create.
 7. **Reload lost the open conversation**; now `#c=<id>` + last-opened fallback.
 8. **Dictation duplicated text** when the recognizer re-delivered results (found by the browser suite before any user did).
+
+9. **The store slowed quadratically with use** (found chasing a flaky e2e run). Every run-log append and every load re-read and re-parsed the whole log, and every index rebuild auto-committed each row (a journal create/sync/delete per INSERT). On a data directory with 2,218 events: `GET /versions` **30.8 s → 56 ms**, the conversation list **31 s → 50 ms**, the HTTP suite **77 s → 17 s**. The log is now read incrementally (same half-written-line rule; tested against a fresh full read) and the rebuild is one transaction.
 
 Known, not fixed (see CLAUDE.md "Known defects"): the IR extractor raises a *blocking* "blast radius" question for non-code agent prompts (`FORGE-C080`, so such prompts compile with an error and cannot be packaged); the model sometimes restates its active questions as brief open questions, inflating the "N questions open" count.
 

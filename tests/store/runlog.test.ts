@@ -101,3 +101,38 @@ describe("the run log is append-only and ordered (WS-R17)", () => {
     expect(Object.isFrozen(event)).toBe(true);
   });
 });
+
+describe("reads are incremental and indistinguishable from a full read (hardening pass)", () => {
+  it("agrees with a fresh reader through foreign appends, a torn tail, and its completion", async () => {
+    const { appendFileSync } = await import("node:fs");
+    const dir = root();
+    const cached = openRunLog(dir);
+    const other = openRunLog(dir);
+    const fresh = () => openRunLog(dir).readAll();
+
+    cached.append({ kind: "a" });
+    expect(cached.readAll()).toEqual(fresh());
+    // Another process (the CLI, a second server) appends to the same log.
+    other.append({ kind: "b" });
+    other.append({ kind: "c" });
+    expect(cached.readAll()).toEqual(fresh());
+    // A sequence number is never reused, whoever wrote the last one.
+    const d = cached.append({ kind: "d" });
+    expect(d.seq).toBe(4);
+
+    // A write in flight: an unterminated tail is not read yet…
+    const day = readdirSync(join(dir, "runs"))[0]!;
+    appendFileSync(join(dir, "runs", day), '{"kind":"e","seq":5,"at":"x"');
+    expect(cached.readAll()).toEqual(fresh());
+    expect(cached.readAll()).toHaveLength(4);
+    // …and once the line is whole, it is.
+    appendFileSync(join(dir, "runs", day), "}\n");
+    expect(cached.readAll()).toEqual(fresh());
+    expect(cached.readAll().map((e) => e.kind)).toEqual(["a", "b", "c", "d", "e"]);
+
+    // A corrupt line ends the file for every reader, cached or not.
+    appendFileSync(join(dir, "runs", day), 'not json\n{"kind":"f","seq":6,"at":"y"}\n');
+    expect(cached.readAll()).toEqual(fresh());
+    expect(cached.readAll()).toHaveLength(5);
+  });
+});

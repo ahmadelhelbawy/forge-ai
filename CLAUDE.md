@@ -35,7 +35,7 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-25 at the pre-release hardening commit — **1339 tests passing
+Verified 2026-09-25 at the pre-release hardening commit — **1340 tests passing
 (94 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
 HTTP product suite plus browser acceptance green twice in a row
 (`web/scripts/e2e.sh`, **93/93** + **7/7** browser checks), the frozen P1.6
@@ -118,7 +118,9 @@ is info, and discovery keeps them as `decided`. Discovered-item coverage is
 then a model-cited passage verified verbatim — advisory, labelled so. Voice → text
 (`web/lib/dictation.ts`). `web/middleware.ts` refuses cross-origin writes and
 unknown hosts — **FORGE still has no login**. Browser acceptance now runs in
-`web/scripts/e2e.sh`. Live run and the eight defects it found: `evals/hardening/`.
+`web/scripts/e2e.sh`. The run log is read incrementally and the index rebuilt
+in one transaction (reads were ~30 s on a 2,218-event store). Live run and the
+defects it found: `evals/hardening/`.
 
 **Known defects, recorded and unfixed.** `evals/p16/README.md` still says
 "NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023

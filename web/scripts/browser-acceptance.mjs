@@ -24,6 +24,21 @@ async function check(name, fn) {
     console.log(`  ✓ ${name}`);
   } catch (error) {
     failures += 1;
+    if (globalThis.__page) {
+      // What the page was waiting on: the slowest API calls, so a timeout
+      // names its cause instead of only its symptom.
+      const slow = await globalThis.__page
+        .evaluate(() =>
+          performance
+            .getEntriesByType("resource")
+            .filter((e) => e.name.includes("/api/"))
+            .sort((a, b) => b.duration - a.duration)
+            .slice(0, 5)
+            .map((e) => `${Math.round(e.duration)}ms ${e.name.replace(location.origin, "")}`),
+        )
+        .catch(() => []);
+      if (slow.length > 0) console.log(`      slowest API calls: ${slow.join(" | ")}`);
+    }
     if (process.env.SHOTS && globalThis.__page) {
       await globalThis.__page.screenshot({ path: `${process.env.SHOTS}/${name.split(".")[0]}.png` }).catch(() => undefined);
     }

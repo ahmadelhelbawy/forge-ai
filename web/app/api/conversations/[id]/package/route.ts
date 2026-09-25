@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { failureReport } from "@/lib/turn/http";
+import { routeErrorMessage } from "@/lib/turn/http";
 
 import { packageVersion, PackageLeakError } from "@/lib/package";
 import { loadConversation, saveConversation } from "@/lib/store";
@@ -66,7 +66,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
     return NextResponse.json(
       // Through the same classifier as a chat failure: a status in the user's
       // terms, never a provider's raw body (which was once a whole HTML page).
-      { error: failureReport(convo, error, "package").message, conversationIntact: true },
+      { error: routeErrorMessage(convo, error, "package"), conversationIntact: true },
       { status },
     );
   }

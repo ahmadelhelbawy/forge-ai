@@ -93,18 +93,36 @@ function build(path: string, projector: IndexProjector, events: readonly RunEven
       db.exec(ddl);
     }
 
+    // One transaction for the whole rebuild, and each statement prepared once.
+    // Auto-committed, every row was its own journal create/sync/delete: a log
+    // of 2,176 events took ~30 s to index on a WSL disk (measured in the
+    // pre-release hardening pass), and every list and version read rebuilds.
+    // The rows are identical; only the number of commits changes.
+    const statements = new Map<string, ReturnType<typeof db.prepare>>();
     const writer: IndexWriter = {
       run(sql, ...params) {
-        db.prepare(sql).run(...params);
+        let statement = statements.get(sql);
+        if (statement === undefined) {
+          statement = db.prepare(sql);
+          statements.set(sql, statement);
+        }
+        statement.run(...params);
       },
     };
     let applied = 0;
-    for (const event of events) {
-      projector.apply(event, writer);
-      applied = event.seq;
+    db.exec("BEGIN");
+    try {
+      for (const event of events) {
+        projector.apply(event, writer);
+        applied = event.seq;
+      }
+      db.prepare(`INSERT INTO ${META} (key, value) VALUES ('schema_version', ?)`).run(projector.schema.version);
+      db.prepare(`INSERT INTO ${META} (key, value) VALUES ('applied_through', ?)`).run(applied);
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
     }
-    db.prepare(`INSERT INTO ${META} (key, value) VALUES ('schema_version', ?)`).run(projector.schema.version);
-    db.prepare(`INSERT INTO ${META} (key, value) VALUES ('applied_through', ?)`).run(applied);
     return applied;
   } finally {
     db.close();
