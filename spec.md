@@ -503,7 +503,7 @@ with the same evidence requirement (INV-007).
 |---|---|---|---|---|
 | `FORGE-W001` | `classification_degraded` | warning | deterministic | Action resolution failed or was skipped; the turn was treated as `DISCUSS` (WS-R4) |
 | `FORGE-W002` | `action_unsupported_by_state` | warning | deterministic | The resolved action is one the conversation state cannot express; it is refused, naming what is missing (WS-R5) |
-| `FORGE-W003` | `response_envelope_degraded` | warning | deterministic | The response was not a readable envelope; it was kept as chat and no version was written (INV-012) |
+| `FORGE-W003` | `response_envelope_degraded` | warning | deterministic | The response was not a readable envelope and something was lost: the action could write a version, or the reply could not be recovered whole. It was kept as chat and no version was written; names the parse problem (INV-012). A read-only turn whose full reply was recovered lost nothing and emits none; a broken discovery object is reported separately (WS-R34) |
 | `FORGE-W004` | `read_only_write_blocked` | error | deterministic | A read-only action came back carrying a prompt; the write was blocked (WS-R2, WS-R3) |
 | `FORGE-W005` | `pinned_requirement_dropped` | error | deterministic | A requirement the user pinned into the ledger is absent from a prompt version by the presence rule of §22.8; cites the pinned text and the version that dropped it (WS-R24, WS-R25) |
 | `FORGE-W006` | `semantic_drift` | warning | judged | A statement in one version's Task IR vanished or changed meaning in another's, and no pinned entry covers it; cites both versions' statements (WS-R26) |

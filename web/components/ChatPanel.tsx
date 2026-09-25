@@ -38,6 +38,8 @@ interface Props {
   stageLabel: string | null;
   /** When the running turn started, for the elapsed clock. */
   startedAt: number | null;
+  /** A sent message the server did not keep; restored to an empty composer. */
+  returnedDraft?: { text: string; at: number } | null;
   /**
    * The finished turn's diagnostics (INV-012), shown beneath the reply.
    *
@@ -106,6 +108,7 @@ export function ChatPanel({
   pendingUserMessage,
   stageLabel,
   startedAt,
+  returnedDraft,
   diagnostics,
   onSend,
   discovery,
@@ -123,6 +126,9 @@ export function ChatPanel({
 }: Props): React.JSX.Element {
   const [draft, setDraft] = useState("");
   const [dictating, setDictating] = useState(false);
+  useEffect(() => {
+    if (returnedDraft) setDraft((current) => (current.trim() ? current : returnedDraft.text));
+  }, [returnedDraft]);
   const [elapsed, setElapsed] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);

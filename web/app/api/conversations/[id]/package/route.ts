@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { failureReport } from "@/lib/turn/http";
 
 import { packageVersion, PackageLeakError } from "@/lib/package";
 import { loadConversation, saveConversation } from "@/lib/store";
@@ -63,7 +64,9 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
     saveConversation(convo);
     const status = error instanceof PackageLeakError ? 500 : 502;
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error), conversationIntact: true },
+      // Through the same classifier as a chat failure: a status in the user's
+      // terms, never a provider's raw body (which was once a whole HTML page).
+      { error: failureReport(convo, error, "package").message, conversationIntact: true },
       { status },
     );
   }

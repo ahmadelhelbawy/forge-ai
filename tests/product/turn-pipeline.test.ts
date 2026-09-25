@@ -309,6 +309,28 @@ describe("an unreadable response degrades to reply-only (INV-012)", () => {
     expect(result.version).toBeNull();
     expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W003");
   });
+
+  it("shows the recovered reply, not raw JSON, and warns only when something was lost (hardening pass)", async () => {
+    // Broken after the reply (live: 1 in 4 answers from one model).
+    const broken = '{"reply":"Here is my read.","prompt":null,"extra":[1 2]}';
+    const discuss = await executeTurn(
+      conversationWithPrompt(),
+      "what do you think?",
+      deps({ classification: classification("DISCUSS"), generation: broken }).deps,
+    );
+    expect(discuss.reply).toBe("Here is my read.");
+    expect(discuss.diagnostics.map((d) => d.code)).not.toContain("FORGE-W003");
+
+    // A write-capable action lost its prompt: that is reported, with the cause.
+    const revise = await executeTurn(
+      conversationWithPrompt(),
+      "revise it",
+      deps({ classification: classification("REVISE"), generation: '{"reply":"Done.","prompt":"x" "y"}' }).deps,
+    );
+    expect(revise.reply).toBe("Done.");
+    const w003 = revise.diagnostics.find((d) => d.code === "FORGE-W003");
+    expect(w003?.message).toMatch(/invalid JSON/);
+  });
 });
 
 describe("the turn event log (WS-R10, WS-R11)", () => {

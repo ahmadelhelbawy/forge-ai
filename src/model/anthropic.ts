@@ -56,13 +56,19 @@ export class AnthropicProvider implements ModelProvider {
     const useModel = model ?? this.defaultModel;
     let response: Anthropic.Messages.Message;
     try {
-      response = await this.client.messages.create({
-        model: useModel,
-        max_tokens: request.maxTokens,
-        system: request.system,
-        messages: [{ role: "user", content: request.user }],
-        temperature: request.temperature,
-      });
+      response = await this.client.messages.create(
+        {
+          model: useModel,
+          max_tokens: request.maxTokens,
+          system: request.system,
+          messages: [{ role: "user", content: request.user }],
+          temperature: request.temperature,
+        },
+        // `extraHeaders` is transport the contract says every provider sends
+        // verbatim (a gateway's session id). This one dropped them, so a
+        // gateway that requires a session refused every extraction with 400.
+        request.extraHeaders ? { headers: { ...request.extraHeaders } } : undefined,
+      );
     } catch (error) {
       // The SDK surfaces the HTTP status on APIError; read it structurally so
       // callers render a real status instead of scraping the message text.
@@ -78,9 +84,14 @@ export class AnthropicProvider implements ModelProvider {
       .map((block) => block.text)
       .join("");
     if (!text) {
-      throw new ProviderError(`model ${useModel} returned no text blocks.`, "anthropic", {
-        model: useModel,
-      });
+      // Name the cause when the endpoint states it: a reasoning model that
+      // stops at max_tokens has spent the whole budget thinking, and "no text
+      // blocks" sent users looking for a broken key.
+      const cause =
+        response.stop_reason === "max_tokens"
+          ? `used its whole output budget (${request.maxTokens} tokens) without writing an answer — reasoning models can spend it all thinking. Retry, or choose a model with a larger output limit or less reasoning`
+          : `returned no text${response.stop_reason ? ` (stop reason: ${response.stop_reason})` : ""}`;
+      throw new ProviderError(`Model ${useModel} ${cause}.`, "anthropic", { model: useModel });
     }
     return {
       text,

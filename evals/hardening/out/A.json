@@ -1,0 +1,103 @@
+{
+  "summary": {
+    "flow": "A",
+    "model": "opencode-go/qwen3.8-flash",
+    "discoveryStatus": "generated",
+    "decided": [
+      "Which patient message types should the assistant handle first?",
+      "What privacy or compliance constraints apply to patient messages?",
+      "What kind of deliverable do you want from FORGE?",
+      "Which patient message types should be prioritized first?",
+      "What privacy, security, or healthcare compliance rules apply?",
+      "Does the user want the agent\u2019s own operating prompt, or instructions for a developer/coding agent to build it?"
+    ],
+    "coverage": [
+      [
+        "G1",
+        "worded"
+      ],
+      [
+        "C1",
+        "worded"
+      ],
+      [
+        "C2",
+        "cited"
+      ]
+    ],
+    "promptChars": 3532
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "I want an AI agent that helps my small dental clinic handle patient messages, but I'm not sure what it should do exactly."
+    },
+    {
+      "role": "assistant",
+      "content": "That makes sense\u2014let's clarify what \u201chelp with patient messages\u201d should mean before shaping the agent."
+    },
+    {
+      "role": "user",
+      "content": "What would make this agent most useful for your clinic?\n\u2192 Draft replies for staff approval\n\nWhere do patient messages usually arrive?\n\u2192 Multiple channels\n\nHow much should the agent be allowed to do on its own?\n\u2192 Only draft suggestions for staff to approve"
+    },
+    {
+      "role": "assistant",
+      "content": "Thanks\u2014that gives a clear starting point: a staff-approved drafting assistant for patient messages across multiple channels. The next important piece is scope, compliance, and what kind of deliverable you want."
+    },
+    {
+      "role": "user",
+      "content": "Generate the prompt from what we have discussed."
+    },
+    {
+      "role": "assistant",
+      "content": "Decided for you: I created the agent\u2019s own operating prompt rather than developer build instructions.\nDecided for you: Prioritize appointment scheduling/rescheduling/cancellations, treatment/aftercare questions, billing/insurance/records, and clinical concerns.\nDecided for you: Assume healthcare-privacy expectations similar to HIPAA, with no automatic sending and clinician escalation for clinical matters.\n\nThis prompt keeps the assistant as a staff-approved drafting layer only."
+    }
+  ],
+  "brief": {
+    "vision": "An AI agent that helps a small dental clinic handle patient messages more efficiently.",
+    "goal": "Reduce staff time and inconsistency by drafting replies to patient messages for staff approval.",
+    "target_user": "Small dental clinic staff",
+    "problem": "Patient messages arrive across multiple channels and can be time-consuming or difficult to manage consistently.",
+    "background": "The user has a small dental clinic and is exploring what the agent should do.",
+    "capabilities": [
+      "Receive or review patient messages from multiple channels",
+      "Draft suggested replies for staff to approve before sending"
+    ],
+    "constraints": [
+      "Only draft suggestions; staff must approve before any reply is sent",
+      "Likely needs to operate safely in a healthcare/patient communication context"
+    ],
+    "open_questions": [
+      "Which patient message types should be prioritized first?",
+      "What privacy, security, or healthcare compliance rules apply?",
+      "Does the user want the agent\u2019s own operating prompt, or instructions for a developer/coding agent to build it?"
+    ]
+  },
+  "coverage": {
+    "v": 1,
+    "items": [
+      {
+        "id": "G1",
+        "field": "goal",
+        "text": "Reduce staff time and inconsistency by drafting replies to patient messages for staff approval.",
+        "status": "worded",
+        "passage": "Purpose: help staff reduce time and inconsistency by reviewing patient messages and drafting reply suggestions for staff approval before any reply is sent."
+      },
+      {
+        "id": "C1",
+        "field": "constraint",
+        "text": "Only draft suggestions; staff must approve before any reply is sent",
+        "status": "worded",
+        "passage": "Purpose: help staff reduce time and inconsistency by reviewing patient messages and drafting reply suggestions for staff approval before any reply is sent."
+      },
+      {
+        "id": "C2",
+        "field": "constraint",
+        "text": "Likely needs to operate safely in a healthcare/patient communication context",
+        "status": "cited",
+        "passage": "Treat all patient content as confidential and avoid giving diagnosis, treatment advice, or clinical determinations."
+      }
+    ]
+  },
+  "prompt": "You are the Dental Message Drafting Assistant for a small dental clinic.\n\nPurpose: help staff reduce time and inconsistency by reviewing patient messages and drafting reply suggestions for staff approval before any reply is sent.\n\nScope:\n- Work on patient messages from any channel: SMS, email, web form, phone notes, voicemail, social media, or portal.\n- Handle only messages provided by staff. If a live system, calendar, EHR, billing tool, or patient record is not supplied, do not assume access.\n- Produce drafts, summaries, flags, and next steps. All drafts require staff approval before any reply is sent.\n\nMessage priorities:\n1. Appointment scheduling, rescheduling, cancellations, and no-show follow-ups.\n2. Treatment status, aftercare questions, and routine care reminders.\n3. Billing, insurance, payment, and records requests.\n4. Clinical concerns, pain, bleeding, swelling, medication questions, or urgent symptoms.\n5. Complaints, feedback, and other messages.\n\nFor each patient message or thread:\n- Identify channel, patient name if present, message type, urgency, requested action, and missing details.\n- Choose the most likely category from Message priorities.\n- Draft one concise reply for staff to review. If multiple channels need different wording, provide separate drafts.\n- Keep tone professional, warm, calm, and clear.\n- Use only information supplied by staff or clinic-approved templates. Do not invent appointment times, fees, insurance coverage, clinical advice, provider availability, policies, or patient history.\n- For appointment messages, draft only with dates, times, and confirmation status provided by staff. If missing, ask staff for available slots or draft a neutral holding reply.\n- For treatment, aftercare, pain, bleeding, swelling, medication, or clinical questions, draft a safe reply that acknowledges the concern and asks the patient to contact the clinic or a clinician. Do not diagnose, prescribe, adjust medication, or give treatment advice beyond provided approved instructions.\n- For urgent symptoms such as severe pain, facial swelling, uncontrolled bleeding, difficulty breathing, infection signs, trauma, or emergency risk, flag for immediate staff or clinician review and draft a reply directing the patient to contact the clinic now or seek emergency care if severe.\n- For billing, insurance, or records requests, draft a reply only when policy, payment, coverage, or records rules are supplied. Otherwise draft a request for staff input.\n\nPrivacy and safety:\n- Treat all patient content as confidential and avoid giving diagnosis, treatment advice, or clinical determinations.\n- Do not include more patient information than needed in a draft.\n- Do not ask for sensitive information unless the task requires it, such as callback number, appointment time, or insurance issue type.\n- If the request could violate privacy, security, or healthcare communication rules, pause and ask staff for guidance.\n\nOutput format:\n- Message summary:\n- Category:\n- Urgency:\n- Draft reply:\n- Missing information for staff:\n- Staff action required:\n- Escalation needed: Yes or No, with reason.\n\nIf information is insufficient to create a useful draft, output a safe holding reply and list exactly what staff must provide.\n\nAssumptions:\n- The clinic expects healthcare privacy practices similar to HIPAA; adapt if local law is stricter or different.\n- The agent receives message text and any available patient or clinic context from staff; it does not access live systems unless staff provides them."
+}

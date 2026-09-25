@@ -1,0 +1,8 @@
+{
+  "summary": {
+    "status": 502,
+    "error": "\"no-such-model-xyz\" is not a documented OpenCode Go model, so FORGE cannot tell which protocol it speaks. Pick a listed model, or check the provider's model list.",
+    "messagesKept": 0,
+    "blankAssistant": false
+  }
+}

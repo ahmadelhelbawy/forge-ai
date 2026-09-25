@@ -39,7 +39,7 @@ import {
   CONVERSATION_GENERATE_VERSION,
   conversationGenerateBoundary,
   createEnvelopeStreamReader,
-  parseEnvelope,
+  readEnvelope,
 } from "forge/dist/conversation/generate.js";
 import { checkCoverage, parseCoverageClaims } from "forge/dist/conversation/coverage.js";
 import {
@@ -699,22 +699,38 @@ export async function* runTurn(
     }
 
     yield push({ kind: "stage", stage: "verifying", label: STAGE_LABELS.verifying });
-    const envelope = parseEnvelope(response.text);
+    const { envelope, problem: envelopeProblem } = readEnvelope(response.text);
     let reply: string;
     let proposed: string | null;
     if (envelope === null) {
       // INV-012: degradation is never silent. The prose is still useful; a
-      // response FORGE could not read can never become a version.
-      reply = response.text.trim();
+      // response FORGE could not read can never become a version. The chat
+      // shows the `reply` field as far as it can be read — what the user
+      // already watched stream — and falls back to the raw text only when
+      // there is no such field: raw JSON in a chat bubble helps nobody.
+      const salvage = createEnvelopeStreamReader();
+      const readable = salvage
+        .push(response.text)
+        .filter((d) => d.field === "reply")
+        .map((d) => d.text)
+        .join("")
+        .trim();
+      reply = readable.length > 0 ? readable : response.text.trim();
       proposed = null;
-      note(
+      // Nothing was lost when the action could not have written a version
+      // anyway and the whole reply was recovered: a DISCOVER turn whose
+      // discovery object is broken is reported by its own W003 below, if its
+      // repair fails too. Warning the user about a loss that did not happen
+      // is noise, and noise is how a real warning gets ignored.
+      const lost = writesVersion(action) || !salvage.completed().has("reply") || readable.length === 0;
+      if (lost) note(
         diagnostic(
           "FORGE-W003",
           response.finishReason === "length"
             ? `The model (${response.model}) was cut off at its output budget (${CHAT_MAX_TOKENS} tokens) before finishing, ` +
                 "so the answer was kept as chat and no prompt version was written. Retry, ask for a shorter prompt, " +
                 "or choose a model with a larger output limit."
-            : "The response was not a readable FORGE envelope, so it was kept as chat and no prompt version was written.",
+            : `The response was not a readable FORGE envelope (${envelopeProblem ?? "unreadable"}), so it was kept as chat and no prompt version was written.`,
           [measureEvidence("unreadable_responses", 1, "responses")],
         ),
       );

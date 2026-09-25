@@ -50,11 +50,18 @@ export function Workspace(): React.JSX.Element {
   const [settingsTab, setSettingsTab] = useState<"providers" | "models" | "general">("providers");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
+  // While "New conversation" is still being created, sending is disabled: a
+  // message sent in that window created a second conversation, and the
+  // pending create then selected the empty one — so Generate wrote into a
+  // conversation other than the one on screen (found by browser acceptance).
+  const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stageLabel, setStageLabel] = useState<string | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  /** A message the server refused before keeping it, handed back to the composer. */
+  const [returnedDraft, setReturnedDraft] = useState<{ text: string; at: number } | null>(null);
   /**
    * The last finished turn's diagnostics (INV-012). Turn-scoped: cleared when
    * the next turn starts and when another conversation is opened, because a
@@ -96,6 +103,21 @@ export function Workspace(): React.JSX.Element {
   const [rightWidth, setRightWidth] = usePref("rightWidth", RIGHT.initial);
   const [studioMax, setStudioMax] = usePref("studioMax", false);
   const [studioTab, setStudioTab] = usePref<StudioTab>("studioTab", "prompt");
+
+  // The Studio follows the work: while discovery runs with no prompt, the
+  // brief is what there is to see; the moment a version is written, the
+  // prompt is. Keyed on the conversation and version, so a user who picks a
+  // tab keeps it until something new happens.
+  const lastSeen = useRef<string>("");
+  useEffect(() => {
+    if (!detail) return;
+    const key = `${detail.id}:${detail.currentV}:${detail.discovery?.status ?? "none"}`;
+    if (key === lastSeen.current) return;
+    const [prevId, prevV] = lastSeen.current.split(":");
+    lastSeen.current = key;
+    if (detail.currentV === 0 && detail.discovery?.status === "open") setStudioTab("brief");
+    else if (prevId === detail.id && Number(prevV) !== detail.currentV && detail.currentV > 0) setStudioTab("prompt");
+  }, [detail, setStudioTab]);
   // On a narrow screen the side panels are drawers, closed until asked for.
   const [leftDrawer, setLeftDrawer] = useState(false);
   const [rightDrawer, setRightDrawer] = useState(false);
@@ -208,6 +230,7 @@ export function Workspace(): React.JSX.Element {
 
   const select = useCallback(async (id: string) => {
     setActiveId(id);
+    rememberConversation(id);
     setLeftDrawer(false);
     setError(null);
     // Turn-scoped, so they do not follow the user into another conversation.
@@ -233,15 +256,48 @@ export function Workspace(): React.JSX.Element {
     }
   }, [refreshLedger, applySelection]);
 
+  // A reload returns to the conversation that was open: the URL names it
+  // (`#c=<id>`, so it can be bookmarked), with the last one opened as the
+  // fallback. Waits for the model catalog, which `select` validates against.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!catalogReady || restored.current) return;
+    restored.current = true;
+    const wanted = rememberedConversation();
+    if (!wanted) return;
+    // One read of the one conversation, not the whole list: with a hundred
+    // conversations the list made a reload visibly reopen the wrong screen
+    // first. A conversation that no longer exists is simply forgotten.
+    void api
+      .getConversation(wanted)
+      .then(() => select(wanted))
+      .catch(() => forgetConversation());
+  }, [catalogReady, select]);
+
   const create = useCallback(async () => {
+    setCreating(true);
     try {
+      // Clicking New while the open conversation is still untouched keeps it
+      // rather than adding another empty row. Only the open one: any other
+      // empty record may carry settings (a target, a closed discovery) the
+      // user would not expect a "new" conversation to inherit.
+      if (
+        detail &&
+        detail.messages.length === 0 &&
+        detail.promptVersions.length === 0 &&
+        detail.discovery === null
+      ) {
+        return;
+      }
       const { id } = await api.createConversation({ target, provider, model });
       await refreshList();
       await select(id);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setCreating(false);
     }
-  }, [target, provider, model, refreshList, select]);
+  }, [target, provider, model, refreshList, select, detail]);
 
   const remove = useCallback(
     async (id: string) => {
@@ -250,6 +306,7 @@ export function Workspace(): React.JSX.Element {
         await api.deleteConversation(id);
         if (activeId === id) {
           setActiveId(null);
+          forgetConversation();
           setDetail(null);
           setVersions([]);
           setLedger([]);
@@ -295,6 +352,7 @@ export function Workspace(): React.JSX.Element {
           const created = await api.createConversation({ target, provider, model });
           id = created.id;
           setActiveId(id);
+          rememberConversation(id);
           if (draftKind !== "unspecified" || draftShape !== "single") {
             await api.updateConversation(id, { artifactKind: draftKind, outputShape: draftShape });
           }
@@ -358,6 +416,14 @@ export function Workspace(): React.JSX.Element {
         setCanRetry(true);
         try {
           await reload(id);
+          // A configuration failure (no key, unknown model) is refused before
+          // the server keeps the message. The composer was already cleared, so
+          // without this the user's text was simply gone.
+          if (!input.regenerate && input.content) {
+            const saved = await api.getConversation(id);
+            const last = [...saved.messages].reverse().find((m) => m.role === "user");
+            if (last?.content !== input.content) setReturnedDraft({ text: input.content, at: Date.now() });
+          }
         } catch {
           // Keep the banner; the conversation may still be intact server-side.
         }
@@ -846,12 +912,13 @@ export function Workspace(): React.JSX.Element {
                 messages={detail?.messages ?? []}
                 attachments={detail?.attachments ?? []}
                 sending={sending}
-                ready={catalogReady && Boolean(provider) && Boolean(model.trim())}
+                ready={catalogReady && !creating && Boolean(provider) && Boolean(model.trim())}
                 providerAvailable={providerAvailable || !catalogReady}
                 streamingReply={streamingReply}
                 pendingUserMessage={pendingUserMessage}
                 stageLabel={stageLabel}
                 startedAt={startedAt}
+                returnedDraft={returnedDraft}
                 diagnostics={diagnostics}
                 onSend={send}
                 discovery={detail?.discovery ?? null}
@@ -905,4 +972,34 @@ export function Workspace(): React.JSX.Element {
       />
     </div>
   );
+}
+
+const ACTIVE_KEY = "forge.activeConversation";
+
+function rememberConversation(id: string): void {
+  try {
+    window.history.replaceState(null, "", `#c=${encodeURIComponent(id)}`);
+    window.localStorage.setItem(ACTIVE_KEY, id);
+  } catch {
+    // A private window or blocked storage: the conversation still opens, it
+    // just is not reopened after a reload.
+  }
+}
+
+function forgetConversation(): void {
+  try {
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    window.localStorage.removeItem(ACTIVE_KEY);
+  } catch {
+    // As above.
+  }
+}
+
+function rememberedConversation(): string | null {
+  try {
+    const fromHash = /(?:^#|&)c=([^&]+)/.exec(window.location.hash)?.[1];
+    return fromHash ? decodeURIComponent(fromHash) : window.localStorage.getItem(ACTIVE_KEY);
+  } catch {
+    return null;
+  }
 }

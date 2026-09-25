@@ -1,0 +1,156 @@
+[
+  {
+    "flow": "B",
+    "firstSeconds": 46,
+    "genStatus": 200,
+    "genSeconds": 33,
+    "promptChanged": true,
+    "diagnostics": [],
+    "promptChars": 1869
+  },
+  {
+    "flow": "C",
+    "status": 200,
+    "seconds": 42,
+    "promptChanged": true,
+    "action": "CREATE",
+    "diagnostics": []
+  },
+  {
+    "flow": "D-agent",
+    "status": 200,
+    "seconds": 59,
+    "promptChanged": true,
+    "action": "CREATE",
+    "diagnostics": []
+  },
+  {
+    "flow": "D-builder",
+    "status": 200,
+    "seconds": 116,
+    "promptChanged": true,
+    "action": "CREATE",
+    "diagnostics": []
+  },
+  {
+    "flow": "E",
+    "status": 200,
+    "seconds": 116,
+    "diagnostics": [],
+    "stages": [
+      "1: Scaffold project and Notion API client",
+      "2: Implement Notion block to Markdown conversion",
+      "3: Build sync engine and local Markdown writer",
+      "4: CLI commands, flags, and user experience",
+      "5: Final tests, documentation, and acceptance"
+    ]
+  },
+  {
+    "flow": "J",
+    "status": 502,
+    "error": "\"no-such-model-xyz\" is not a documented OpenCode Go model, so FORGE cannot tell which protocol it speaks. Pick a listed model, or check the provider's model list.",
+    "messagesKept": 0,
+    "blankAssistant": false
+  },
+  {
+    "flow": "A",
+    "model": "opencode-go/qwen3.8-flash",
+    "discoveryStatus": "generated",
+    "decided": [
+      "Which patient message types should the assistant handle first?",
+      "What privacy or compliance constraints apply to patient messages?",
+      "What kind of deliverable do you want from FORGE?",
+      "Which patient message types should be prioritized first?",
+      "What privacy, security, or healthcare compliance rules apply?",
+      "Does the user want the agent\u2019s own operating prompt, or instructions for a developer/coding agent to build it?"
+    ],
+    "coverage": [
+      [
+        "G1",
+        "worded"
+      ],
+      [
+        "C1",
+        "worded"
+      ],
+      [
+        "C2",
+        "cited"
+      ]
+    ],
+    "promptChars": 3532
+  },
+  {
+    "flow": "F",
+    "model": "opencode-go/qwen3.8-flash",
+    "targets": [
+      {
+        "target": "claude-code",
+        "refused": false,
+        "extracted": true,
+        "semanticHash": "sha256:9c7cc5036d3296922180263e76ca9a0c7e9b26228f2f514e1d4f1dccf20114d4",
+        "diagnostics": [
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C080/error"
+        ]
+      },
+      {
+        "target": "opencode",
+        "refused": false,
+        "extracted": false,
+        "semanticHash": "sha256:9c7cc5036d3296922180263e76ca9a0c7e9b26228f2f514e1d4f1dccf20114d4",
+        "diagnostics": [
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C080/error"
+        ]
+      },
+      {
+        "target": "openai-codex",
+        "refused": false,
+        "extracted": false,
+        "semanticHash": "sha256:9c7cc5036d3296922180263e76ca9a0c7e9b26228f2f514e1d4f1dccf20114d4",
+        "diagnostics": [
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C020/info",
+          "FORGE-C080/error"
+        ]
+      }
+    ]
+  },
+  {
+    "flow": "G",
+    "model": "opencode-go/kimi-k3",
+    "semanticId": "sha256:23157e030c47bb1b63c3077a4da8112a2bbd133fb137403fd4c33f383813d46d",
+    "refused": false,
+    "verdicts": {
+      "v1": "VERIFIED",
+      "v2": "UNVERIFIED",
+      "v3": "FAILED",
+      "v4": "UNVERIFIED",
+      "v5": "REVIEW_REQUIRED"
+    },
+    "diagnostics": [
+      "FORGE-V003",
+      "FORGE-V001",
+      "FORGE-V002",
+      "FORGE-V001"
+    ]
+  }
+]

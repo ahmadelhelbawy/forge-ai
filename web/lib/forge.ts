@@ -248,7 +248,13 @@ export function getEffectiveProvider(providerId: string, model?: string): Resolv
   const call = resolveCall(providerId, useModel);
   let provider: ModelProvider;
   if (call.protocol === "anthropic-messages") {
-    provider = new AnthropicProvider(eff.apiKey, useModel, eff.baseURL ?? undefined);
+    // The Anthropic SDK appends `/v1/messages` itself, while a gateway's base
+    // URL (and the AI SDK the chat path uses) ends in `/v1`. Passed through
+    // unchanged it became `…/v1/v1/messages`: a 404 HTML page, measured live on
+    // OpenCode Go in the hardening pass — every compile and package failed
+    // for every anthropic-messages model while chat worked.
+    const base = eff.baseURL ? eff.baseURL.replace(/\/+$/, "").replace(/\/v1$/, "") : undefined;
+    provider = new AnthropicProvider(eff.apiKey, call.modelId, base);
   } else if (call.protocol === "chat-completions") {
     provider = new OpenAiCompatProvider(eff.apiKey, eff.baseURL ?? undefined, useModel);
   } else {

@@ -285,9 +285,11 @@ describe("irForVersion honours the model's protocol (V2-R step 11)", () => {
     };
 
     const urls: string[] = [];
+    const sent: Array<Record<string, string>> = [];
     const realFetch = globalThis.fetch;
-    globalThis.fetch = (async (input: unknown) => {
+    globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
       urls.push(String(input instanceof Request ? input.url : input));
+      sent.push(Object.fromEntries(new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined)).entries()));
       return new Response(
         JSON.stringify({
           id: "msg_1",
@@ -318,7 +320,11 @@ describe("irForVersion honours the model's protocol (V2-R step 11)", () => {
     expect(thrown).toBeNull();
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.filter((u) => u.includes("/chat/completions"))).toEqual([]);
-    expect(urls.every((u) => u.includes("/messages"))).toBe(true);
+    // Exactly the gateway's path. `includes("/messages")` also accepted
+    // `…/v1/v1/messages`, the 404 every live compile hit (hardening pass).
+    expect(urls.every((u) => u === "https://opencode.ai/zen/go/v1/messages")).toBe(true);
+    // And the session header the gateway requires on every call.
+    expect(sent.every((h) => typeof h["x-opencode-session"] === "string" && h["x-opencode-session"].length > 0)).toBe(true);
   });
 
   /**

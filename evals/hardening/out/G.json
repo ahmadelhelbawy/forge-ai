@@ -1,0 +1,198 @@
+{
+  "summary": {
+    "flow": "G",
+    "model": "opencode-go/kimi-k3",
+    "semanticId": "sha256:23157e030c47bb1b63c3077a4da8112a2bbd133fb137403fd4c33f383813d46d",
+    "refused": false,
+    "verdicts": {
+      "v1": "VERIFIED",
+      "v2": "UNVERIFIED",
+      "v3": "FAILED",
+      "v4": "UNVERIFIED",
+      "v5": "REVIEW_REQUIRED"
+    },
+    "diagnostics": [
+      "FORGE-V003",
+      "FORGE-V001",
+      "FORGE-V002",
+      "FORGE-V001"
+    ]
+  },
+  "packageFiles": [
+    "package.json",
+    "task-ir.json",
+    "strategy.json",
+    "requirements.json",
+    "trace.json",
+    "provenance.json",
+    "runtime-contract.json",
+    "verification.json",
+    "diagnostics.json",
+    "artifacts/PROMPT.md",
+    "run.json"
+  ],
+  "report": {
+    "report_format_version": "1.0",
+    "executed_by_forge": false,
+    "caveat": "VERIFIED means the supplied evidence, taken at its word, shows the expected exit code. Evidence is unsigned, so FORGE cannot detect a fabricated record whose hashes were recomputed. FORGE executed nothing to produce this report.",
+    "package_valid": true,
+    "package_semantic_id": "sha256:23157e030c47bb1b63c3077a4da8112a2bbd133fb137403fd4c33f383813d46d",
+    "evidence_hash": "sha256:69a191ac6d6244acc0bb02e5b0f6346d04d786f7e9b496a8e3dd595ba0578091",
+    "counts": {
+      "VERIFIED": 1,
+      "FAILED": 1,
+      "UNVERIFIED": 2,
+      "REVIEW_REQUIRED": 1
+    },
+    "verdicts": [
+      {
+        "obligation_id": "v1",
+        "kind": "command",
+        "spec": "npm test",
+        "satisfies": [
+          "g1",
+          "g7"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": 0,
+        "verdict": "VERIFIED",
+        "records": [
+          {
+            "index": 0,
+            "runner": "human",
+            "exit_code": 0,
+            "stdout_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "stderr_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "repo_commit": null
+          }
+        ]
+      },
+      {
+        "obligation_id": "v2",
+        "kind": "command",
+        "spec": "Run the repo's lint, build, and/or typecheck scripts if present (e.g., npm run lint, npm run build, npm run typecheck).",
+        "satisfies": [
+          "g2",
+          "g3"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": 0,
+        "verdict": "UNVERIFIED",
+        "records": []
+      },
+      {
+        "obligation_id": "v3",
+        "kind": "command",
+        "spec": "git diff package.json package-lock.json",
+        "satisfies": [
+          "g9"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": 0,
+        "verdict": "FAILED",
+        "records": [
+          {
+            "index": 1,
+            "runner": "human",
+            "exit_code": 1,
+            "stdout_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "stderr_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "repo_commit": null
+          }
+        ]
+      },
+      {
+        "obligation_id": "v4",
+        "kind": "test",
+        "spec": "Send 101 requests within one 60-second window from a single API key to /api/orders (via the integration-style test mounting the orders router, using the injected clock).",
+        "satisfies": [
+          "g1",
+          "g4",
+          "g6"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": 0,
+        "verdict": "UNVERIFIED",
+        "records": []
+      },
+      {
+        "obligation_id": "v5",
+        "kind": "review",
+        "spec": "Review the final report for the required summary: files created/modified, the identity mechanism detected for API keys, the error-body format used, and the output of npm test.",
+        "satisfies": [
+          "g10"
+        ],
+        "degraded_from": null,
+        "expected_exit_code": null,
+        "verdict": "REVIEW_REQUIRED",
+        "records": []
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "FORGE-V003",
+        "name": "evidence_package_mismatch",
+        "severity": "warning",
+        "source": "deterministic",
+        "message": "Evidence record #2 (v4) is for package sha256:000000000000\u2026, not this one (sha256:23157e030c47\u2026); it is ignored.",
+        "evidence": [
+          {
+            "kind": "node",
+            "node_id": "v4"
+          },
+          {
+            "kind": "measure",
+            "label": "evidence record",
+            "value": 2,
+            "unit": "index"
+          }
+        ]
+      },
+      {
+        "code": "FORGE-V001",
+        "name": "obligation_unverified",
+        "severity": "info",
+        "source": "deterministic",
+        "message": "v2 (command) has no accepted evidence; it is unverified.",
+        "evidence": [
+          {
+            "kind": "node",
+            "node_id": "v2"
+          }
+        ]
+      },
+      {
+        "code": "FORGE-V002",
+        "name": "obligation_failed",
+        "severity": "error",
+        "source": "deterministic",
+        "message": "v3 (command) failed: evidence record #1 (runner human) reports exit 1, expected 0.",
+        "evidence": [
+          {
+            "kind": "node",
+            "node_id": "v3"
+          },
+          {
+            "kind": "measure",
+            "label": "exit code, evidence record #1",
+            "value": 1,
+            "unit": "exit code"
+          }
+        ]
+      },
+      {
+        "code": "FORGE-V001",
+        "name": "obligation_unverified",
+        "severity": "info",
+        "source": "deterministic",
+        "message": "v4 (test) has no accepted evidence; it is unverified.",
+        "evidence": [
+          {
+            "kind": "node",
+            "node_id": "v4"
+          }
+        ]
+      }
+    ]
+  }
+}

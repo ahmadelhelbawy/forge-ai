@@ -163,6 +163,7 @@ function discoveryInstructions(state: DiscoveryState | null): string[] {
     DISCOVERY_SHAPE,
     "- The brief is your cumulative understanding. Carry forward everything still true from the CURRENT BRIEF, update what changed, and include only fields you actually know — omit the rest.",
     "- Put in the brief only what the user said or directly implied. Never fill a field with a guess (\"budget assumed\", \"likely needs…\"): a guess is an open question, not a fact. FORGE marks every brief item the user's own words do not support as inferred.",
+    "- The brief describes THE THING BEING BUILT, never this conversation. goal = what the finished agent or prompt achieves for its users; success_criteria = observable signs it works (\"no reply is sent without staff approval\"), never steps of this interview (\"clarify the scope\", \"identify the main task\"). If you do not know the goal yet, omit it.",
     "- open_questions holds what is still unknown and NOT among the questions you are asking this turn — never the same question twice.",
     "- Set ready to true when there is enough to write a good prompt. The user decides when to generate; you never do.",
     '- Set artifact_kind to "agent" when the user clearly wants the prompt an agent will run with, "builder" when they clearly want instructions for a coding agent to BUILD that agent, else null. FORGE asks the user to confirm; it never applies your reading by itself.',

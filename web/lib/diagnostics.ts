@@ -104,17 +104,31 @@ function messageFromJson(value: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * A provider's error text, fit to show: an HTML page (a wrong path answered by
+ * a website) is named rather than dumped, and anything else is capped. The
+ * full page helps nobody and buried the status that explains it.
+ */
+export function conciseProviderText(text: string): string {
+  if (/<!doctype html|<html[\s>]/i.test(text)) {
+    const before = text.slice(0, text.search(/<!doctype html|<html[\s>]/i)).trim();
+    return `${before ? `${before} ` : ""}(the endpoint answered with a web page, not an API response — the base URL or path is wrong)`;
+  }
+  return text.length > 600 ? `${text.slice(0, 600)}…` : text;
+}
+
 export function providerDiagnostic(error: unknown, ctx: DiagnosticContext): ProviderDiagnostic {
   const detail = readDetail(error);
   const sdk = readSdkError(error);
-  const summary = error instanceof Error ? error.message : String(error);
+  const summary = conciseProviderText(error instanceof Error ? error.message : String(error));
   const endpoint = safeEndpoint(detail["endpoint"] ?? sdk.endpoint ?? ctx.endpoint);
   const httpStatus =
     typeof detail["httpStatus"] === "number" ? detail["httpStatus"] : sdk.httpStatus;
-  const providerMessage =
+  const rawProviderMessage =
     typeof detail["providerMessage"] === "string" && detail["providerMessage"].length > 0
       ? detail["providerMessage"]
       : sdk.providerMessage;
+  const providerMessage = rawProviderMessage === undefined ? undefined : conciseProviderText(rawProviderMessage);
   const model = typeof detail["model"] === "string" && detail["model"] ? detail["model"] : ctx.model;
   return {
     provider: ctx.provider,
@@ -155,7 +169,10 @@ export function classifyFailure(d: ProviderDiagnostic): string {
   // An entitlement refusal ("requires explicit opt in") arrives as 403 but is
   // not a bad key: sending the user to re-issue a working key wastes their
   // time when the fix is a setting in their provider account.
-  if (/opt in|opt-in|not enabled|enable this|not entitled|access denied for|region/.test(text)) {
+  // Only the provider can refuse a model for an account, so this needs an
+  // HTTP answer: FORGE's own "provider is not enabled" is a local setting,
+  // and reading it as an account refusal sent users to the wrong place.
+  if (d.httpStatus !== undefined && /opt in|opt-in|not enabled|enable this|not entitled|access denied for|region/.test(text)) {
     return `${d.provider} refused this model for your account: ${d.providerMessage ?? d.summary}`;
   }
   if (d.httpStatus === 401 || d.httpStatus === 403 || /invalid api key|unauthorized/.test(text)) {

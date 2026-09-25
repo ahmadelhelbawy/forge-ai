@@ -15,6 +15,7 @@
 import { z } from "zod";
 
 import { tokenize } from "../critic/deterministic/ledger.js";
+import { parseModelJson } from "./generate.js";
 import { contentWords, isCovered, sameQuestion, type CoverageItem, type ItemCoverage } from "./coverage.js";
 
 const Text = z.string().trim().min(1).max(600);
@@ -118,7 +119,7 @@ export function jsonObjects(text: string): unknown[] {
       depth -= 1;
       if (depth === 0 && start !== -1) {
         try {
-          const value: unknown = JSON.parse(text.slice(start, i + 1));
+          const value: unknown = parseModelJson(text.slice(start, i + 1));
           if (typeof value === "object" && value !== null && !Array.isArray(value)) found.push(value);
         } catch {
           // Not JSON after all; keep scanning for one that is.

@@ -48,3 +48,6 @@ echo "==> running product HTTP suite"
 WEB_E2E=1 WEB_E2E_BASE=http://localhost:3210 WEB_E2E_FAIL_BASE=http://localhost:3211 \
   WEB_E2E_PROVIDER_BASE=http://localhost:3220 WEB_E2E_REPO_ROOTS="$REPO_ROOTS" \
   pnpm vitest run tests/product/web-api.test.ts
+
+echo "==> running browser acceptance"
+BASE=http://localhost:3210 FAIL_BASE=http://localhost:3211 node "$ROOT/web/scripts/browser-acceptance.mjs"

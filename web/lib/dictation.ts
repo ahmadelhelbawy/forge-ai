@@ -110,19 +110,17 @@ export const browserDictation: DictationEngine = {
     rec.lang = lang ?? (typeof navigator !== "undefined" ? navigator.language : "en-US");
     rec.continuous = true;
     rec.interimResults = true;
-    let finalText = "";
-    let interim = "";
+    let heard = "";
     let cancelled = false;
     let failed = false;
-    const join = () => [finalText, interim].map((s) => s.trim()).filter(Boolean).join(" ");
     rec.onresult = (e) => {
-      interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i += 1) {
-        const r = e.results[i]!;
-        if (r.isFinal) finalText = `${finalText} ${r[0].transcript}`.trim();
-        else interim += r[0].transcript;
-      }
-      if (!cancelled) handlers.onText(join());
+      // Rebuilt from the whole result list every time: the list is the
+      // session's transcript, and a recognizer may re-deliver earlier results
+      // (resultIndex 0). Appending only the changed range duplicated them.
+      const parts: string[] = [];
+      for (let i = 0; i < e.results.length; i += 1) parts.push(e.results[i]![0].transcript.trim());
+      heard = parts.filter(Boolean).join(" ");
+      if (!cancelled) handlers.onText(heard);
     };
     rec.onerror = (e) => {
       // "aborted" is our own cancel; everything else is reported once.
@@ -133,7 +131,7 @@ export const browserDictation: DictationEngine = {
     rec.onend = () => {
       if (cancelled || failed) return;
       // An interim guess at the moment of stopping is kept: it is what the user saw.
-      handlers.onEnd(join());
+      handlers.onEnd(heard);
     };
     try {
       rec.start();

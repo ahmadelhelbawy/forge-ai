@@ -88,3 +88,16 @@ describe("discovered-item coverage (WS-R33 amended)", () => {
     expect(deltas.filter((d) => d.field === "prompt").map((d) => d.text).join("")).toBe("P");
   });
 });
+
+describe("model JSON: trailing commas are the one syntactic tolerance", () => {
+  it("reads an envelope and a discovery object with trailing commas, and nothing more broken than that", async () => {
+    const { parseEnvelope, stripTrailingCommas } = await import("../../src/conversation/generate.js");
+    const { readDiscoveryUpdate } = await import("../../src/conversation/discovery.js");
+    const text = '{"reply":"ok, fine,]","prompt":null,"discovery":{"brief":{"goal":"g",},"questions":[{"question":"Which tools?","options":["a","b",]},],"ready":false,"research_needed":null,"artifact_kind":null}}';
+    expect(parseEnvelope(text)).toEqual({ reply: "ok, fine,]", prompt: null });
+    expect(readDiscoveryUpdate(text).update?.questions[0]?.options).toEqual(["a", "b"]);
+    // Commas inside strings are content.
+    expect(stripTrailingCommas('["a,]"]')).toBe('["a,]"]');
+    expect(parseEnvelope('{"reply": "x" "prompt": null}')).toBeNull();
+  });
+});

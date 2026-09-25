@@ -35,11 +35,11 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-23 at the Product Sprint 2 commit — **1320 tests passing (91
-skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the HTTP
-product suite green twice in a row (`web/scripts/e2e.sh`, **90/90**), the frozen
-P1.6 manifest verifying ×3, and the live acceptance in `evals/sprint2/`
-(25/25 on the rerun; the first pass's four failures are explained there).
+Verified 2026-09-25 at the pre-release hardening commit — **1337 tests passing
+(94 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
+HTTP product suite plus browser acceptance green twice in a row
+(`web/scripts/e2e.sh`, **93/93** + **7/7** browser checks), the frozen P1.6
+manifest verifying ×3, and the live acceptance in `evals/hardening/`.
 
 **Complete:** P0 (IR foundation) · P1 (compiler + 7 profiles) · P1.4 (security
 hardening) · P1.5 + P1.6 (thesis gates — both ran; claim retired) · P2 (context
@@ -111,10 +111,25 @@ since V2-R step 5 (prompt rule 3 forbids demoting a stated obligation), so the
 committed fixture cassettes were regenerated — regenerate with
 `tsx scripts/gen-task-cassettes.ts` after any `src/intent/prompt.md` change.
 
+**Pre-release hardening (2026-09-24/25).** Explicit Generate finalises: open
+questions are decided (never written into the prompt as questions), `FORGE-W010`
+is info, and discovery keeps them as `decided`. Discovered-item coverage is
+`checkCoverage` (`src/conversation/coverage.ts`): overlap + a fixed polarity rule,
+then a model-cited passage verified verbatim — advisory, labelled so. Voice → text
+(`web/lib/dictation.ts`). `web/middleware.ts` refuses cross-origin writes and
+unknown hosts — **FORGE still has no login**. Browser acceptance now runs in
+`web/scripts/e2e.sh`. Live run and the eight defects it found: `evals/hardening/`.
+
 **Known defects, recorded and unfixed.** `evals/p16/README.md` still says
 "NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023
 asserts a dependency test that does not exist; cassette replay is unreachable
-from `web/`.
+from `web/`. The IR extractor raises a *blocking* scope ("blast radius") question
+for non-code agent prompts, so they compile with `FORGE-C080` and cannot be
+packaged — fixing it is a Task IR contract change. IR extraction on a reasoning
+model can take minutes or exhaust its budget. `WorkspaceGuard` checks a path's
+real path, then reads it in a separate call (a TOCTOU window if the workspace
+itself is hostile). Dictation is verified with a scripted recognizer only; real
+speech depends on the browser (Chromium sends audio to its vendor's service).
 
 *Fixed in Sprint 2, previously listed here:* a provider `HTTP 429` whose message
 said "quota" was told to the user as a billing problem; it is now a rate limit

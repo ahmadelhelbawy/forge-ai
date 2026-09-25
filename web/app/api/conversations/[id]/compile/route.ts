@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { failureReport } from "@/lib/turn/http";
 
 import { compileVersionForTargets, MAX_COMPILE_TARGETS, profileForTarget, type VersionCompilation } from "@/lib/compile";
 import { loadConversation, saveConversation } from "@/lib/store";
@@ -77,7 +78,9 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
     // then failed; keeping it means a retry does not pay for the call twice.
     saveConversation(convo);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : String(error), conversationIntact: true },
+      // Through the same classifier as a chat failure: a status in the user's
+      // terms, never a provider's raw body (which was once a whole HTML page).
+      { error: failureReport(convo, error, "compile").message, conversationIntact: true },
       { status: 502 },
     );
   }

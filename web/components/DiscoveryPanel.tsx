@@ -210,7 +210,7 @@ export function DiscoveryPanel({
           disabled={disabled}
           onClick={() => onGenerate(withModes ? mode : undefined)}
           data-testid="discovery-generate"
-          title={unresolved > 0 ? `${unresolved} open question(s) will be stated as assumptions in the prompt.` : "Write the prompt now."}
+          title={unresolved > 0 ? `Write the final prompt now. FORGE decides the ${unresolved} open question(s) with sensible defaults and tells you which.` : "Write the final prompt now."}
           className={`flex h-8 items-center gap-1.5 rounded-lg px-3.5 text-[13px] font-medium transition-colors disabled:opacity-40 ${
             discovery.ready || refine
               ? "bg-ember-500 text-[#1a0d02] hover:bg-ember-400"
@@ -224,7 +224,7 @@ export function DiscoveryPanel({
       {unresolved > 0 || discovery.ready ? (
         <div className="px-4 pb-2.5 text-[11.5px] text-slate-500">
           {discovery.ready ? "FORGE thinks there is enough to write a good prompt. " : ""}
-          {unresolved > 0 ? `${unresolved} question${unresolved === 1 ? "" : "s"} still open — generating states them as assumptions.` : ""}
+          {unresolved > 0 ? `${unresolved} question${unresolved === 1 ? "" : "s"} still open. Generate anytime — FORGE decides ${unresolved === 1 ? "it" : "them"} and tells you how.` : ""}
         </div>
       ) : null}
     </section>

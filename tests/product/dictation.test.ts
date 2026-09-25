@@ -69,8 +69,11 @@ describe("browser dictation", () => {
     expect(rec.started && rec.continuous && rec.interimResults).toBe(true);
     rec.say([["build an agent", true], [" that triages", false]]);
     expect(log.text.at(-1)).toBe("build an agent that triages");
+    // A recognizer may re-deliver earlier finals from index 0: no duplication.
+    rec.say([["build an agent", true], ["that triages email", true]]);
+    expect(log.text.at(-1)).toBe("build an agent that triages email");
     session.stop();
-    expect(log.end).toEqual(["build an agent that triages"]);
+    expect(log.end).toEqual(["build an agent that triages email"]);
   });
 
   it("cancel reports nothing: no end, no error", () => {

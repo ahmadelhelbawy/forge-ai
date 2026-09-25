@@ -46,22 +46,70 @@ export type ConversationEnvelope = z.infer<typeof ConversationEnvelopeSchema>;
  * the caller degrades to a reply-only turn and records a diagnostic (INV-012).
  * Never a guess at what the model meant to write.
  */
+/**
+ * Remove commas that directly precede a closing `}` or `]`, outside strings.
+ *
+ * The one syntactic tolerance FORGE applies to model JSON, and it is lossless:
+ * `[a, b,]` can only mean `[a, b]`. Measured live in the hardening pass — a
+ * trailing comma turned a complete, correct discovery answer into a W003 and
+ * a repair call. Nothing else is repaired, and no value is reinterpreted.
+ */
+export function stripTrailingCommas(json: string): string {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < json.length; i += 1) {
+    const ch = json[i] as string;
+    if (inString) {
+      out += ch;
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    if (ch === ",") {
+      let j = i + 1;
+      while (j < json.length && /\s/.test(json[j] as string)) j += 1;
+      if (json[j] === "}" || json[j] === "]") continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+/** JSON.parse, then once more with trailing commas removed. Throws if both fail. */
+export function parseModelJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (first) {
+    const cleaned = stripTrailingCommas(text);
+    if (cleaned === text) throw first;
+    return JSON.parse(cleaned);
+  }
+}
+
 export function parseEnvelope(text: string): ConversationEnvelope | null {
+  return readEnvelope(text).envelope;
+}
+
+/** The same read, with the reason it failed, for the W003 the caller emits. */
+export function readEnvelope(text: string): { envelope: ConversationEnvelope | null; problem: string | null } {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  if (start === -1 || end <= start) return null;
+  if (start === -1 || end <= start) return { envelope: null, problem: "no JSON object in the response" };
   let payload: unknown;
   try {
-    payload = JSON.parse(text.slice(start, end + 1));
-  } catch {
-    return null;
+    payload = parseModelJson(text.slice(start, end + 1));
+  } catch (error) {
+    return { envelope: null, problem: `invalid JSON (${error instanceof Error ? error.message : String(error)})` };
   }
-  if (typeof payload !== "object" || payload === null) return null;
+  if (typeof payload !== "object" || payload === null) return { envelope: null, problem: "the JSON is not an object" };
   const raw = payload as { reply?: unknown; prompt?: unknown };
   const reply = typeof raw.reply === "string" && raw.reply.trim().length > 0 ? raw.reply : null;
-  if (reply === null) return null;
+  if (reply === null) return { envelope: null, problem: "no non-empty `reply` string" };
   const prompt = typeof raw.prompt === "string" && raw.prompt.trim().length > 0 ? raw.prompt : null;
-  return { reply, prompt };
+  return { envelope: { reply, prompt }, problem: null };
 }
 
 export const generateValidators = {
@@ -111,6 +159,8 @@ export interface EnvelopeStreamReader {
   push(chunk: string): readonly EnvelopeDelta[];
   /** Everything fed so far, so `parseEnvelope` stays the authority. */
   raw(): string;
+  /** The streamed fields whose closing quote has been read: known to be whole. */
+  completed(): ReadonlySet<"reply" | "prompt">;
 }
 
 type ReaderState = "before" | "object" | "key" | "colon" | "value" | "string" | "scalar" | "nested" | "done";
@@ -153,6 +203,7 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
   let emitting = false;
   // For a nested value (the `coverage` array an explicit generate may add):
   // skipped, bracket by bracket, so a field after it still streams.
+  const done = new Set<"reply" | "prompt">();
   let depth = 0;
   let nestedString = false;
   let nestedEscape = false;
@@ -260,6 +311,7 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
       }
       case "string": {
         if (!readStringBody(deltas)) return false;
+        if (emitting) done.add(key as "reply" | "prompt");
         emitting = false;
         state = "object";
         return true;
@@ -314,5 +366,6 @@ export function createEnvelopeStreamReader(): EnvelopeStreamReader {
       return deltas;
     },
     raw: () => raw,
+    completed: () => done,
   };
 }

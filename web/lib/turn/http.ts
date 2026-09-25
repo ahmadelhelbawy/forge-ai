@@ -122,10 +122,14 @@ export function settingsRefusal(convo: Conversation, error: unknown): NextRespon
 }
 
 /** The user-facing text and full diagnostic for a provider failure. */
-export function failureReport(convo: Conversation, error: unknown): { message: string; diagnostic: string; detail: unknown } {
+export function failureReport(
+  convo: Conversation,
+  error: unknown,
+  stage = "chat",
+): { message: string; diagnostic: string; detail: unknown } {
   const finding = providerDiagnostic(error, {
     provider: convo.provider,
-    stage: "chat",
+    stage,
     ...(convo.model ? { model: convo.model } : {}),
   });
   logProviderFailure(finding);

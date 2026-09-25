@@ -1530,6 +1530,30 @@ Leave/Reopen discovery; persisted verifications; the workspace redesign
 (resizable/collapsible panels, pipeline rail, Discovery and Contract views).
 Live acceptance in `evals/sprint2/`.
 **Not done:** V2-I (one-command start, Docker, release) remains next.
+
+### Pre-release hardening *(2026-09-24/25)*
+
+**Objective.** Make an explicit Generate read as a finished operation, make
+requirement coverage honest, and remove what would embarrass FORGE on release —
+without deploying and without changing the thesis.
+**Done:** WS-R32 amended (open questions are decided, not written into the prompt;
+`FORGE-W010` → info, kept as `decided`); WS-R33 amended (`checkCoverage`: overlap
+with a fixed polarity rule, then a model-cited passage verified verbatim;
+per-item coverage shown and labelled advisory); `FORGE-W003` only when something
+was lost, naming the parse error, with the recovered reply shown instead of raw
+JSON; trailing-comma tolerance as the one syntactic repair of model JSON; voice →
+text (`web/lib/dictation.ts`, `MicButton`, browser engine, never auto-sent); the
+request guard (`web/middleware.ts`: cross-origin writes, DNS-rebinding hosts, body
+cap) and no saved key sent to a request-chosen endpoint; Stop/timeout abort
+non-streamed calls; truthful failure classes (billing only when money is named,
+5xx, timeout, HTML error pages named); compile/package reachable for
+anthropic-messages models on a gateway; conversation restored on reload; the
+New-conversation race; Save/Restore failures surfaced; browser acceptance on
+every `e2e.sh` (`web/scripts/browser-acceptance.mjs`). Live run in
+`evals/hardening/`.
+**Deviation:** `playwright-core` added as a web dev dependency (browser acceptance
+had no reproducible runner). It downloads nothing; it drives the installed Chromium.
+**Not done:** V2-I (one-command start, Docker, release) remains next.
 ---
 
 ## Deviation log
