@@ -13,7 +13,7 @@ import { failureReport } from "@/lib/turn/http";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -26,7 +26,8 @@ interface Params {
  * Neither verb writes a prompt version. Promotion lives behind its own route
  * because it is a different act with a different consequence (ST-R6, WS-R2).
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json({
@@ -45,7 +46,8 @@ export async function GET(_request: Request, { params }: Params): Promise<NextRe
   });
 }
 
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

@@ -11,7 +11,7 @@ import {
 } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /** The longest text that can usefully be pinned verbatim and matched. */
@@ -29,7 +29,8 @@ const MAX_REQUIREMENT_LENGTH = 2000;
  * optimization: a ledger a model could reach would make the guarantee only as
  * good as an extraction call (spec §22.8).
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const prompt = currentPrompt(convo);
@@ -44,7 +45,8 @@ export async function GET(_request: Request, { params }: Params): Promise<NextRe
 }
 
 /** Pin a requirement. The only way an entry enters the ledger. */
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

@@ -3,11 +3,11 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { formatDiagnostic, logProviderFailure, providerDiagnostic } from "@/lib/diagnostics";
-import { analyzePrompt, getEffectiveProvider } from "@/lib/forge";
+import { analyzePrompt, defaultProviderId, getEffectiveProvider } from "@/lib/forge";
 import { appendTurnEvent, currentPrompt, loadConversation, recordModelCall, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -15,7 +15,8 @@ interface Params {
  * boundary over the current prompt plus deterministic strategy selection.
  * Read-only — it never edits the conversation.
  */
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const prompt = currentPrompt(convo);
@@ -28,7 +29,7 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
     body = {};
   }
   const providerId =
-    (typeof body.provider === "string" && body.provider) || convo.provider || "openai-compat";
+    (typeof body.provider === "string" && body.provider) || convo.provider || defaultProviderId();
   const model = (typeof body.model === "string" && body.model) || convo.model || undefined;
 
   if (process.env["FORGE_CHAT_STUB"]) {

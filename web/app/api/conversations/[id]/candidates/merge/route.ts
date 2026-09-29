@@ -4,7 +4,7 @@ import { CandidateStateError, mergeCandidatesInto } from "@/lib/candidates";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -16,7 +16,8 @@ interface Params {
  * returned with it, so a pinned requirement the union could not keep is
  * reported rather than absorbed (INV-012, WS-R25).
  */
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

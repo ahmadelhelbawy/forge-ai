@@ -4,7 +4,7 @@ import { describeDiscovered } from "@/lib/opencode-models";
 import { resolveProvider } from "@/lib/providers";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 function decodeId(id: string): string {
@@ -20,7 +20,8 @@ function decodeId(id: string): string {
  * it, otherwise the curated presets. Failures fall back silently — the
  * selector always offers presets plus a custom ID field.
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const id = decodeId(params.id);
   const eff = resolveProvider(id);
   if (!eff) return NextResponse.json({ error: "Unknown provider." }, { status: 404 });

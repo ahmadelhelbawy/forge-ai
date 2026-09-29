@@ -47,7 +47,9 @@ export class AnthropicProvider implements ModelProvider {
     if (!apiKey) {
       throw new ProviderError("ANTHROPIC_API_KEY is empty — cannot create the client.", "anthropic");
     }
-    this.client = new Anthropic({ apiKey, ...(baseURL ? { baseURL } : {}) });
+    // MB-R3: the SDK's own retries (2 by default) and 10-minute timeout are
+    // hidden behaviour at a boundary that must not retry or hang.
+    this.client = new Anthropic({ apiKey, maxRetries: 0, timeout: 300_000, ...(baseURL ? { baseURL } : {}) });
     this.defaultModel = defaultModel ?? process.env["FORGE_MODEL"] ?? ANTHROPIC_DEFAULT_MODEL;
   }
 

@@ -4,7 +4,7 @@ import { loadConversation, saveConversation } from "@/lib/store";
 import { preservationFor } from "@/lib/preservation";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -57,13 +57,15 @@ function payload(view: Awaited<ReturnType<typeof preservationFor>>, driftError?:
   };
 }
 
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json(payload(await preservationFor(convo, null)));
 }
 
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

@@ -5,7 +5,7 @@ import { depsFor, settingsRefusal, failure, prepareTurn, type TurnRequestBody } 
 import { executeTurn, type TurnDeps } from "@/lib/turn/pipeline";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -16,7 +16,8 @@ interface Params {
  * product HTTP suite reads a turn's outcome as one JSON object. Both routes
  * run the same pipeline over the same deps — the difference is transport.
  */
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

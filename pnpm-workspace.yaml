@@ -3,3 +3,7 @@ packages:
   - "web"
 allowBuilds:
   esbuild: true
+# next pins postcss 8.4.31, which carries source-map file-read advisories
+# (build-time only, but a fresh audit should be clean).
+overrides:
+  "postcss@<8.5.23": "^8.5.23"

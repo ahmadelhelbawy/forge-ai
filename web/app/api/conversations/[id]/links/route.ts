@@ -4,7 +4,7 @@ import { addAdvisoryLink, removeAdvisoryLink, RequirementActionError } from "@/l
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -14,13 +14,15 @@ interface Params {
  * collection is returned under its own name and never merged with the
  * authoritative linkage the traceability matrix derives.
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json({ advisory: true, links: convo.advisoryLinks });
 }
 
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   let body: { requirementId?: unknown; path?: unknown; note?: unknown } = {};
@@ -41,7 +43,8 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
   }
 }
 
-export async function DELETE(request: Request, { params }: Params): Promise<NextResponse> {
+export async function DELETE(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const linkId = new URL(request.url).searchParams.get("linkId") ?? "";

@@ -122,7 +122,7 @@ export async function irForVersion(
   }
 
   const resolved = getEffectiveProvider(options.provider ?? convo.provider, options.model ?? convo.model ?? undefined);
-  const headers = callHeaders(resolved);
+  const headers = callHeaders(resolved, convo.id);
   const { ir, record } = await extractIntent(version.text, {
     provider: resolved.provider,
     model: resolved.model,

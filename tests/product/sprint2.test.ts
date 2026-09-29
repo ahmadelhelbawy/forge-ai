@@ -40,7 +40,7 @@ import { reasoningFor } from "../../web/lib/reasoning-resolve";
 import { executeTurn, type GenerationContext, type TurnDeps } from "../../web/lib/turn/pipeline";
 import { recordVerification } from "../../web/lib/verify";
 
-const ENV_KEYS = ["FORGE_DATA_DIR", "FORGE_CHAT_STUB", "OPENAI_API_KEY", "FORGE_API_KEY"] as const;
+const ENV_KEYS = ["FORGE_DATA_DIR", "FORGE_CHAT_STUB", "OPENAI_API_KEY", "FORGE_API_KEY", "FORGE_BASE_URL"] as const;
 const saved: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>> = {};
 
 beforeEach(() => {
@@ -467,7 +467,9 @@ describe("WS-R42/WS-R43 — reasoning effort (AC-066)", () => {
   });
 
   it("bounds Default for a model that otherwise reasons without a limit, and only there", async () => {
+    // The legacy key belongs to OpenCode Go only when its base URL says so.
     process.env["FORGE_API_KEY"] = "sk-test-not-real";
+    process.env["FORGE_BASE_URL"] = "https://opencode.ai/zen/go/v1";
     const convo = newConversation({ title: "r", provider: "opencode-go", model: "qwen3.8-flash" });
     convo.reasoningEffort = "default";
     await expect(reasoningFor(convo)).resolves.toEqual({ wire: "anthropic-thinking", effort: "low" });
@@ -485,7 +487,9 @@ describe("WS-R42/WS-R43 — reasoning effort (AC-066)", () => {
   });
 
   it("keeps a stored effort through a model that cannot take it, sending nothing there", async () => {
+    // The legacy key belongs to OpenCode Go only when its base URL says so.
     process.env["FORGE_API_KEY"] = "sk-test-not-real";
+    process.env["FORGE_BASE_URL"] = "https://opencode.ai/zen/go/v1";
     const convo = newConversation({ title: "r", provider: "opencode-go", model: "kimi-k3" });
     convo.reasoningEffort = "high";
     // Not named by this request: nothing is sent, and the choice is not erased.

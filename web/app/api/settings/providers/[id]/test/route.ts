@@ -11,7 +11,7 @@ import { resolveCall, transportFor, UnsupportedModelError } from "@/lib/forge";
 import { recordTestResult, resolveProvider } from "@/lib/providers";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 function decodeId(id: string): string {
@@ -32,7 +32,8 @@ function decodeId(id: string): string {
  * The session id is stable for the test so repeated clicks reuse one session,
  * as the OpenCode Go docs require.
  */
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const id = decodeId(params.id);
   const summary = resolveProvider(id);
   if (!summary) return NextResponse.json({ error: "Unknown provider." }, { status: 404 });

@@ -7,10 +7,11 @@ import { currentPrompt, loadConversation, deleteConversation, saveConversation }
 import { isReasoningEffort } from "@/lib/store-types";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const { attachmentContents: _dropped, ...rest } = convo;
@@ -58,7 +59,8 @@ export async function GET(_request: Request, { params }: Params): Promise<NextRe
  * from a conversation is offered for confirmation in the UI and becomes a
  * setting only when the user sends it here.
  */
-export async function PATCH(request: Request, { params }: Params): Promise<NextResponse> {
+export async function PATCH(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   let body: Record<string, unknown>;
@@ -115,7 +117,8 @@ export async function PATCH(request: Request, { params }: Params): Promise<NextR
   });
 }
 
-export async function DELETE(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function DELETE(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const ok = deleteConversation(params.id);
   if (!ok) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json({ deleted: true });

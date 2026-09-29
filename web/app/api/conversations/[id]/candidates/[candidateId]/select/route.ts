@@ -4,7 +4,7 @@ import { CandidateStateError, promoteCandidate } from "@/lib/candidates";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string; candidateId: string };
+  params: Promise<{ id: string; candidateId: string }>;
 }
 
 /**
@@ -15,7 +15,8 @@ interface Params {
  * gesture. The version it writes is appended, never substituted (WS-R7), and
  * Layer 1 runs over it before the response is returned (WS-R25, WS-R29).
  */
-export async function POST(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

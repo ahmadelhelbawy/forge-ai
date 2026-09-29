@@ -36,7 +36,7 @@ export const PRESETS: readonly ProviderPreset[] = [
     kind: "anthropic",
     displayName: "Anthropic",
     defaultBaseURL: null,
-    envKeys: ["ANTHROPIC_API_KEY", "FORGE_API_KEY"],
+    envKeys: ["ANTHROPIC_API_KEY"],
     envBaseURLs: [],
     defaultModel: "claude-sonnet-4-5",
     modelsPreset: [
@@ -51,8 +51,8 @@ export const PRESETS: readonly ProviderPreset[] = [
     kind: "openai-compat",
     displayName: "OpenAI",
     defaultBaseURL: "https://api.openai.com/v1",
-    envKeys: ["OPENAI_API_KEY", "FORGE_API_KEY"],
-    envBaseURLs: ["OPENAI_BASE_URL", "FORGE_BASE_URL"],
+    envKeys: ["OPENAI_API_KEY"],
+    envBaseURLs: ["OPENAI_BASE_URL"],
     defaultModel: "gpt-4o-mini",
     modelsPreset: [
       { id: "gpt-4o-mini", displayName: "GPT-4o mini" },
@@ -95,8 +95,8 @@ export const PRESETS: readonly ProviderPreset[] = [
     kind: "openai-compat",
     displayName: "OpenCode Go",
     defaultBaseURL: "https://opencode.ai/zen/go/v1",
-    envKeys: ["FORGE_API_KEY", "OPENAI_API_KEY"],
-    envBaseURLs: ["FORGE_BASE_URL"],
+    envKeys: [],
+    envBaseURLs: [],
     defaultModel: "kimi-k3",
     // From the documented registry: display name for the UI, id for the wire.
     modelsPreset: openCodeModels().map((m) => ({ id: m.id, displayName: m.displayName })),
@@ -143,37 +143,95 @@ function secretsPath(): string {
   return join(dataDir(), "providers.secrets");
 }
 
-let warnedInsecureSecret = false;
+/**
+ * The key that encrypted secrets before 0.1.0. It is published in this source,
+ * so it protects nothing: it is only ever used to READ an old secrets file,
+ * which is then re-encrypted under the real key (see `readSecrets`).
+ */
+const LEGACY_PUBLIC_SECRET = "forge-dev-secret--change-me";
 
-function appSecret(): { secret: string; insecureDefault: boolean } {
+function appSecretPath(): string {
+  return join(dataDir(), "app.secret");
+}
+
+/**
+ * FORGE_APP_SECRET when set; otherwise a random per-install key kept beside
+ * the store with owner-only permissions. A short FORGE_APP_SECRET is refused,
+ * never silently weakened (INV-012).
+ */
+function appSecret(): string {
   const configured = process.env["FORGE_APP_SECRET"];
-  if (configured && configured.length >= 16) return { secret: configured, insecureDefault: false };
-  if (!configured && !warnedInsecureSecret) {
-    warnedInsecureSecret = true;
-    console.warn("[forge] FORGE_APP_SECRET is not set — provider secrets use an insecure dev key. Set it in production.");
+  if (configured !== undefined && configured.length > 0) {
+    if (configured.length < 16) throw new Error("FORGE_APP_SECRET must be at least 16 characters.");
+    return configured;
   }
-  return { secret: configured && configured.length > 0 ? configured : "forge-dev-secret--change-me", insecureDefault: true };
+  const path = appSecretPath();
+  try {
+    return readFileSync(path, "utf8").trim();
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(path, randomBytes(32).toString("hex"), { encoding: "utf8", mode: 0o600, flag: "wx" });
+  } catch (error) {
+    // Another request created it first; use theirs.
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+  }
+  return readFileSync(path, "utf8").trim();
 }
 
-function cipherKey(): Buffer {
-  return scryptSync(appSecret().secret, "forge-provider-v1", 32);
+function keyFrom(secret: string): Buffer {
+  return scryptSync(secret, "forge-provider-v1", 32);
 }
 
-function encryptSecret(plain: string): { iv: string; tag: string; data: string } {
+type SecretBlob = { iv: string; tag: string; data: string };
+
+function encryptSecret(plain: string): SecretBlob {
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", cipherKey(), iv);
+  const cipher = createCipheriv("aes-256-gcm", keyFrom(appSecret()), iv);
   const data = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
   return { iv: iv.toString("base64"), tag: cipher.getAuthTag().toString("base64"), data: data.toString("base64") };
 }
 
-function decryptSecret(blob: { iv: string; tag: string; data: string }): string {
+function decryptWith(secret: string, blob: SecretBlob): string {
+  const decipher = createDecipheriv("aes-256-gcm", keyFrom(secret), Buffer.from(blob.iv, "base64"));
+  decipher.setAuthTag(Buffer.from(blob.tag, "base64"));
+  return Buffer.concat([decipher.update(Buffer.from(blob.data, "base64")), decipher.final()]).toString("utf8");
+}
+
+function decryptSecret(blob: SecretBlob): string {
   try {
-    const decipher = createDecipheriv("aes-256-gcm", cipherKey(), Buffer.from(blob.iv, "base64"));
-    decipher.setAuthTag(Buffer.from(blob.tag, "base64"));
-    return Buffer.concat([decipher.update(Buffer.from(blob.data, "base64")), decipher.final()]).toString("utf8");
-  } catch {
+    return decryptWith(appSecret(), blob);
+  } catch (error) {
+    if ((error as Error).message.startsWith("FORGE_APP_SECRET")) throw error;
     throw new Error("Provider secrets cannot be decrypted — FORGE_APP_SECRET changed or is wrong.");
   }
+}
+
+/** Re-encrypt blobs written under the published pre-0.1.0 key. Returns true if any changed. */
+function migrateLegacySecrets(secrets: SecretsFile): boolean {
+  const current = appSecret();
+  let changed = false;
+  for (const entry of Object.values(secrets)) {
+    for (const field of ["apiKey", "headers"] as const) {
+      const blob = entry[field];
+      if (!blob) continue;
+      try {
+        decryptWith(current, blob);
+        continue;
+      } catch {
+        // not under the current key — maybe the legacy one
+      }
+      try {
+        entry[field] = encryptSecret(decryptWith(LEGACY_PUBLIC_SECRET, blob));
+        changed = true;
+      } catch {
+        // Neither key opens it: leave it for decryptSecret to report loudly.
+      }
+    }
+  }
+  return changed;
 }
 
 function readStore(): StoreFile {
@@ -195,31 +253,41 @@ function readStore(): StoreFile {
 
 function writeStore(store: StoreFile): void {
   const path = storePath();
-  mkdirSync(dirname(path), { recursive: true });
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, JSON.stringify(store, null, 2), "utf8");
+  writeFileSync(tmp, JSON.stringify(store, null, 2), { encoding: "utf8", mode: 0o600 });
   renameSync(tmp, path);
 }
 
+const migratedSecrets = new Set<string>();
+
 function readSecrets(): SecretsFile {
+  let secrets: SecretsFile;
   try {
-    return JSON.parse(readFileSync(secretsPath(), "utf8")) as SecretsFile;
+    secrets = JSON.parse(readFileSync(secretsPath(), "utf8")) as SecretsFile;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
     throw error;
   }
+  const path = secretsPath();
+  if (!migratedSecrets.has(path)) {
+    if (migrateLegacySecrets(secrets)) writeSecrets(secrets);
+    migratedSecrets.add(path);
+  }
+  return secrets;
 }
 
 function writeSecrets(secrets: SecretsFile): void {
   const path = secretsPath();
-  mkdirSync(dirname(path), { recursive: true });
+  mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = `${path}.tmp`;
-  writeFileSync(tmp, JSON.stringify(secrets), "utf8");
+  // Owner-only from the first byte: a chmod after the rename left a window.
+  writeFileSync(tmp, JSON.stringify(secrets), { encoding: "utf8", mode: 0o600 });
   renameSync(tmp, path);
   try {
     chmodSync(path, 0o600);
   } catch {
-    // Best effort (non-POSIX filesystems).
+    // Best effort (non-POSIX filesystems); the file was created 0600 above.
   }
 }
 
@@ -229,6 +297,43 @@ export function maskKey(key: string): string {
   if (key.length <= 8) return "••••••••";
   const prefix = key.slice(0, 3);
   return `${prefix}••••••••${key.slice(-4)}`;
+}
+
+function isOpenCodeHost(url: string | undefined): boolean {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname;
+    return host === "opencode.ai" || host.endsWith(".opencode.ai");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The environment names that belong to one preset. The generic legacy names
+ * (FORGE_API_KEY / FORGE_BASE_URL) belong to exactly ONE preset — the one
+ * FORGE_PROVIDER or FORGE_BASE_URL names — so a key issued by one vendor is
+ * never offered to (and sent to) another. OPENAI_* reaches OpenCode Go only
+ * when OPENAI_BASE_URL points at OpenCode.
+ */
+function envNames(preset: ProviderPreset): { keys: string[]; baseURLs: string[] } {
+  const keys = [...preset.envKeys];
+  const baseURLs = [...preset.envBaseURLs];
+  const legacyOwner =
+    process.env["FORGE_PROVIDER"] === "anthropic"
+      ? "anthropic"
+      : isOpenCodeHost(process.env["FORGE_BASE_URL"])
+        ? "opencode-go"
+        : "openai";
+  if (preset.id === legacyOwner) {
+    keys.push("FORGE_API_KEY");
+    if (legacyOwner !== "anthropic") baseURLs.push("FORGE_BASE_URL");
+  }
+  if (preset.id === "opencode-go" && isOpenCodeHost(process.env["OPENAI_BASE_URL"])) {
+    keys.push("OPENAI_API_KEY");
+    baseURLs.push("OPENAI_BASE_URL");
+  }
+  return { keys, baseURLs };
 }
 
 function firstEnv(names: readonly string[]): string {
@@ -278,18 +383,21 @@ export function resolveProvider(id: string): EffectiveProvider | null {
   // into the Authorization header either.
   const apiKey = (
     (storedSecrets?.apiKey ? decryptSecret(storedSecrets.apiKey) : "") ||
-    (preset ? firstEnv(preset.envKeys) : "")
+    (preset ? firstEnv(envNames(preset).keys) : "")
   ).trim();
   const headers: Record<string, string> = {};
   if (storedSecrets?.headers) {
+    const plain = decryptSecret(storedSecrets.headers);
     try {
-      Object.assign(headers, JSON.parse(decryptSecret(storedSecrets.headers)) as Record<string, string>);
+      Object.assign(headers, JSON.parse(plain) as Record<string, string>);
     } catch {
-      // Corrupt headers blob: fail closed on headers, keep the key path working.
+      // Sending the request without them would fail as a confusing auth error.
+      throw new Error(`Stored headers for provider "${id}" are corrupt — re-enter them in Settings.`);
     }
   }
-  const envModel = process.env["FORGE_MODEL"] ?? "";  const baseURL =
-    override?.baseURL ?? custom?.baseURL ?? (preset ? firstEnv(preset.envBaseURLs) || preset.defaultBaseURL : null);
+  const envModel = process.env["FORGE_MODEL"] ?? "";
+  const baseURL =
+    override?.baseURL ?? custom?.baseURL ?? (preset ? firstEnv(envNames(preset).baseURLs) || preset.defaultBaseURL : null);
   const hasStoredConfig = override !== undefined || storedSecrets !== undefined || custom !== null;
   return {
     id,
@@ -365,11 +473,36 @@ export interface SaveInput {
   headers?: Record<string, string> | null;
 }
 
-/** Save a settings override. An empty/absent apiKey keeps the stored key. */
+/** A settings change the user must correct; routes answer it with HTTP 400. */
+export class ProviderInputError extends Error {}
+
+/** An endpoint FORGE may send a key to: an absolute http(s) URL, nothing else. */
+export function checkBaseURL(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new ProviderInputError("Base URL must be an absolute URL, e.g. https://api.example.com/v1.");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new ProviderInputError("Base URL must start with https:// (or http:// for a local server).");
+  }
+  if (url.username || url.password) throw new ProviderInputError("Put credentials in the API key field, not in the URL.");
+  return value;
+}
+
+/**
+ * Save a settings override. An empty/absent apiKey keeps the stored key —
+ * but only for the endpoint it was saved with: moving a key to a different
+ * endpoint requires supplying it again, so no request can redirect a stored
+ * (or environment) key to a host of its choosing.
+ */
 export function saveProvider(id: string, input: SaveInput): ProviderSummary {
+  const before = resolveProvider(id);
   const store = readStore();
   const secrets = readSecrets();
   const existing = store.overrides[id] ?? {};
+  if (typeof input.baseURL === "string" && input.baseURL.trim()) checkBaseURL(input.baseURL.trim());
   const next: StoredOverride = { ...existing };
   if (input.enabled !== undefined) next.enabled = input.enabled;
   if (input.displayName !== undefined && input.displayName.trim()) next.displayName = input.displayName.trim().slice(0, 80);
@@ -381,6 +514,14 @@ export function saveProvider(id: string, input: SaveInput): ProviderSummary {
   store.overrides[id] = next;
   const entry = secrets[id] ?? {};
   const apiKey = input.apiKey?.trim() ?? "";
+  if (before && before.apiKey && apiKey.length === 0) {
+    const preset = presetById(id);
+    const custom = customById(store, id);
+    const after = next.baseURL ?? custom?.baseURL ?? (preset ? firstEnv(envNames(preset).baseURLs) || preset.defaultBaseURL : null);
+    if ((after ?? "") !== (before.baseURL ?? "")) {
+      throw new ProviderInputError("Enter the API key again to use it with a different base URL.");
+    }
+  }
   if (apiKey.length > 0) {
     entry.apiKey = encryptSecret(apiKey);
   }
@@ -424,6 +565,7 @@ export function createCustomProvider(input: { name: string; baseURL: string; mod
   const name = input.name.trim().slice(0, 80);
   if (!name) throw new Error("Custom provider needs a name.");
   if (!input.baseURL.trim()) throw new Error("Custom provider needs a base URL.");
+  checkBaseURL(input.baseURL.trim());
   const id = `custom-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "provider"}`;
   const store = readStore();
   if (customById(store, id) || presetById(id)) throw new Error(`A provider named "${name}" already exists.`);

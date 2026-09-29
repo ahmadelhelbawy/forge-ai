@@ -23,59 +23,19 @@ import type { TransportSpec } from "./ai-provider";
 import type { Protocol } from "./opencode-models";
 import { openCodeModel } from "./opencode-models";
 import type { ProviderKind } from "./providers";
-import { getDefaultModel, listModelOptions, resolveProvider } from "./providers";
+import { getDefaultModel, listModelOptions, listProviderSummaries, resolveProvider } from "./providers";
 
 export { ProviderError };
 
 /** Identifies FORGE to gateways that log or route on User-Agent. */
 export const FORGE_USER_AGENT = "forge/0.1.0-alpha.0";
 
-export interface ProviderInfo {
-  readonly id: string;
-  readonly available: boolean;
-  readonly defaultModel: string;
-  readonly baseUrlConfigured: boolean;
-}
-
-function openAiBaseUrl(): string {
-  return process.env["FORGE_BASE_URL"] ?? process.env["OPENAI_BASE_URL"] ?? "https://api.openai.com/v1";
-}
-
-function openAiKey(): string {
-  return process.env["FORGE_API_KEY"] ?? process.env["OPENAI_API_KEY"] ?? "";
-}
-
-export function listProviders(): ProviderInfo[] {
-  return [
-    {
-      id: "anthropic",
-      available: Boolean(process.env["ANTHROPIC_API_KEY"] ?? process.env["FORGE_API_KEY"]),
-      defaultModel: process.env["FORGE_MODEL"] ?? "claude-sonnet-4-5",
-      baseUrlConfigured: false,
-    },
-    {
-      id: "openai-compat",
-      available: openAiKey().length > 0,
-      defaultModel: process.env["FORGE_MODEL"] ?? "kimi-k3",
-      baseUrlConfigured: (process.env["FORGE_BASE_URL"] ?? process.env["OPENAI_BASE_URL"] ?? "").length > 0,
-    },
-  ];
-}
-
-/** Build a provider from server-side credentials. Keys never leave the server. */
-export function getProvider(id: string): ModelProvider {
-  if (id === "anthropic") {
-    const key = process.env["ANTHROPIC_API_KEY"] ?? process.env["FORGE_API_KEY"] ?? "";
-    return new AnthropicProvider(key, process.env["FORGE_MODEL"]);
-  }
-  const key = openAiKey();
-  return new OpenAiCompatProvider(key, openAiBaseUrl(), process.env["FORGE_MODEL"]);
-}
-
+/**
+ * The provider a conversation starts on when nothing else chose one: the
+ * first provider that has a key (Settings or environment), else OpenAI.
+ */
 export function defaultProviderId(): string {
-  if (openAiKey().length > 0) return "openai-compat";
-  if (process.env["ANTHROPIC_API_KEY"]) return "anthropic";
-  return "openai-compat";
+  return listProviderSummaries().find((p) => p.enabled && p.maskedKey)?.id ?? "openai";
 }
 
 export interface ResolvedChatProvider {
@@ -184,7 +144,9 @@ export function resolveCall(
     displayModel,
     protocol,
     sessionHeader: eff.sessionHeader,
-    configuredHeaders: eff.headers,
+    // Stored headers can carry credentials too: like the key, they only go to
+    // the saved endpoint.
+    configuredHeaders: overriddenURL && overriddenURL !== (eff.baseURL ?? "") ? {} : eff.headers,
   };
 }
 
@@ -280,10 +242,10 @@ export function getEffectiveProvider(providerId: string, model?: string): Resolv
  * `x-opencode-session`). Single source of truth — every call site that builds
  * these itself is a place the session header can go missing.
  */
-export function callHeaders(resolved: ResolvedChatProvider): Record<string, string> {
+export function callHeaders(resolved: ResolvedChatProvider, sessionId: string = randomUUID()): Record<string, string> {
   const headers: Record<string, string> = { ...resolved.extraHeaders };
   const sessionHeader = resolved.sessionHeader ?? process.env["FORGE_SESSION_HEADER"];
-  if (sessionHeader) headers[sessionHeader] = randomUUID();
+  if (sessionHeader) headers[sessionHeader] = sessionId;
   return headers;
 }
 

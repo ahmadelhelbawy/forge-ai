@@ -6,7 +6,7 @@ import { depsFor, settingsRefusal, failureReport, prepareTurn, type TurnRequestB
 import { runTurn, type TurnDeps, type TurnResult } from "@/lib/turn/pipeline";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -77,7 +77,8 @@ function outcome(convo: Conversation, result: TurnResult): Record<string, unknow
   };
 }
 
-export async function POST(request: Request, { params }: Params): Promise<Response> {
+export async function POST(request: Request, context: Params): Promise<Response> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

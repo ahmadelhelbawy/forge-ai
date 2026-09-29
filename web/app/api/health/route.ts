@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 
-import { listProviders } from "@/lib/forge";
+import { listProviderSummaries } from "@/lib/providers";
 import { dataDir } from "@/lib/store";
 import { accessSync, constants, mkdirSync } from "node:fs";
 
@@ -15,7 +15,8 @@ export async function GET(): Promise<NextResponse> {
   } catch {
     storage = "unavailable";
   }
-  const providers = listProviders();
+  // Availability only — never a key, masked or otherwise.
+  const providers = listProviderSummaries().filter((p) => p.enabled);
   return NextResponse.json({
     ok: storage === "writable",
     version: "0.1.0",
@@ -23,9 +24,9 @@ export async function GET(): Promise<NextResponse> {
     storage,
     providers: providers.map((p) => ({
       id: p.id,
-      available: p.available,
+      available: p.maskedKey.length > 0,
       defaultModel: p.defaultModel,
-      baseUrlConfigured: p.baseUrlConfigured,
+      baseUrlConfigured: p.baseURL !== null,
     })),
   });
 }

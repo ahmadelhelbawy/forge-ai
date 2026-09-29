@@ -4,7 +4,7 @@ import { decideRequirement, requirementRegistry, RequirementActionError } from "
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -15,14 +15,16 @@ interface Params {
  * ids only. There is no model on any path in this file, and a refused decision
  * records nothing (409, with the rule it broke).
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const registry = requirementRegistry(convo);
   return NextResponse.json({ layer: "deterministic", ...registry, decisions: convo.governance });
 }
 
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   let body: { decision?: unknown } = {};

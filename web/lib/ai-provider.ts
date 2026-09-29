@@ -66,6 +66,13 @@ export interface GenerateInput {
  */
 export const MODEL_CALL_TIMEOUT_MS = 240_000;
 
+/**
+ * Upper bound for one STREAMED call. A long REVISE measured ~2 minutes; a
+ * stream still running after this is stalled (or a keep-alive that never
+ * ends), and the user deserves a named failure rather than an endless spinner.
+ */
+export const STREAM_CALL_TIMEOUT_MS = 600_000;
+
 export interface GenerateResult {
   readonly text: string;
   readonly modelId: string;
@@ -133,6 +140,10 @@ export async function generate(spec: TransportSpec, input: GenerateInput): Promi
     system: input.system,
     prompt: input.prompt,
     abortSignal: input.signal ? AbortSignal.any([input.signal, timeout]) : timeout,
+    // MB-R3: no hidden retries. The SDK default (2) tripled every failing call,
+    // multiplied spend on a rate-limited key, and wrapped the final error so
+    // its HTTP status never reached the diagnostic.
+    maxRetries: 0,
     ...callOptions(spec, input),
   });
   return { text: result.text, modelId: spec.modelId, latencyMs: Date.now() - started, finishReason: result.finishReason };
@@ -153,12 +164,14 @@ export async function generate(spec: TransportSpec, input: GenerateInput): Promi
  */
 export async function generateStream(spec: TransportSpec, input: StreamInput): Promise<GenerateResult> {
   const started = Date.now();
+  const timeout = AbortSignal.timeout(STREAM_CALL_TIMEOUT_MS);
   const result = streamText({
     model: buildModel(spec),
     system: input.system,
     prompt: input.prompt,
+    maxRetries: 0,
     ...callOptions(spec, input),
-    ...(input.signal ? { abortSignal: input.signal } : {}),
+    abortSignal: input.signal ? AbortSignal.any([input.signal, timeout]) : timeout,
   });
   const text = await collectTextStream(result.fullStream, input.onChunk);
   const finishReason = await Promise.resolve(result.finishReason).catch(() => undefined);

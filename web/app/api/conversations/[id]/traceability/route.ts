@@ -4,7 +4,7 @@ import { traceabilityFor } from "@/lib/requirements";
 import { loadConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /** The longest evidence body accepted, matching the verify route. */
@@ -20,7 +20,8 @@ const MAX_EVIDENCE_LENGTH = 1_000_000;
  * advisory links — kept in their own field. The response is the matrix's
  * canonical JSON, byte-identical for identical inputs.
  */
-export async function POST(request: Request, { params }: Params): Promise<Response> {
+export async function POST(request: Request, context: Params): Promise<Response> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   let body: { target?: unknown; evidence?: unknown } = {};

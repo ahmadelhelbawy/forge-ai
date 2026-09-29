@@ -5,7 +5,7 @@ import { packageVersion, PackageLeakError } from "@/lib/package";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -23,7 +23,8 @@ interface Params {
  * This route **writes no prompt version and executes nothing** (`WS-R2`,
  * `INV-004`).
  */
-export async function POST(request: Request, { params }: Params): Promise<Response> {
+export async function POST(request: Request, context: Params): Promise<Response> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string; v: string };
+  params: Promise<{ id: string; v: string }>;
 }
 
-export async function POST(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const v = Number.parseInt(params.v, 10);

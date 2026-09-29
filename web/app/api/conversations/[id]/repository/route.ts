@@ -4,7 +4,7 @@ import { bindRepository, boundRepository, unbindRepository } from "@/lib/require
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -14,7 +14,8 @@ interface Params {
  * action; nothing else in the workspace binds a repository. The response names
  * the bound root to the user who asked for it and carries no file content.
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   if (convo.repository === null) return NextResponse.json({ bound: false, root: null, usable: false });
@@ -32,7 +33,8 @@ export async function GET(_request: Request, { params }: Params): Promise<NextRe
   }
 }
 
-export async function POST(request: Request, { params }: Params): Promise<NextResponse> {
+export async function POST(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   let body: { path?: unknown } = {};
@@ -58,7 +60,8 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
   }
 }
 
-export async function DELETE(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function DELETE(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const was = unbindRepository(convo);

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { checkLedger, loadConversation, saveConversation, unpinRequirement } from "@/lib/store";
 
 interface Params {
-  params: { id: string; entryId: string };
+  params: Promise<{ id: string; entryId: string }>;
 }
 
 /**
@@ -14,7 +14,8 @@ interface Params {
  * diagnostic resolution — that reaches this handler: "unpinning is a user
  * action" is enforced by there being nothing else that can call it.
  */
-export async function DELETE(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function DELETE(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const removed = unpinRequirement(convo, params.entryId);

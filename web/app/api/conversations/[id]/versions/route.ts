@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { loadConversation, versionHistory } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -15,7 +15,8 @@ interface Params {
  * trusting the label. The hash comes from the index, which holds hashes
  * rather than text precisely so it can be deleted without loss (AC-032).
  */
-export async function GET(_request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(_request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json({

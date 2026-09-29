@@ -63,6 +63,11 @@ function readSdkError(error: unknown): {
 } {
   if (typeof error !== "object" || error === null) return {};
   const e = error as Record<string, unknown>;
+  // A retry wrapper (AI_RetryError) carries the real failure as `lastError`;
+  // reading only the wrapper loses the HTTP status that explains it.
+  if (typeof e["statusCode"] !== "number" && typeof e["lastError"] === "object" && e["lastError"] !== null) {
+    return readSdkError(e["lastError"]);
+  }
   const status = typeof e["statusCode"] === "number" ? e["statusCode"] : undefined;
   const url = typeof e["url"] === "string" ? e["url"] : undefined;
   let message: string | undefined;
@@ -117,10 +122,23 @@ export function conciseProviderText(text: string): string {
   return text.length > 600 ? `${text.slice(0, 600)}…` : text;
 }
 
+/**
+ * Remove anything shaped like a credential from provider-supplied text. Some
+ * upstreams echo the rejected key ("Incorrect API key provided: sk-…"), and
+ * this text reaches the browser and the server log.
+ */
+export function redactCredentials(text: string): string {
+  return text
+    .replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi, "$1 [redacted]")
+    .replace(/\b(sk|pk|rk|ak|oc|sess|key|api)[-_](?:[A-Za-z0-9]+[-_])*[A-Za-z0-9]{16,}\b/gi, "[redacted-key]")
+    .replace(/(api[ _-]?key[^:]{0,20}:\s*)\S{8,}/gi, "$1[redacted]")
+    .replace(/\/\/[^/@\s:]+:[^/@\s]+@/g, "//[redacted]@");
+}
+
 export function providerDiagnostic(error: unknown, ctx: DiagnosticContext): ProviderDiagnostic {
   const detail = readDetail(error);
   const sdk = readSdkError(error);
-  const summary = conciseProviderText(error instanceof Error ? error.message : String(error));
+  const summary = redactCredentials(conciseProviderText(error instanceof Error ? error.message : String(error)));
   const endpoint = safeEndpoint(detail["endpoint"] ?? sdk.endpoint ?? ctx.endpoint);
   const httpStatus =
     typeof detail["httpStatus"] === "number" ? detail["httpStatus"] : sdk.httpStatus;
@@ -128,7 +146,8 @@ export function providerDiagnostic(error: unknown, ctx: DiagnosticContext): Prov
     typeof detail["providerMessage"] === "string" && detail["providerMessage"].length > 0
       ? detail["providerMessage"]
       : sdk.providerMessage;
-  const providerMessage = rawProviderMessage === undefined ? undefined : conciseProviderText(rawProviderMessage);
+  const providerMessage =
+    rawProviderMessage === undefined ? undefined : redactCredentials(conciseProviderText(rawProviderMessage));
   const model = typeof detail["model"] === "string" && detail["model"] ? detail["model"] : ctx.model;
   return {
     provider: ctx.provider,

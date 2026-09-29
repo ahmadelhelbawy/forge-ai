@@ -106,6 +106,8 @@ export class OpenAiCompatProvider implements ModelProvider {
     try {
       http = await fetch(endpoint, {
         method: "POST",
+        // A provider that never answers must not hang the caller forever.
+        signal: AbortSignal.timeout(300_000),
         headers: {
           "content-type": "application/json",
           "user-agent": this.userAgent,

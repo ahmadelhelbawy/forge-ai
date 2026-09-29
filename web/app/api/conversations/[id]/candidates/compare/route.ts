@@ -4,7 +4,7 @@ import { CandidateStateError, compareArtifacts } from "@/lib/candidates";
 import { loadConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -15,7 +15,8 @@ interface Params {
  * mistaken for advice (WS-R28), and read-only, so comparing can never change
  * what is being compared (WS-R2).
  */
-export async function GET(request: Request, { params }: Params): Promise<NextResponse> {
+export async function GET(request: Request, context: Params): Promise<NextResponse> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 

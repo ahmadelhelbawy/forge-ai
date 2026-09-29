@@ -42,5 +42,6 @@
   },
   "bin": {
     "forge": "./dist/cli/index.js"
-  }
+  },
+  "packageManager": "pnpm@11.20.0"
 }

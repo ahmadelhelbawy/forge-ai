@@ -5,7 +5,7 @@ import { compileVersionForTargets, MAX_COMPILE_TARGETS, profileForTarget, type V
 import { loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -22,7 +22,8 @@ interface Params {
  * CREATE/REVISE/MERGE/RESTORE as writers, and none of them is reachable from
  * here). The artifacts are the compiler's output, offered for export.
  */
-export async function POST(request: Request, { params }: Params): Promise<Response> {
+export async function POST(request: Request, context: Params): Promise<Response> {
+  const params = await context.params;
   const convo = loadConversation(params.id);
   if (!convo) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
 
