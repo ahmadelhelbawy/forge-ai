@@ -117,3 +117,11 @@ summary {
   list-style: disc;
   line-height: 1.65;
 }
+
+/* A long unbroken string (a URL, a hash, a path) in a reply or a prompt must
+   wrap, not push its column sideways — worst on a phone. */
+.prose-forge p,
+.prose-forge li,
+.whitespace-pre-wrap {
+  overflow-wrap: anywhere;
+}

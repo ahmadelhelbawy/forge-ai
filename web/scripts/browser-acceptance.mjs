@@ -14,6 +14,8 @@
 //   5. A phone-width viewport has no horizontal scroll.
 //   6. A turn still running in one conversation never lands on another.
 //   7. An unsaved Studio edit survives an unrelated save (a target change).
+//   8. Settings opens from the UI as an accessible dialog (desktop and phone).
+// Any uncaught client-side exception, in any check, fails the run.
 import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
@@ -91,6 +93,11 @@ try {
   await context.addInitScript(FAKE_SPEECH);
   const page = await context.newPage();
   globalThis.__page = page;
+  // A crash renders "Application error" and every later check fails for the
+  // wrong reason — or, on a screen no check looks at, not at all (the
+  // Settings dialog crashed the app with React #310 and this suite was green).
+  const pageErrors = [];
+  page.on("pageerror", (error) => pageErrors.push(String(error.message).slice(0, 300)));
   const composer = page.getByRole("textbox", { name: "Message" });
 
   console.log("browser acceptance");
@@ -268,11 +275,32 @@ try {
     await page.getByTitle("Discard edits").click();
   });
 
+  await check("8. Settings opens as an accessible dialog; Escape closes it", async () => {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(200);
+      const opener = page.getByRole("button", { name: "Settings", exact: true });
+      await opener.click();
+      const dialog = page.getByRole("dialog", { name: "Settings" });
+      await dialog.waitFor({ timeout: 10_000 });
+      await dialog.getByText("AI Providers").first().waitFor();
+      assert(await dialog.evaluate((d) => d.contains(document.activeElement)), `focus is not in the dialog at ${width}px`);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      assert(overflow <= 0, `Settings scrolls the page sideways by ${overflow}px at ${width}px`);
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "detached", timeout: 5_000 });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+  });
+
   await check("5. Phone width: no horizontal scroll", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(300);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     assert(overflow <= 0, `page scrolls horizontally by ${overflow}px`);
+  });
+  await check("9. No uncaught client-side exception anywhere above", async () => {
+    assert(pageErrors.length === 0, `page errors: ${pageErrors.join(" | ")}`);
   });
 } finally {
   await browser.close();

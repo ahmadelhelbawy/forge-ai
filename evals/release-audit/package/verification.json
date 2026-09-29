@@ -1,0 +1,85 @@
+{
+  "executed_by_forge": false,
+  "entries": [
+    {
+      "id": "v1",
+      "kind": "command",
+      "spec": "Inspect package.json for the express-rate-limit dependency.",
+      "expected": "express-rate-limit appears in dependencies.",
+      "satisfies": [
+        "g5"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Review the middleware factory file for an exported function accepting { windowMs, max } and returning a configured rateLimit() instance with a custom handler.",
+      "expected": "The factory matches the stated parameters and returns a rateLimit instance with a custom handler.",
+      "satisfies": [
+        "g1"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v3",
+      "kind": "test",
+      "spec": "Send 6 POST requests to the login route from the same IP within 15 minutes.",
+      "expected": "The first 5 requests are not rate-limited; the 6th returns HTTP 429.",
+      "satisfies": [
+        "g2",
+        "g3",
+        "g4",
+        "g6"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v4",
+      "kind": "test",
+      "spec": "Inspect the 429 response headers and body from the exceeded request.",
+      "expected": "The response includes a Retry-After header in seconds and JSON body { \"error\": \"Too many requests\", \"retryAfter\": <seconds> }.",
+      "satisfies": [
+        "g3"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v5",
+      "kind": "review",
+      "spec": "Review app/router wiring to confirm the middleware is applied only to the login route.",
+      "expected": "No global rateLimit middleware or other-route rateLimit middleware is added.",
+      "satisfies": [
+        "g2"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v6",
+      "kind": "review",
+      "spec": "Review the rate-limit configuration and imports for storage.",
+      "expected": "The default in-memory store is used; no Redis or external dependency is configured.",
+      "satisfies": [
+        "g7"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    },
+    {
+      "id": "v7",
+      "kind": "review",
+      "spec": "Review the diff for changes to existing route handlers or business logic.",
+      "expected": "Only the middleware factory, login route wiring, and dependency files change.",
+      "satisfies": [
+        "g8"
+      ],
+      "degraded_from": null,
+      "degraded_by": null
+    }
+  ]
+}

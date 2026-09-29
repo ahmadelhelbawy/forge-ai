@@ -1,0 +1,72 @@
+{
+  "deterministic": [
+    {
+      "code": "FORGE-C031",
+      "name": "capability_degraded",
+      "severity": "info",
+      "source": "deterministic",
+      "message": "Capability \"shell\" is conditional on Claude Code (gated by the session's permission mode) and gates an executable verification step. The step is preserved; the dependency is recorded in the runtime contract.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "shell"
+        }
+      ]
+    },
+    {
+      "code": "FORGE-C020",
+      "name": "unverifiable_goal",
+      "severity": "warning",
+      "source": "deterministic",
+      "message": "Goal \"g1\" is verified only by manual review. Nothing here can be checked mechanically.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "g1"
+        }
+      ]
+    },
+    {
+      "code": "FORGE-C020",
+      "name": "unverifiable_goal",
+      "severity": "warning",
+      "source": "deterministic",
+      "message": "Goal \"g7\" is verified only by manual review. Nothing here can be checked mechanically.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "g7"
+        }
+      ]
+    },
+    {
+      "code": "FORGE-C020",
+      "name": "unverifiable_goal",
+      "severity": "warning",
+      "source": "deterministic",
+      "message": "Goal \"g8\" is verified only by manual review. Nothing here can be checked mechanically.",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "g8"
+        }
+      ]
+    },
+    {
+      "code": "FORGE-C080",
+      "name": "blocking_question_unanswered",
+      "severity": "error",
+      "source": "deterministic",
+      "message": "Open question \"q1\" is marked blocking and is still unanswered: Which exact login route path and file should receive the rate-limit middleware?",
+      "evidence": [
+        {
+          "kind": "node",
+          "node_id": "q1"
+        }
+      ]
+    }
+  ],
+  "judged": [],
+  "deterministic_hash": "sha256:693c62de55c8aa30fff044d14be0a3daa8bb719b1205dc94d8bbed846e74a29f",
+  "refused": false
+}

@@ -1,0 +1,144 @@
+{
+  "requirements": [
+    {
+      "id": "req-7bc851c9e58b",
+      "text": "Add rate limiting to the login endpoint of this Express API.",
+      "origin": "user_stated",
+      "node_id": null,
+      "kind": "pinned"
+    },
+    {
+      "id": "req-710cf689b280",
+      "text": "Create a reusable rate-limit middleware factory for additional endpoints.",
+      "origin": "inferred",
+      "node_id": "g1",
+      "kind": "goal"
+    },
+    {
+      "id": "req-d864bfb44f7c",
+      "text": "Apply rate limiting only to the login route.",
+      "origin": "inferred",
+      "node_id": "g2",
+      "kind": "goal"
+    },
+    {
+      "id": "req-5b7c3f330000",
+      "text": "Return HTTP 429 with Retry-After and JSON when the limit is exceeded.",
+      "origin": "inferred",
+      "node_id": "g3",
+      "kind": "goal"
+    },
+    {
+      "id": "req-71920d2f6bef",
+      "text": "Identify clients by IP address.",
+      "origin": "inferred",
+      "node_id": "g4",
+      "kind": "goal"
+    },
+    {
+      "id": "req-3907665144d0",
+      "text": "Install express-rate-limit.",
+      "origin": "inferred",
+      "node_id": "g5",
+      "kind": "goal"
+    },
+    {
+      "id": "req-49337e3c4b39",
+      "text": "Configure the login route with the stated defaults.",
+      "origin": "inferred",
+      "node_id": "g6",
+      "kind": "goal"
+    },
+    {
+      "id": "req-5ee763e15db5",
+      "text": "Use the default in-memory store.",
+      "origin": "inferred",
+      "node_id": "g7",
+      "kind": "goal"
+    },
+    {
+      "id": "req-d9182131ca88",
+      "text": "Avoid modifying existing route handlers or business logic.",
+      "origin": "inferred",
+      "node_id": "g8",
+      "kind": "goal"
+    },
+    {
+      "id": "req-842a9d91f68c",
+      "text": "Apply rate limiting only to the login route, not globally or to other routes unless asked.",
+      "origin": "inferred",
+      "node_id": "c1",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-a062b1b11c01",
+      "text": "Use the default in-memory store (no Redis or external dependencies).",
+      "origin": "inferred",
+      "node_id": "c2",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-6bd5ae6a97fb",
+      "text": "Do not modify existing route handlers or business logic.",
+      "origin": "inferred",
+      "node_id": "c3",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-12152567f0d6",
+      "text": "Keep the code minimal — no comments beyond what's necessary to explain non-obvious lines.",
+      "origin": "inferred",
+      "node_id": "c4",
+      "kind": "constraint"
+    },
+    {
+      "id": "req-9c642c4559f4",
+      "text": "Do not apply rate limiting globally.",
+      "origin": "inferred",
+      "node_id": "n1",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-4cab5e5c3e36",
+      "text": "Do not apply rate limiting to other routes unless asked.",
+      "origin": "inferred",
+      "node_id": "n2",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-11233d46ee26",
+      "text": "Do not use Redis or external dependencies for rate-limit storage.",
+      "origin": "inferred",
+      "node_id": "n3",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-cb18131c7088",
+      "text": "Do not add rate limiting to additional endpoints now; only make the factory reusable for later.",
+      "origin": "inferred",
+      "node_id": "n5",
+      "kind": "non_goal"
+    },
+    {
+      "id": "req-4ed5f3892b5c",
+      "text": "Middleware factory file exporting a rate-limit factory configured with custom 429 handling.",
+      "origin": "inferred",
+      "node_id": "d1",
+      "kind": "deliverable"
+    },
+    {
+      "id": "req-d37f797b4045",
+      "text": "Login route wiring that applies the factory with windowMs 900000 and max 5.",
+      "origin": "inferred",
+      "node_id": "d2",
+      "kind": "deliverable"
+    },
+    {
+      "id": "req-bd583e7eeb42",
+      "text": "Project dependency configuration adding express-rate-limit.",
+      "origin": "inferred",
+      "node_id": "d3",
+      "kind": "deliverable"
+    }
+  ]
+}

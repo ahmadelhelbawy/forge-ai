@@ -1,6 +1,6 @@
 {
   "name": "forge-web",
-  "version": "0.1.0",
+  "version": "0.1.0-alpha.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter forge run build && next dev --hostname ${FORGE_HOST:-127.0.0.1} --port ${PORT:-3000}",
     "build": "pnpm --filter forge run build && next build && node scripts/postbuild.mjs",
-    "start": "next start --hostname ${FORGE_HOST:-127.0.0.1} --port ${PORT:-3000}"
+    "start": "HOSTNAME=${FORGE_HOST:-127.0.0.1} node .next/standalone/web/server.js"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.53",

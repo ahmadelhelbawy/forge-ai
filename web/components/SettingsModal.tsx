@@ -96,6 +96,19 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     setDiscovered(null);
   }, [selected?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Hooks stay ABOVE the early return: below it, opening the dialog changed
+  // the hook count and crashed the whole app (React #310) — found by the
+  // pre-release live run, which the stub suites never exercised.
+  const backdropDown = useRef(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  // Focus moves into the dialog on open and back to where it was on close.
+  useEffect(() => {
+    if (!open) return;
+    const previous = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => previous?.focus?.();
+  }, [open]);
+
   if (!open) return null;
 
   const save = async (): Promise<boolean> => {
@@ -216,15 +229,6 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     }
   };
 
-  const backdropDown = useRef(false);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  // Focus moves into the dialog on open and back to where it was on close.
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    return () => previous?.focus?.();
-  }, []);
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -275,10 +279,10 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
 
         {error ? <div className="border-b border-red-900/60 bg-red-950/40 px-5 py-2 text-[13px] text-red-200">{error}</div> : null}
 
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto sm:flex-row sm:overflow-visible">
           {tab === "providers" ? (
             <>
-              <div className="w-64 shrink-0 overflow-y-auto border-r border-ink-800 p-2">
+              <div className="max-h-48 shrink-0 overflow-y-auto border-b border-ink-800 p-2 sm:max-h-none sm:w-64 sm:border-b-0 sm:border-r">
                 {loading ? (
                   <div className="px-3 py-4 text-[13px] text-slate-500">Loading…</div>
                 ) : (

@@ -133,7 +133,12 @@ export function TraceabilityPanel({
             {matrix.repository_bound ? "repository bound" : "no repository — no links"} ·{" "}
             {matrix.verdicts_rejected ? "package REJECTED — no verdicts" : matrix.verdicts_supplied ? "verdicts joined" : "no evidence"}
           </div>
-          <table className="w-full table-fixed text-left font-mono text-[11px]">
+          {/* The fixed columns alone are 32rem; at the Studio's usual width
+              they left the requirement column zero wide. A minimum width
+              keeps ~14rem for the text, and the table scrolls inside its own
+              box instead of overflowing the Studio. */}
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[46rem] table-fixed text-left font-mono text-[11px]">
             <thead className="text-slate-500">
               <tr>
                 <th className="w-[7.5rem]">id</th>
@@ -176,6 +181,7 @@ export function TraceabilityPanel({
               ))}
             </tbody>
           </table>
+          </div>
           {matrix.rows
             .filter((r) => r.id === openRow)
             .map((r) => (

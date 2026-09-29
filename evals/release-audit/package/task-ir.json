@@ -1,0 +1,340 @@
+{
+  "ir_version": "1.0",
+  "semantic_hash": null,
+  "objective": {
+    "statement": "Add rate limiting to the login endpoint of this Express API using a reusable middleware factory.",
+    "kind": "feature",
+    "success_definition": "The login route is rate limited by IP with a reusable express-rate-limit middleware factory configured for windowMs 900000 and max 5; exceeded requests return HTTP 429 with a Retry-After header and JSON error body; no global or other-route rate limiting, default in-memory store is used, and existing route handlers/business logic are not modified.",
+    "source_ref": "user_input"
+  },
+  "goals": [
+    {
+      "id": "g1",
+      "statement": "Create a reusable rate-limit middleware factory for additional endpoints.",
+      "priority": "must",
+      "acceptance": [
+        "A middleware file (e.g., middleware/rateLimiter.js) exports a factory function.",
+        "The factory accepts { windowMs, max } as parameters.",
+        "The factory returns a configured rateLimit() instance with a custom handler.",
+        "The factory can be reused for additional endpoints with different configurations."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g2",
+      "statement": "Apply rate limiting only to the login route.",
+      "priority": "must",
+      "acceptance": [
+        "The middleware is applied to the login route (e.g., POST /login or POST /api/auth/login).",
+        "The middleware is not applied globally or to other routes unless asked."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g3",
+      "statement": "Return HTTP 429 with Retry-After and JSON when the limit is exceeded.",
+      "priority": "must",
+      "acceptance": [
+        "Exceeded requests receive HTTP 429.",
+        "The response includes a Retry-After header with seconds until the window resets.",
+        "The JSON response body is { \"error\": \"Too many requests\", \"retryAfter\": <seconds> }."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g4",
+      "statement": "Identify clients by IP address.",
+      "priority": "must",
+      "acceptance": [
+        "The rate limiter uses the client IP address as the identifying key."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g5",
+      "statement": "Install express-rate-limit.",
+      "priority": "must",
+      "acceptance": [
+        "The project dependency list includes express-rate-limit."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g6",
+      "statement": "Configure the login route with the stated defaults.",
+      "priority": "must",
+      "acceptance": [
+        "windowMs is 15 minutes (900000 ms).",
+        "max is 5 requests per window."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g7",
+      "statement": "Use the default in-memory store.",
+      "priority": "must",
+      "acceptance": [
+        "No Redis or external dependency is used for rate-limit storage."
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "g8",
+      "statement": "Avoid modifying existing route handlers or business logic.",
+      "priority": "must",
+      "acceptance": [
+        "Changes are limited to adding the middleware factory, wiring it to the login route, and installing the dependency.",
+        "Existing route handler code and business logic remain unchanged."
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "c1",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Apply rate limiting only to the login route, not globally or to other routes unless asked.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c2",
+      "kind": "compatibility",
+      "hardness": "hard",
+      "statement": "Use the default in-memory store (no Redis or external dependencies).",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c3",
+      "kind": "scope",
+      "hardness": "hard",
+      "statement": "Do not modify existing route handlers or business logic.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "c4",
+      "kind": "stylistic",
+      "hardness": "hard",
+      "statement": "Keep the code minimal — no comments beyond what's necessary to explain non-obvious lines.",
+      "source_ref": "user_input"
+    }
+  ],
+  "non_goals": [
+    {
+      "id": "n1",
+      "statement": "Do not apply rate limiting globally.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n2",
+      "statement": "Do not apply rate limiting to other routes unless asked.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n3",
+      "statement": "Do not use Redis or external dependencies for rate-limit storage.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n4",
+      "statement": "Do not modify existing route handlers or business logic.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "n5",
+      "statement": "Do not add rate limiting to additional endpoints now; only make the factory reusable for later.",
+      "source_ref": "user_input"
+    }
+  ],
+  "scope": {
+    "include": [
+      "The existing Express login route (e.g., POST /login or POST /api/auth/login).",
+      "A reusable rate-limit middleware factory file (e.g., middleware/rateLimiter.js).",
+      "App/router wiring that applies the factory to the login route with windowMs 900000 and max 5.",
+      "Adding the express-rate-limit dependency."
+    ],
+    "exclude": [
+      "Global rate-limit middleware.",
+      "Other routes.",
+      "Existing route handlers and business logic.",
+      "Redis or external dependencies.",
+      "Unnecessary comments."
+    ],
+    "blast_radius": "module",
+    "source_ref": "user_input"
+  },
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell",
+    "package_install"
+  ],
+  "context_refs": [],
+  "assumptions": [
+    {
+      "id": "a1",
+      "statement": "The login route is one of the provided examples or is otherwise identifiable in the Express API.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a2",
+      "statement": "The middleware factory can be created at middleware/rateLimiter.js or an equivalent conventional middleware path.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a3",
+      "statement": "express-rate-limit's default IP-based keying can identify clients by IP address.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a4",
+      "statement": "Adding middleware in the app/router is not considered modifying existing route handlers or business logic.",
+      "confidence": "medium",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a5",
+      "statement": "Retry-After should report the remaining seconds until the current rate-limit window resets.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "a6",
+      "statement": "The default in-memory store means express-rate-limit's built-in MemoryStore.",
+      "confidence": "high",
+      "source_ref": "user_input"
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "q1",
+      "question": "Which exact login route path and file should receive the rate-limit middleware?",
+      "options": [
+        "POST /login",
+        "POST /api/auth/login",
+        "Another existing login route"
+      ],
+      "default_assumption_ref": "a1",
+      "blocking": true,
+      "source_ref": "user_input"
+    },
+    {
+      "id": "q2",
+      "question": "What middleware file path and name should be used if middleware/rateLimiter.js is not suitable?",
+      "options": [
+        "middleware/rateLimiter.js",
+        "Another conventional middleware path"
+      ],
+      "default_assumption_ref": "a2",
+      "blocking": false,
+      "source_ref": "user_input"
+    }
+  ],
+  "verification": [
+    {
+      "id": "v1",
+      "kind": "command",
+      "spec": "Inspect package.json for the express-rate-limit dependency.",
+      "expected": "express-rate-limit appears in dependencies.",
+      "satisfies": [
+        "g5"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v2",
+      "kind": "review",
+      "spec": "Review the middleware factory file for an exported function accepting { windowMs, max } and returning a configured rateLimit() instance with a custom handler.",
+      "expected": "The factory matches the stated parameters and returns a rateLimit instance with a custom handler.",
+      "satisfies": [
+        "g1"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v3",
+      "kind": "test",
+      "spec": "Send 6 POST requests to the login route from the same IP within 15 minutes.",
+      "expected": "The first 5 requests are not rate-limited; the 6th returns HTTP 429.",
+      "satisfies": [
+        "g2",
+        "g3",
+        "g4",
+        "g6"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v4",
+      "kind": "test",
+      "spec": "Inspect the 429 response headers and body from the exceeded request.",
+      "expected": "The response includes a Retry-After header in seconds and JSON body { \"error\": \"Too many requests\", \"retryAfter\": <seconds> }.",
+      "satisfies": [
+        "g3"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v5",
+      "kind": "review",
+      "spec": "Review app/router wiring to confirm the middleware is applied only to the login route.",
+      "expected": "No global rateLimit middleware or other-route rateLimit middleware is added.",
+      "satisfies": [
+        "g2"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v6",
+      "kind": "review",
+      "spec": "Review the rate-limit configuration and imports for storage.",
+      "expected": "The default in-memory store is used; no Redis or external dependency is configured.",
+      "satisfies": [
+        "g7"
+      ],
+      "source_ref": "user_input"
+    },
+    {
+      "id": "v7",
+      "kind": "review",
+      "spec": "Review the diff for changes to existing route handlers or business logic.",
+      "expected": "Only the middleware factory, login route wiring, and dependency files change.",
+      "satisfies": [
+        "g8"
+      ],
+      "source_ref": "user_input"
+    }
+  ],
+  "deliverables": [
+    {
+      "id": "d1",
+      "kind": "code_change",
+      "description": "Middleware factory file exporting a rate-limit factory configured with custom 429 handling.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d2",
+      "kind": "code_change",
+      "description": "Login route wiring that applies the factory with windowMs 900000 and max 5.",
+      "source_ref": "user_input"
+    },
+    {
+      "id": "d3",
+      "kind": "config",
+      "description": "Project dependency configuration adding express-rate-limit.",
+      "source_ref": "user_input"
+    }
+  ],
+  "risk": {
+    "level": "medium",
+    "factors": [
+      "The change affects the login endpoint.",
+      "The implementation adds an external package dependency.",
+      "The behavior changes when the rate limit is exceeded.",
+      "Client identification relies on IP address."
+    ]
+  }
+}

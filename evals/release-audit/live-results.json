@@ -1,0 +1,80 @@
+{
+  "base": "http://127.0.0.1:3400",
+  "model": "opencode-go|||qwen3.8-flash",
+  "discoveryId": "96becfd0-c4d7-46f8-a7e2-48194de99abc",
+  "refineId": "2d2beedd-fb17-4c89-a281-30e9918b1343",
+  "results": [
+    {
+      "name": "1. Discovery: a vague idea gets questions, not a prompt",
+      "ok": true,
+      "seconds": 17.4,
+      "note": "3 open question(s), no version written"
+    },
+    {
+      "name": "2. Discovery: answering adapts it",
+      "ok": true,
+      "seconds": 9.1,
+      "note": "still no version; 2 open"
+    },
+    {
+      "name": "3. Generate finalises with open questions decided",
+      "ok": true,
+      "seconds": 13.6,
+      "note": "v1, 1280 chars"
+    },
+    {
+      "name": "4. Markdown export is the current version, byte for byte",
+      "ok": true,
+      "seconds": 0.1,
+      "note": "forge-prompt-v1.md"
+    },
+    {
+      "name": "5. Requirements: pin one; the ledger checks it",
+      "ok": true,
+      "seconds": 0.3,
+      "note": "pinned: \"Add rate limiting to the login endpoint of this Express API.…\"; missing now: 0"
+    },
+    {
+      "name": "6. Compile for Claude Code (IR extraction is live)",
+      "ok": true,
+      "seconds": 156.3,
+      "note": "1 artifact(s)"
+    },
+    {
+      "name": "7. Package: deterministic identity",
+      "ok": true,
+      "seconds": 0.2,
+      "note": "sha256:7e104b5ac2ff… stable across builds; 11 files"
+    },
+    {
+      "name": "8. Verify: evidence → VERIFIED / FAILED / UNVERIFIED / REVIEW_REQUIRED",
+      "ok": true,
+      "seconds": 0.2,
+      "note": "7 obligations (3 runnable); shown: VERIFIED 1, FAILED 1, UNVERIFIED 1, REVIEW_REQUIRED 4"
+    },
+    {
+      "name": "9. Traceability matrix",
+      "ok": true,
+      "seconds": 0.2,
+      "note": "20 requirement row(s); row opened from the keyboard"
+    },
+    {
+      "name": "10. Existing long prompt: Polish without an interview loop",
+      "ok": true,
+      "seconds": 105.8,
+      "note": "16591 chars in → v1 (17922 chars), mode polish"
+    },
+    {
+      "name": "11. Model switch: a model without a reasoning setting says so and still answers",
+      "ok": true,
+      "seconds": 22.6,
+      "note": "opencode-go|||kimi-k3; effort disabled; answered"
+    },
+    {
+      "name": "12. Error recovery: a model the provider rejects keeps the message and says why",
+      "ok": true,
+      "seconds": 2.8,
+      "note": "refused: \"\"forge-audit-no-such-model\" is not a documented OpenCode Go model, so FORGE cannot tell wh\"; rejected: \"forge-audit/no-such-model is not a valid model ID Provider: openrouter Stage: chat Model (API id): forge-audit/no-such-m\"; message kept, no version, Retry offered"
+    }
+  ]
+}

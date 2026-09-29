@@ -1,0 +1,16 @@
+live acceptance against http://127.0.0.1:3400 with opencode-go|||qwen3.8-flash
+  ✓ 1. Discovery: a vague idea gets questions, not a prompt (17.4s) — 3 open question(s), no version written
+  ✓ 2. Discovery: answering adapts it (9.1s) — still no version; 2 open
+  ✓ 3. Generate finalises with open questions decided (13.6s) — v1, 1280 chars
+  ✓ 4. Markdown export is the current version, byte for byte (0.1s) — forge-prompt-v1.md
+  ✓ 5. Requirements: pin one; the ledger checks it (0.3s) — pinned: "Add rate limiting to the login endpoint of this Express API.…"; missing now: 0
+  ✓ 6. Compile for Claude Code (IR extraction is live) (156.3s) — 1 artifact(s)
+  ✓ 7. Package: deterministic identity (0.2s) — sha256:7e104b5ac2ff… stable across builds; 11 files
+  ✓ 8. Verify: evidence → VERIFIED / FAILED / UNVERIFIED / REVIEW_REQUIRED (0.2s) — 7 obligations (3 runnable); shown: VERIFIED 1, FAILED 1, UNVERIFIED 1, REVIEW_REQUIRED 4
+  ✓ 9. Traceability matrix (0.2s) — 20 requirement row(s); row opened from the keyboard
+  ✓ 10. Existing long prompt: Polish without an interview loop (105.8s) — 16591 chars in → v1 (17922 chars), mode polish
+  ✓ 11. Model switch: a model without a reasoning setting says so and still answers (22.6s) — opencode-go|||kimi-k3; effort disabled; answered
+  ✓ 12. Error recovery: a model the provider rejects keeps the message and says why (2.8s) — refused: ""forge-audit-no-such-model" is not a documented OpenCode Go model, so FORGE cannot tell wh"; rejected: "forge-audit/no-such-model is not a valid model ID Provider: openrouter Stage: chat Model (API id): forge-audit/no-such-m"; message kept, no version, Retry offered
+
+all live steps passed
+EXIT=0

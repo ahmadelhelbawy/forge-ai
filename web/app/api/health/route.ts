@@ -22,7 +22,7 @@ export async function GET(): Promise<NextResponse> {
   const providers = listProviderSummaries().filter((p) => p.enabled);
   return NextResponse.json({
     ok: storage === "writable",
-    version: "0.1.0",
+    version: "0.1.0-alpha.0",
     time: new Date().toISOString(),
     storage,
     damagedLogLines: damagedLines,

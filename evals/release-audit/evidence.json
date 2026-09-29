@@ -1,0 +1,28 @@
+{
+  "records": [
+    {
+      "obligation_id": "v1",
+      "kind": "command",
+      "exit_code": 0,
+      "stdout_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_at": "2026-09-29T15:18:15.645Z",
+      "duration_ms": 10,
+      "runner": "live-acceptance",
+      "repo_commit": null,
+      "package_semantic_id": "sha256:7e104b5ac2ff84a7588bcececb9b288de00510efee22d26ed8197169f42f5797"
+    },
+    {
+      "obligation_id": "v3",
+      "kind": "test",
+      "exit_code": 1,
+      "stdout_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "started_at": "2026-09-29T15:18:15.646Z",
+      "duration_ms": 10,
+      "runner": "live-acceptance",
+      "repo_commit": null,
+      "package_semantic_id": "sha256:7e104b5ac2ff84a7588bcececb9b288de00510efee22d26ed8197169f42f5797"
+    }
+  ]
+}

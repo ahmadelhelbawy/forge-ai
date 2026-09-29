@@ -1,11 +1,33 @@
 # FORGE
 
-**An intent and context compiler for coding agents.** You describe a task; FORGE
-turns it into a reviewable artifact you can read, correct, version, and compile for a
-specific agent — and it tells you, mechanically, when something you asked for did not
-survive.
+**An auditable intent, requirement, compilation and verification layer between
+people and AI coding agents.** You describe a task — a vague idea or a prompt you
+already use. FORGE turns it into one reviewable, versioned artifact, compiles it
+for a specific agent, packages it as an Execution Contract, and later checks an
+external run's evidence against it — and it tells you, mechanically, when
+something you asked for did not survive.
 
-FORGE never executes anything. It ends at the artifact.
+FORGE never executes anything. The agent runs elsewhere; FORGE ends at the
+artifact and reads the evidence back.
+
+```
+Idea ─▶ Discovery ─▶ Requirements ─▶ Generate ─▶ Compile for a target ─▶ Execution Contract
+                                                                              │
+             Explain ◀── Verify ◀── Evidence ◀── (your agent / CI runs it) ◀──┘
+```
+
+<!-- demo: replace the poster link below with the GitHub user-attachment URL of
+     docs/media/forge-demo.mp4 when publishing (docs/media/README.md). -->
+[![A 44-second real FORGE session: idea → Discovery → Generate → pin → compile → package → verify → traceability](docs/media/forge-demo-poster.png)](docs/media/forge-demo.mp4)
+
+*A real session against a live model; only the model's waiting time is shortened, and
+labelled ([how](docs/media/README.md)).*
+
+| Discovery asks before it writes | Pinned requirements, checked without a model |
+|---|---|
+| ![Discovery](docs/images/discovery.png) | ![Requirements](docs/images/requirements.png) |
+| **Evidence → a verdict per obligation** | **Traceability: origin, decisions, verdicts** |
+| ![Verify](docs/images/verify.png) | ![Traceability](docs/images/traceability.png) |
 
 > **Status: alpha (`0.1.0-alpha.0`).** The deterministic core is solid and well
 > tested. The product around it is not finished. Read
@@ -43,9 +65,49 @@ These are the properties that are mechanically verified, not aspirations:
 - **No composite quality score.** Permanent (`INV-008`). FORGE will never tell you
   your prompt is 97/100.
 
-## Install and run
+## Quickstart — the workspace
 
-Requires Node ≥ 22 and `pnpm`.
+Requires Node ≥ 22.13 and `pnpm` (the version pinned in `package.json`; `corepack enable` gets it).
+
+```bash
+git clone <this repository> forge && cd forge
+pnpm install
+pnpm --dir web dev        # builds the core, then serves http://127.0.0.1:3000
+```
+
+Open **Settings → AI Providers**, paste a key for one provider, pick a model in
+the header, and start a conversation. Keys can also come from the environment —
+copy `web/.env.example` to `web/.env.local`:
+
+| Provider | Variables |
+|---|---|
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI or any OpenAI-compatible endpoint | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| OpenCode Go (Zen gateway) | key in Settings, or `FORGE_API_KEY` + `FORGE_BASE_URL=https://opencode.ai/zen/go/v1` |
+| Google, xAI, OpenRouter | `GOOGLE_API_KEY` / `XAI_API_KEY` / `OPENROUTER_API_KEY` |
+
+Without any provider the workspace still opens and says what is missing; the CLI's
+deterministic path below needs no provider at all. For a production build, repository
+binding (`FORGE_REPO_ROOTS`) and every variable, see [`web/DEPLOY.md`](web/DEPLOY.md).
+
+### A typical session
+
+1. **Describe the idea** — "a coding agent that adds rate limiting to our login
+   endpoint". FORGE asks what it needs to know and keeps a brief; nothing is written yet.
+2. **Generate** when you are ready. Unanswered questions are decided and reported,
+   not left in the prompt.
+3. **Pin** the requirements that must never be dropped; every later version is
+   checked for them without a model.
+4. **Compile** for Claude Code, Codex, OpenCode, Kiro… and **Package** an Execution
+   Contract (same input, same `semantic_id`).
+5. Your agent or CI runs it and writes evidence; paste it into **Verify** to get
+   `VERIFIED` / `FAILED` / `UNVERIFIED` / `REVIEW_REQUIRED` per obligation.
+6. **Traceability** joins each requirement to its origin, decisions, files, tests
+   and verdicts; `forge explain` shows where every byte came from.
+
+Already have a prompt? Paste it and choose **Polish**, **Strengthen** or **Rebuild**.
+
+## The CLI
 
 ```bash
 pnpm install
@@ -217,20 +279,38 @@ checkable, diffable and attributable — not prompt quality. If you want a bette
 prompt, a competent frontier model will write you one, and in a blind comparison it
 wrote better ones than FORGE did.
 
-Known limitations today, all recorded in [`CLAUDE.md`](CLAUDE.md) and `plan.md`:
+## Security and trust
 
+FORGE is a single-user tool for your own machine and **has no login**. It listens on
+`127.0.0.1` by default, refuses cross-origin writes and unknown hosts, encrypts saved
+keys, never returns a key, and never sends a saved key anywhere but the endpoint it
+was saved with. Untrusted content (attachments, repository files, evidence) never
+becomes an instruction. Do not expose it to an untrusted network without an
+authenticating proxy. Details and limits: [`SECURITY.md`](SECURITY.md).
+
+## Known limitations
+
+Recorded in [`CLAUDE.md`](CLAUDE.md) and `plan.md`; the important ones:
+
+- **No login, single user.** See above.
+- A long `REVISE` of a large prompt takes about two minutes — it is output-bound:
+  the whole prompt is written back.
+- Non-code agent prompts get a blocking scope question from the IR extractor, so
+  they compile with `FORGE-C080` and cannot be packaged yet.
+- IR extraction on a reasoning model can take minutes.
+- Voice input is verified with a scripted recognizer only; real speech depends on
+  the browser (Chromium sends audio to its vendor's service).
 - Artifacts are more verbose than they need to be; sections restate one another.
-- The workspace does not yet use the compiler, context engine or provenance system.
-- `intent.extract` routes by provider rather than model protocol, so some gateway
-  models are unreachable on that path.
+- Evidence is unsigned: `VERIFIED` takes the evidence at its word.
 
 ## Development
 
 ```bash
 pnpm typecheck
-pnpm test            # 1017 passing — no API key, no network required
-pnpm schema:check    # generated JSON Schema matches the Zod source
-./web/scripts/e2e.sh # HTTP product suite against real routes
+pnpm test               # ~1380 tests — no API key, no network required
+pnpm schema:check       # generated JSON Schema matches the Zod source
+./web/scripts/e2e.sh    # build, HTTP product suite, browser acceptance (Chromium)
+./scripts/pack-smoke.sh # the npm tarball, installed and run outside the repo
 ```
 
 `schema/` is generated — never hand-edit it; run `pnpm schema:emit`.

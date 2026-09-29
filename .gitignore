@@ -54,3 +54,6 @@ coverage/
 
 # Acceptance-run data directories (the harness defaults to a temp dir).
 .v2e-acceptance-data/
+
+# Raw demo recordings (tens of MB); the edited MP4 in docs/media is kept.
+docs/media/raw/

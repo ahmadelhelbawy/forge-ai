@@ -1,0 +1,156 @@
+{
+  "nodes": [
+    {
+      "node_id": "objective",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "scope",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g4",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g5",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g6",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g7",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "g8",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "c4",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n4",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "n5",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a4",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a5",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "a6",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "q1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "q2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v3",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v4",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v5",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v6",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "v7",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "d1",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "d2",
+      "source_ref": "user_input"
+    },
+    {
+      "node_id": "d3",
+      "source_ref": "user_input"
+    }
+  ],
+  "context_refs": [],
+  "materialization": {},
+  "dropped_context": [],
+  "topology_gaps": []
+}

@@ -1,0 +1,44 @@
+{
+  "declares_only": true,
+  "grants": null,
+  "required_capabilities": [
+    "fs_read",
+    "fs_write",
+    "shell",
+    "package_install"
+  ],
+  "target": {
+    "id": "claude-code",
+    "version": "2026.9.1",
+    "tools": [
+      "glob",
+      "grep",
+      "read",
+      "agentic_subsearch"
+    ],
+    "autonomy": "high",
+    "permission_model": "per-tool-prompt"
+  },
+  "network_policy": "none",
+  "filesystem_scope": {
+    "include": [
+      "The existing Express login route (e.g., POST /login or POST /api/auth/login).",
+      "A reusable rate-limit middleware factory file (e.g., middleware/rateLimiter.js).",
+      "App/router wiring that applies the factory to the login route with windowMs 900000 and max 5.",
+      "Adding the express-rate-limit dependency."
+    ],
+    "exclude": [
+      "Global rate-limit middleware.",
+      "Other routes.",
+      "Existing route handlers and business logic.",
+      "Redis or external dependencies.",
+      "Unnecessary comments."
+    ]
+  },
+  "blast_radius": "module",
+  "repository": {
+    "commit": null,
+    "dirty": null
+  },
+  "degradations": []
+}
