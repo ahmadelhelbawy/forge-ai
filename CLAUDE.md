@@ -35,12 +35,14 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-26 after the release-blocker fixes — **1346 tests passing
-(95 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
-HTTP product suite plus browser acceptance green twice in a row
-(`web/scripts/e2e.sh`, **94/94** + **8/8** browser checks), the frozen P1.6
-manifest verifying ×3, and the live acceptance in `evals/hardening/` and
-`evals/release-blockers/`.
+Verified 2026-09-29 after the pre-release audit — **1379 tests passing
+(95 skipped: the 94 HTTP tests `e2e.sh` runs, and the opt-in live eval)**,
+typecheck (core, tests, web) / `schema:check` (11 schemas) / web build clean,
+`web/scripts/e2e.sh` **94/94** HTTP (none skipped — asserted) + **12/12** browser
+checks (no uncaught page error — asserted), `scripts/pack-smoke.sh` green,
+`pnpm audit --prod` clean, gitleaks over the full history clean, the frozen P1.6
+manifest verifying, and the live-provider browser acceptance (12/12) in
+`evals/release-audit/`.
 
 **Complete:** P0 (IR foundation) · P1 (compiler + 7 profiles) · P1.4 (security
 hardening) · P1.5 + P1.6 (thesis gates — both ran; claim retired) · P2 (context
@@ -129,20 +131,39 @@ model reasons without a bound (the 207 s empty Strengthen). WS-R12a: a write who
 prompt is cut off fails the turn, never keeps a reply describing unsaved changes.
 Export and dictation fixes. Evidence: `evals/release-blockers/`.
 
+**Pre-release audit (2026-09-29).** Six independent reviews; every finding
+reproduced before it was fixed, with a test that fails on the old code. Next.js
+14.2 → 15.5 (critical advisories); loopback by default; a saved key cannot be
+moved to another endpoint; per-install secret key (the old one was published in
+the source; migrated on read); `FORGE_API_KEY` belongs to one provider; provider
+text scrubbed of credentials; **no hidden SDK retries** (MB-R3). A torn run-log
+line no longer hides later writes (`damagedLogLines`); concurrent saves that would
+fork version/governance history get HTTP 409 (`ConversationConflictError`);
+same-name re-upload is saved; a failed/cancelled turn changes only the user's
+message (WS-R12). Cross-conversation UI races, lost Studio edits, the Settings
+crash, a11y blockers. The npm tarball ships `strategies/`; Node ≥ 22.13; CI with
+Chromium, pack smoke, audit, gitleaks. The real turn path is tested over the wire
+(`tests/product/live-path.test.ts`). Evidence: `evals/release-audit/`.
+
 **Known defects, recorded and unfixed.** Real-speech transcription is unverified
 (no microphone here; Chrome's service returned nothing for synthesized audio). A
 long REVISE still takes ~2 min — it is output-bound: the envelope carries the
 whole prompt. One REVISE ended with its prompt cut off and no limit reported;
 cause upstream unknown (now a named failure). `evals/p16/README.md` still says
-"NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023
-asserts a dependency test that does not exist; cassette replay is unreachable
-from `web/`. The IR extractor raises a *blocking* scope ("blast radius") question
+"NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; cassette
+replay is unreachable from `web/`. A provider failure during classification
+degrades to DISCUSS and still calls the generator (WS-R4 as specified). Live IR
+extraction sometimes yields only review/manual obligations for a code task, so
+Verify can only answer `REVIEW_REQUIRED`. The IR extractor raises a *blocking* scope ("blast radius") question
 for non-code agent prompts, so they compile with `FORGE-C080` and cannot be
 packaged — fixing it is a Task IR contract change. IR extraction on a reasoning
 model can take minutes or exhaust its budget. `WorkspaceGuard` checks a path's
 real path, then reads it in a separate call (a TOCTOU window if the workspace
 itself is hostile). Dictation is verified with a scripted recognizer only; real
 speech depends on the browser (Chromium sends audio to its vendor's service).
+
+*Fixed in the pre-release audit, previously listed here:* AC-023's dependency
+test did not exist (`tests/contract/dependency-budget.test.ts`).
 
 *Fixed in Sprint 2, previously listed here:* a provider `HTTP 429` whose message
 said "quota" was told to the user as a billing problem; it is now a rate limit

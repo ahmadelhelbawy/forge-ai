@@ -24,7 +24,7 @@ rationale. Never relax an invariant to make a test pass.
 
 ## Getting set up
 
-Node ≥ 22, `pnpm`.
+Node ≥ 22.13, `pnpm` (the version in `package.json` `packageManager`; `corepack enable`).
 
 ```bash
 pnpm install
