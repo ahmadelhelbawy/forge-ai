@@ -76,6 +76,15 @@ describe("browser dictation", () => {
     expect(log.end).toEqual(["build an agent that triages email"]);
   });
 
+  it("a session that recognised nothing says so instead of ending silently", () => {
+    g.window = { webkitSpeechRecognition: FakeRecognition };
+    const { log, h } = handlers();
+    const session = browserDictation.start(h, "en-US");
+    session.stop();
+    expect(log.end).toEqual([]);
+    expect(log.errors).toEqual(["no-result"]);
+  });
+
   it("cancel reports nothing: no end, no error", () => {
     g.window = { SpeechRecognition: FakeRecognition };
     const { log, h } = handlers();

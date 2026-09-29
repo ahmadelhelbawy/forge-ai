@@ -28,6 +28,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({
       supported: support !== null,
       levels: support?.levels ?? [],
+      defaultLevel: support?.defaultLevel ?? null,
       source: support?.source ?? null,
       wire: support?.wire ?? null,
       reason,
@@ -36,6 +37,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({
       supported: false,
       levels: [],
+      defaultLevel: null,
       source: null,
       wire: null,
       reason: error instanceof Error ? error.message : String(error),

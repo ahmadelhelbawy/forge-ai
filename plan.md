@@ -1555,6 +1555,22 @@ list and version reads 31 s → 50 ms). Live run in `evals/hardening/`.
 **Deviation:** `playwright-core` added as a web dev dependency (browser acceptance
 had no reproducible runner). It downloads nothing; it drives the installed Chromium.
 **Not done:** V2-I (one-command start, Docker, release) remains next.
+
+### Release blockers from manual acceptance *(2026-09-26)*
+
+**Objective.** Fix the five blockers the user's manual test found, and nothing else.
+**Done:** WS-R43 amended — Qwen 3.6+ and MiniMax M3 on OpenCode Go's Anthropic path
+declared (measured live: budget and `disabled` honoured; MiniMax M2.x ignores
+`disabled`, not declared), and Default bounded to `low` where the model reasons
+without a bound (Strengthen 207 s / no answer → 84 s / saved version); the effort
+control says "Not supported" with the reason and "Default (Low)" where it
+applies; a stored effort survives a turn on a model that cannot take it.
+WS-R12a — a write whose prompt is cut off (output limit, or the string simply
+ending) fails the turn with the cause and finish reason instead of keeping a reply
+that describes unsaved changes. Markdown export: attached anchor, deferred revoke,
+disabled state explained. Dictation reports a session that recognised nothing.
+Browser check 4b. Evidence in `evals/release-blockers/`.
+**Not done:** V2-I remains next.
 ---
 
 ## Deviation log
@@ -1674,3 +1690,4 @@ Record every departure from this plan here, with rationale, at the time it happe
 | 2026-09-23 | Sprint 2 | **Pasted evidence is stored only when the secret scanner finds nothing in it.** | Redacting would change the bytes the verdict's `evidence_hash` names; storing it verbatim could write a credential to disk. The verdict counts are kept either way. |
 | 2026-09-23 | Sprint 2 | **`web/scripts/e2e.sh` runs the stub at 10 ms per streamed chunk.** | The AC-036 cancel-mid-stream test raced a stream that finished in ~20 ms: measured 3/6 passes on the pre-sprint build. The delay makes "mid-stream" true; the assertions are unchanged. Two consecutive E2E runs then passed 90/90. |
 | 2026-09-23 | Sprint 2 | **A classifier call that fails at the transport is logged as a `model_call_failed` turn event.** | It has no output to hash, so it is not a `ModelCallRecord`; found live when a degraded turn's log showed one call where two were made (`WS-R14`). |
+| 2026-09-26 | Release blockers | **WS-R43's "the default sends nothing" no longer holds for every model.** | Measured: qwen3.8-flash, sent nothing, reasoned for 207 s and 16,000 tokens with no answer. A default that cannot finish an ordinary Strengthen is not a neutral default. Spec amended first (§22.13), with the measurement. |

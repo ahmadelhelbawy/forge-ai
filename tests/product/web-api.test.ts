@@ -1257,6 +1257,39 @@ describe.skipIf(!WEB_E2E)("turn diagnostics reach the client (V2-R, R4)", () => 
     expect(result!["promptChanged"]).toBe(false);
   });
 
+  it("fails a write cut off at the output limit on both routes: message kept, nothing saved, cause named", async () => {
+    /** Mirrors `STUB_OUTPUT_LIMIT_SENTINEL` in `web/lib/turn/deps.ts`. */
+    const LIMIT = "[[forge:stub-output-limit]]";
+    const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
+    const id = created.body["id"] as string;
+    const turn = await api(BASE, `/api/conversations/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: `Write a review prompt. ${LIMIT}` }),
+    });
+    expect(turn.status).toBe(502);
+    expect(turn.body["conversationIntact"]).toBe(true);
+    expect(String(turn.body["error"])).toContain("output limit");
+
+    const response = await fetch(`${BASE}/api/conversations/${id}/messages/stream`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ regenerate: true }),
+    });
+    const frames = (await response.text())
+      .split("\n")
+      .filter((line) => line.startsWith("data: "))
+      .map((line) => JSON.parse(line.slice(6)) as Record<string, unknown>);
+    const failed = frames.find((frame) => frame["type"] === "failed");
+    expect(failed, "the stream did not report the failure").toBeDefined();
+    expect(String(failed!["error"])).toContain("output limit");
+
+    const detail = await api(BASE, `/api/conversations/${id}`);
+    expect(detail.body["promptVersions"]).toEqual([]);
+    const messages = detail.body["messages"] as Array<Record<string, unknown>>;
+    // The user's message is kept once; no assistant reply claims a prompt exists.
+    expect(messages.map((m) => m["role"])).toEqual(["user"]);
+  });
+
   it("emits no diagnostics on an ordinary healthy turn", async () => {
     const created = await api(BASE, "/api/conversations", { method: "POST", body: "{}" });
     const id = created.body["id"] as string;

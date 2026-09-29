@@ -132,8 +132,12 @@ export function CompilePanel({
     // The package layout is flattened into the filename so a recipient can
     // rebuild the directory: `artifacts/PROMPT.md` saves as `artifacts__PROMPT.md`.
     link.download = path.includes("/") ? path.split("/").join("__") : path;
+    // Attached and revoked late, for the reason given in PromptStudio's export.
+    link.style.display = "none";
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   if (!conversationId || !hasPrompt) {

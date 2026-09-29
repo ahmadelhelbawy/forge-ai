@@ -361,4 +361,77 @@ describe("a failed generate is loud, not blank", () => {
     expect(convo.messages.at(-1)).toMatchObject({ role: "user" });
     expect(convo.discovery!.status).toBe("open");
   });
+
+  it("fails a write cut off at the output limit — no version, no reply claiming one, Retry left open", async () => {
+    const convo = await vagueConversation();
+    const before = convo.messages.length;
+    const deps: TurnDeps = {
+      providerId: "test",
+      reasoningEffort: "low",
+      renderGeneration: (action, message) => ({ system: `SYSTEM ${action}`, user: message }),
+      async complete() {
+        // The shape of the 2026-09-26 failure: a reply saying the prompt was
+        // produced, then the prompt string cut off mid-way.
+        return {
+          text: '{"reply": "I produced the final prompt.", "prompt": "You are performing the FINAL pass. Do not',
+          model: "reasoner",
+          latencyMs: 1,
+          finishReason: "length",
+        };
+      },
+    };
+    const result = await executeTurn(convo, "Generate the prompt (strengthen).", deps, { generate: true, mode: "strengthen" });
+    expect(result.failed).toBe(true);
+    const message = String((result.error as Error).message);
+    expect(message).toContain("output limit");
+    expect(message).toContain('lower reasoning effort (this call used "low")');
+    expect(convo.promptVersions).toHaveLength(0);
+    expect(convo.messages).toHaveLength(before + 1);
+    expect(convo.messages.at(-1)).toMatchObject({ role: "user" });
+    expect(convo.discovery!.status).toBe("open");
+  });
+
+  it("fails a write whose prompt simply ends, with no limit reported, and names the finish reason", async () => {
+    const convo = await vagueConversation();
+    const deps: TurnDeps = {
+      providerId: "test",
+      renderGeneration: (action, message) => ({ system: `SYSTEM ${action}`, user: message }),
+      async complete() {
+        // The live REVISE failure of 2026-09-26: a reply describing changes,
+        // then a prompt string that stops mid-way, finish reason "stop".
+        return {
+          text: '{"reply": "What changed: tightened the acceptance criteria.", "prompt": "You are executing the FINAL pass.\\n\\n## Acceptance',
+          model: "qwen",
+          latencyMs: 1,
+          finishReason: "stop",
+        };
+      },
+    };
+    const result = await executeTurn(convo, "Generate the prompt.", deps, { generate: true });
+    expect(result.failed).toBe(true);
+    expect(String((result.error as Error).message)).toContain("ended before the prompt was complete (finish reason: stop)");
+    expect(convo.promptVersions).toHaveLength(0);
+    expect(convo.messages.at(-1)).toMatchObject({ role: "user" });
+  });
+
+  it("keeps a read-only answer cut off at the output limit as chat, with the loss named", async () => {
+    const convo = await vagueConversation();
+    convo.discovery = null;
+    const deps: TurnDeps = {
+      providerId: "test",
+      renderGeneration: (action, message) => ({ system: `SYSTEM ${action}`, user: message }),
+      async complete(request) {
+        if (request.system.includes("classifier")) {
+          return { text: '{"action":"DISCUSS","versions":[]}', model: "m", latencyMs: 1 };
+        }
+        return { text: '{"reply": "A long critique that was cut', model: "m", latencyMs: 1, finishReason: "length" };
+      },
+    };
+    const result = await executeTurn(convo, "What do you think of this approach?", deps);
+    expect(result.failed).toBe(false);
+    expect(result.action).toBe("DISCUSS");
+    expect(result.reply).toContain("A long critique");
+    expect(result.diagnostics.map((d) => d.code)).toContain("FORGE-W003");
+    expect(convo.promptVersions).toHaveLength(0);
+  });
 });

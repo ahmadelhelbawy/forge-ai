@@ -43,6 +43,8 @@ export interface PreparedTurn {
   readonly generate: boolean;
   readonly mode?: TransformationMode;
   readonly before: string | null;
+  /** This request named a reasoning effort, so an unsupported one is refused (WS-R42). */
+  readonly effortNamed: boolean;
 }
 
 /**
@@ -107,12 +109,19 @@ export function prepareTurn(convo: Conversation, body: TurnRequestBody): Prepare
     generate,
     ...(isTransformationMode(body.mode) ? { mode: body.mode } : {}),
     before: currentPrompt(convo),
+    effortNamed: isReasoningEffort(body.reasoningEffort),
   };
 }
 
-export async function depsFor(convo: Conversation, before: string | null): Promise<TurnDeps> {
+/**
+ * `effortNamed`: whether this request itself named an effort. Only a named
+ * effort is refused for a model that cannot take it (WS-R42); a preference
+ * stored on the conversation and not applicable to the current model sends
+ * nothing, so switching to such a model and back does not erase the choice.
+ */
+export async function depsFor(convo: Conversation, before: string | null, effortNamed = true): Promise<TurnDeps> {
   if (process.env["FORGE_CHAT_STUB"]) return stubDeps(convo, before);
-  return buildDeps(convo, before, await reasoningFor(convo));
+  return buildDeps(convo, before, await reasoningFor(convo, { strict: effortNamed }));
 }
 
 /** A request the conversation's settings make impossible: a 400, not a provider failure. */

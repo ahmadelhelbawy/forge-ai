@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Params): Promise<NextRe
 
   let deps: TurnDeps;
   try {
-    deps = await depsFor(convo, prepared.before);
+    deps = await depsFor(convo, prepared.before, prepared.effortNamed);
   } catch (error) {
     const refused = settingsRefusal(convo, error);
     if (refused) return refused;

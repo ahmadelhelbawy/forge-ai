@@ -26,6 +26,14 @@ export interface ReasoningSupport {
   readonly wire: ReasoningWire;
   readonly source: "declared" | "discovered";
   readonly levels: readonly Exclude<ReasoningEffort, "default">[];
+  /**
+   * What "Default" sends. Null means nothing — the provider's own default.
+   * Set only for a model measured to reason WITHOUT a bound when nothing is
+   * sent: left alone, it spends the whole output budget thinking and returns
+   * no answer (the 2026-09-26 Strengthen failure). There FORGE's default is a
+   * bounded level, never "no setting".
+   */
+  readonly defaultLevel: Exclude<ReasoningEffort, "default"> | null;
 }
 
 export interface ReasoningAvailability {
@@ -59,10 +67,28 @@ const DECLARED: ReadonlyArray<{ provider: string; pattern: RegExp; wire: Reasoni
   { provider: "xai", pattern: /^grok-3-mini/, wire: "openai-chat" },
 ];
 
-/** OpenCode Go: only models on the Responses API are documented to take it. */
+/**
+ * OpenCode Go, Anthropic Messages path: models measured live on 2026-09-26
+ * (`evals/release-blockers/`) to honour an extended-thinking budget AND
+ * `thinking: disabled`. The Qwen family reasons without a bound when nothing is
+ * sent, so its default is bounded. MiniMax M2.x ignores `disabled` — a setting
+ * it ignores is a setting that silently does nothing — so it is not listed.
+ */
+const OPENCODE_THINKING: ReadonlyArray<{ pattern: RegExp; defaultLevel: ReasoningSupport["defaultLevel"] }> = [
+  { pattern: /^qwen3\.[6-9](?:-|$)/, defaultLevel: "low" },
+  { pattern: /^minimax-m3(?:-|$)/, defaultLevel: null },
+];
+
+/** OpenCode Go: Responses-API models, and the measured Anthropic-path models above. */
 function openCodeSupport(modelId: string): ReasoningSupport | null {
   const spec = openCodeModel(modelId);
-  if (spec?.protocol === "responses") return { wire: "openai-responses", source: "declared", levels: LEVELS };
+  if (spec?.protocol === "responses") {
+    return { wire: "openai-responses", source: "declared", levels: LEVELS, defaultLevel: null };
+  }
+  if (spec?.protocol === "anthropic-messages") {
+    const known = OPENCODE_THINKING.find((m) => m.pattern.test(modelId));
+    if (known) return { wire: "anthropic-thinking", source: "declared", levels: LEVELS, defaultLevel: known.defaultLevel };
+  }
   return null;
 }
 
@@ -119,7 +145,7 @@ export async function reasoningAvailability(
       const params = await openRouterParameters(modelId, fetcher);
       if (params === null) return { support: null, reason: `OpenRouter does not list ${modelId}, so its reasoning support is unknown.` };
       return params.includes("reasoning")
-        ? { support: { wire: "openrouter", source: "discovered", levels: LEVELS }, reason: null }
+        ? { support: { wire: "openrouter", source: "discovered", levels: LEVELS, defaultLevel: null }, reason: null }
         : { support: null, reason: `OpenRouter reports that ${modelId} does not accept a reasoning setting.` };
     } catch (error) {
       return {
@@ -129,7 +155,7 @@ export async function reasoningAvailability(
     }
   }
   const declared = DECLARED.find((d) => d.provider === providerId && d.pattern.test(modelId));
-  if (declared) return { support: { wire: declared.wire, source: "declared", levels: LEVELS }, reason: null };
+  if (declared) return { support: { wire: declared.wire, source: "declared", levels: LEVELS, defaultLevel: null }, reason: null };
   return {
     support: null,
     reason: `FORGE has no record that ${modelId} accepts a reasoning setting, so it sends none.`,

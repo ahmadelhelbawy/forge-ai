@@ -478,8 +478,14 @@ export function PromptStudio({
     const a = document.createElement("a");
     a.href = url;
     a.download = `forge-prompt-v${currentV}.md`;
+    // Attached, and revoked only after the download has started: Firefox
+    // ignores a click on a detached anchor, and revoking in the same tick can
+    // cancel the download before the browser reads the blob.
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   };
 
   const loadDiff = async (): Promise<void> => {
@@ -553,7 +559,18 @@ export function PromptStudio({
         <button title="Copy" onClick={copy} disabled={!shown} className={iconButton}>
           {copied ? <Check size={15} className="text-green-400" /> : <Copy size={15} />}
         </button>
-        <button title="Export Markdown" onClick={exportFile} disabled={!prompt} className={iconButton}>
+        <button
+          title={
+            prompt
+              ? `Download version ${currentV} as Markdown${dirty ? " (the saved version — your unsaved edits are not included)" : ""}`
+              : "Nothing to download yet — no prompt version has been saved in this conversation."
+          }
+          aria-label="Export Markdown"
+          data-testid="export-markdown"
+          onClick={exportFile}
+          disabled={!prompt}
+          className={iconButton}
+        >
           <Download size={15} />
         </button>
         {editing ? (

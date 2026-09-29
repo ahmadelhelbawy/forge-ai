@@ -691,8 +691,7 @@ export async function* runTurn(
       throw new Error(
         response.finishReason === "length"
           ? `The model (${response.model}) used its whole output budget (${CHAT_MAX_TOKENS} tokens) without ` +
-              "writing an answer — reasoning models can spend it all thinking. Nothing was written; retry, " +
-              "or choose a model with a larger output limit."
+              `writing an answer — it spent it all reasoning. Nothing was written. ${outputLimitRemedy(deps)}`
           : `The model (${response.model}) returned an empty response${
               response.finishReason ? ` (finish reason: ${response.finishReason})` : ""
             }, so nothing was written. Check the model ID and the provider account, then retry.`,
@@ -701,6 +700,30 @@ export async function* runTurn(
 
     yield push({ kind: "stage", stage: "verifying", label: STAGE_LABELS.verifying });
     const { envelope, problem: envelopeProblem } = readEnvelope(response.text);
+    if (envelope === null && writesVersion(action)) {
+      // A write whose prompt was cut off has no prompt to save, and its reply
+      // typically describes changes as if they were made. Keeping that reply
+      // as chat told the user a prompt existed when none did; failing the turn
+      // keeps their message, writes nothing, names the cause and offers Retry
+      // (WS-R12, INV-012). Two shapes, both measured live on 2026-09-26: the
+      // output limit reached (`length`), and a `prompt` string that simply
+      // ends, with no limit reported. No automatic retry: the same request can
+      // meet the same limit, and a second call would double a long wait.
+      const probe = createEnvelopeStreamReader();
+      const promptCut = probe.push(response.text).some((d) => d.field === "prompt") && !probe.completed().has("prompt");
+      if (response.finishReason === "length") {
+        throw new Error(
+          `The model (${response.model}) reached its output limit (${CHAT_MAX_TOKENS} tokens for the answer) ` +
+            `before it finished writing the prompt, so nothing was saved. ${outputLimitRemedy(deps)}`,
+        );
+      }
+      if (promptCut) {
+        throw new Error(
+          `The model's answer (${response.model}) ended before the prompt was complete ` +
+            `(finish reason: ${response.finishReason ?? "not reported"}), so nothing was saved. Retry.`,
+        );
+      }
+    }
     let reply: string;
     let proposed: string | null;
     if (envelope === null) {
@@ -731,7 +754,9 @@ export async function* runTurn(
             ? `The model (${response.model}) was cut off at its output budget (${CHAT_MAX_TOKENS} tokens) before finishing, ` +
                 "so the answer was kept as chat and no prompt version was written. Retry, ask for a shorter prompt, " +
                 "or choose a model with a larger output limit."
-            : `The response was not a readable FORGE envelope (${envelopeProblem ?? "unreadable"}), so it was kept as chat and no prompt version was written.`,
+            : `The response was not a readable FORGE envelope (${envelopeProblem ?? "unreadable"}${
+                response.finishReason ? `; finish reason: ${response.finishReason}` : ""
+              }), so it was kept as chat and no prompt version was written.`,
           [measureEvidence("unreadable_responses", 1, "responses")],
         ),
       );
@@ -921,6 +946,13 @@ export async function* runTurn(
     yield push({ kind: "turn_failed", reason: error instanceof Error ? error.message : String(error) });
     return result({ failed: true, error });
   }
+}
+
+/** What the user can change after an output-limit stop — named in their terms. */
+function outputLimitRemedy(deps: TurnDeps): string {
+  return deps.reasoningEffort
+    ? `Retry with a lower reasoning effort (this call used "${deps.reasoningEffort}"), ask for a shorter prompt, or choose a model with a larger output limit.`
+    : "Retry, ask for a shorter prompt, or choose a model with a larger output limit.";
 }
 
 /** Drain the pipeline. V2-B streams the same events instead of collecting them. */

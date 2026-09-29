@@ -190,6 +190,25 @@ try {
     await failing.close();
   });
 
+  await check("4b. An output-limit stop saves nothing, says why, and offers Retry", async () => {
+    const limited = await context.newPage();
+    await limited.goto(BASE);
+    await limited.getByTestId("new-conversation").click();
+    const exportButton = limited.getByTestId("export-markdown");
+    assert(await exportButton.isDisabled(), "Export is enabled with no saved prompt");
+    assert(/Nothing to download yet/.test((await exportButton.getAttribute("title")) ?? ""), "disabled Export gives no reason");
+    const box = limited.getByRole("textbox", { name: "Message" });
+    const message = "Write a review prompt. [[forge:stub-output-limit]]";
+    await box.fill(message);
+    await box.press("Enter");
+    await limited.getByRole("alert").filter({ hasText: /output limit/ }).first().waitFor({ timeout: 20_000 });
+    await limited.getByText(message).first().waitFor();
+    await limited.getByTestId("turn-retry").waitFor();
+    assert(!(await limited.getByText("I wrote the full prompt.").count()), "the cut-off reply is shown as if a prompt was written");
+    assert(await exportButton.isDisabled(), "Export became enabled although nothing was saved");
+    await limited.close();
+  });
+
   await check("5. Phone width: no horizontal scroll", async () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.waitForTimeout(300);

@@ -45,6 +45,8 @@ export type ReasoningEffortWire = "default" | "low" | "medium" | "high";
 export interface ReasoningAvailabilityWire {
   supported: boolean;
   levels: Array<Exclude<ReasoningEffortWire, "default">>;
+  /** What "Default" sends for this model; null means no setting at all (WS-R43). */
+  defaultLevel?: Exclude<ReasoningEffortWire, "default"> | null;
   source: "declared" | "discovered" | null;
   wire: string | null;
   reason: string | null;

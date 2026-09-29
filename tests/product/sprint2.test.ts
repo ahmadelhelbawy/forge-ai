@@ -407,7 +407,24 @@ describe("WS-R42/WS-R43 — reasoning effort (AC-066)", () => {
     const custom = await reasoningAvailability({ providerId: "custom-x", baseURL: "http://localhost:1234/v1", protocol: "chat-completions", modelId: "my-model", openCode: false });
     expect(custom.support).toBeNull();
     expect((await reasoningAvailability(openCode("gpt-5.6-luna"))).support?.wire).toBe("openai-responses");
-    expect((await reasoningAvailability(openCode("qwen3.8-flash"))).support).toBeNull();
+    // Measured live (evals/release-blockers/): the Qwen family on OpenCode's
+    // Anthropic path honours a thinking budget and reasons without a bound
+    // when none is sent, so its Default is bounded; MiniMax M3 honours the
+    // budget and does not reason by default; M2.x ignores `disabled`, and a
+    // chat-completions model has no documented setting.
+    expect((await reasoningAvailability(openCode("qwen3.8-flash"))).support).toMatchObject({
+      wire: "anthropic-thinking",
+      source: "declared",
+      defaultLevel: "low",
+    });
+    expect((await reasoningAvailability(openCode("qwen3.6-plus"))).support?.defaultLevel).toBe("low");
+    expect((await reasoningAvailability(openCode("minimax-m3"))).support).toMatchObject({ wire: "anthropic-thinking", defaultLevel: null });
+    expect((await reasoningAvailability(openCode("minimax-m2.7"))).support).toBeNull();
+    const kimi = await reasoningAvailability(openCode("kimi-k3"));
+    expect(kimi.support).toBeNull();
+    expect(kimi.reason).toContain("kimi-k3");
+    // Every other declared or discovered model's Default sends nothing.
+    expect((await reasoningAvailability(openCode("gpt-5.6-luna"))).support?.defaultLevel).toBeNull();
   });
 
   it("discovers OpenRouter support from the provider's own listing, and never guesses past a failure", async () => {
@@ -447,6 +464,37 @@ describe("WS-R42/WS-R43 — reasoning effort (AC-066)", () => {
     await expect(reasoningFor(convo)).resolves.toEqual({ wire: "openai-chat", effort: "high" });
     convo.reasoningEffort = "default";
     await expect(reasoningFor(convo)).resolves.toBeUndefined();
+  });
+
+  it("bounds Default for a model that otherwise reasons without a limit, and only there", async () => {
+    process.env["FORGE_API_KEY"] = "sk-test-not-real";
+    const convo = newConversation({ title: "r", provider: "opencode-go", model: "qwen3.8-flash" });
+    convo.reasoningEffort = "default";
+    await expect(reasoningFor(convo)).resolves.toEqual({ wire: "anthropic-thinking", effort: "low" });
+    convo.reasoningEffort = "high";
+    await expect(reasoningFor(convo)).resolves.toEqual({ wire: "anthropic-thinking", effort: "high" });
+    // The thinking budget is added to the answer's cap, never taken from it.
+    expect(reasoningCallOptions({ wire: "anthropic-thinking", effort: "low" }, "opencode-go", 16000).maxTokens).toBe(16000 + THINKING_BUDGET.low);
+    convo.reasoningEffort = "default";
+    convo.model = "minimax-m3";
+    await expect(reasoningFor(convo)).resolves.toBeUndefined();
+    convo.model = "kimi-k3";
+    await expect(reasoningFor(convo)).resolves.toBeUndefined();
+    convo.reasoningEffort = "low";
+    await expect(reasoningFor(convo)).rejects.toThrow(/Reasoning effort "low" was requested/);
+  });
+
+  it("keeps a stored effort through a model that cannot take it, sending nothing there", async () => {
+    process.env["FORGE_API_KEY"] = "sk-test-not-real";
+    const convo = newConversation({ title: "r", provider: "opencode-go", model: "kimi-k3" });
+    convo.reasoningEffort = "high";
+    // Not named by this request: nothing is sent, and the choice is not erased.
+    await expect(reasoningFor(convo, { strict: false })).resolves.toBeUndefined();
+    expect(convo.reasoningEffort).toBe("high");
+    // Named by the request: refused before any call (WS-R42).
+    await expect(reasoningFor(convo, { strict: true })).rejects.toThrow(/Reasoning effort "high" was requested/);
+    convo.model = "qwen3.8-flash";
+    await expect(reasoningFor(convo, { strict: false })).resolves.toEqual({ wire: "anthropic-thinking", effort: "high" });
   });
 });
 

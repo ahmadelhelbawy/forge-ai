@@ -384,7 +384,9 @@ export function Workspace(): React.JSX.Element {
             provider,
             model,
             // WS-R42: only an effort the model is known to accept is sent.
-            reasoningEffort: reasoning?.supported ? effort : "default",
+            // Otherwise none is named, so the conversation keeps the choice
+            // for when the user switches back to a model that takes it.
+            ...(reasoning?.supported ? { reasoningEffort: effort } : {}),
           },
           {
             onEvent: (event) => {
@@ -486,6 +488,9 @@ export function Workspace(): React.JSX.Element {
       return;
     }
     let live = true;
+    // The previous model's answer must not stand in for this one's while the
+    // check runs: its levels could be sent to a model that rejects them.
+    setReasoning(null);
     api
       .reasoning(provider, model)
       .then((r) => live && setReasoning(r))
@@ -792,8 +797,13 @@ export function Workspace(): React.JSX.Element {
           className="flex shrink-0 items-center gap-1.5"
           title={
             reasoning?.supported
-              ? `Reasoning effort — ${reasoning.source === "discovered" ? "support reported by the provider" : "support documented for this model"}.`
-              : (reasoning?.reason ?? "Checking whether this model accepts a reasoning setting…")
+              ? `Reasoning effort — ${reasoning.source === "discovered" ? "support reported by the provider" : "support documented for this model"}.` +
+                (reasoning.defaultLevel
+                  ? ` This model reasons without a limit when nothing is sent, so Default sends ${reasoning.defaultLevel}.`
+                  : "")
+              : reasoning
+                ? `Not supported: ${reasoning.reason ?? "this model accepts no reasoning setting."}`
+                : "Checking whether this model accepts a reasoning setting…"
           }
         >
           <span className="hidden text-[11.5px] text-slate-500 lg:inline">Effort</span>
@@ -803,9 +813,17 @@ export function Workspace(): React.JSX.Element {
             aria-label="Reasoning effort"
             data-testid="reasoning-effort"
             onChange={(e) => void updateSettings({ reasoningEffort: e.target.value as ReasoningEffortWire })}
-            className={`${control} w-[92px]`}
+            className={`${control} w-[112px]`}
           >
-            <option value="default">{reasoning?.supported ? "Default" : "N/A"}</option>
+            <option value="default">
+              {!reasoning
+                ? "Checking…"
+                : !reasoning.supported
+                  ? "Not supported"
+                  : reasoning.defaultLevel
+                    ? `Default (${reasoning.defaultLevel[0]!.toUpperCase() + reasoning.defaultLevel.slice(1)})`
+                    : "Default"}
+            </option>
             {(reasoning?.levels ?? []).map((level) => (
               <option key={level} value={level}>
                 {level[0]!.toUpperCase() + level.slice(1)}

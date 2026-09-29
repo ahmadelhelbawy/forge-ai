@@ -16,6 +16,7 @@ export type DictationError =
   | "permission-denied"
   | "no-microphone"
   | "no-speech"
+  | "no-result"
   | "network"
   | "failed";
 
@@ -46,6 +47,8 @@ export const DICTATION_MESSAGES: Record<DictationError, string> = {
   "permission-denied": "Microphone access is blocked. Allow it in the browser's site settings, then try again.",
   "no-microphone": "No microphone was found. Connect one and try again.",
   "no-speech": "No speech was heard. Try again a little closer to the microphone.",
+  "no-result":
+    "Nothing was recognised — the browser's speech service returned no text. Try again, or type instead.",
   network: "The browser's speech service could not be reached. Check your connection, or type instead.",
   failed: "Dictation stopped unexpectedly. Try again, or type instead.",
 };
@@ -130,6 +133,13 @@ export const browserDictation: DictationEngine = {
     };
     rec.onend = () => {
       if (cancelled || failed) return;
+      // A session that recognised nothing must say so: ending silently left
+      // the user with an empty composer and no idea why (browser acceptance,
+      // 2026-09-26: speech reached Chrome, its service returned no result).
+      if (heard.trim() === "") {
+        handlers.onError("no-result");
+        return;
+      }
       // An interim guess at the moment of stopping is kept: it is what the user saw.
       handlers.onEnd(heard);
     };

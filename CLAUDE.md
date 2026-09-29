@@ -35,11 +35,12 @@ with rationale. Never relax an invariant to make a test pass.
 
 ## Repository state
 
-Verified 2026-09-25 at the pre-release hardening commit — **1340 tests passing
-(94 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
+Verified 2026-09-26 after the release-blocker fixes — **1346 tests passing
+(95 skipped)**, typecheck / `schema:check` (11 schemas) / web build clean, the
 HTTP product suite plus browser acceptance green twice in a row
-(`web/scripts/e2e.sh`, **93/93** + **7/7** browser checks), the frozen P1.6
-manifest verifying ×3, and the live acceptance in `evals/hardening/`.
+(`web/scripts/e2e.sh`, **94/94** + **8/8** browser checks), the frozen P1.6
+manifest verifying ×3, and the live acceptance in `evals/hardening/` and
+`evals/release-blockers/`.
 
 **Complete:** P0 (IR foundation) · P1 (compiler + 7 profiles) · P1.4 (security
 hardening) · P1.5 + P1.6 (thesis gates — both ran; claim retired) · P2 (context
@@ -122,7 +123,17 @@ unknown hosts — **FORGE still has no login**. Browser acceptance now runs in
 in one transaction (reads were ~30 s on a 2,218-event store). Live run and the
 defects it found: `evals/hardening/`.
 
-**Known defects, recorded and unfixed.** `evals/p16/README.md` still says
+**Release blockers (2026-09-26).** WS-R43 amended: Qwen 3.6+ / MiniMax M3 on
+OpenCode Go declared from live measurement, and Default bounded to `low` where a
+model reasons without a bound (the 207 s empty Strengthen). WS-R12a: a write whose
+prompt is cut off fails the turn, never keeps a reply describing unsaved changes.
+Export and dictation fixes. Evidence: `evals/release-blockers/`.
+
+**Known defects, recorded and unfixed.** Real-speech transcription is unverified
+(no microphone here; Chrome's service returned nothing for synthesized audio). A
+long REVISE still takes ~2 min — it is output-bound: the envelope carries the
+whole prompt. One REVISE ended with its prompt cut off and no limit reported;
+cause upstream unknown (now a named failure). `evals/p16/README.md` still says
 "NOT RUN" over a scored FAIL — it is **frozen** and may not be edited; AC-023
 asserts a dependency test that does not exist; cassette replay is unreachable
 from `web/`. The IR extractor raises a *blocking* scope ("blast radius") question

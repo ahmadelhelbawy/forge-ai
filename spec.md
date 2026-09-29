@@ -1183,6 +1183,15 @@ model chain-of-thought.
 exactly as a failed turn does: the user's message is kept, no assistant message
 and no version are written.
 
+**WS-R12a (amended 2026-09-26).** A version-writing action whose answer stops
+before its `prompt` is complete — the output limit reached, or the `prompt`
+string simply ending — is a **failed** turn, not a degraded one: the reply of
+such an answer describes changes that were never saved, so keeping it as chat
+misleads. The failure names the cause and the finish reason, and the user's
+Retry is the only retry — none is automatic, because the same request can meet
+the same limit and a second call doubles the wait. A read-only action cut off
+the same way still degrades to chat with `FORGE-W003`.
+
 **WS-R13.** The per-turn model-call budget is declared and bounded. A simple
 revision costs one generation call plus at most one classification call and
 one bounded repair of that classification (`WS-R34`); an explicit generate
@@ -1696,7 +1705,15 @@ an effort for such a model is refused with a 400 before any model call. FORGE
 never sends a reasoning parameter to a model not known to accept it.
 
 **WS-R43 — The provider's parameter, not a generic one.** Levels are `low`,
-`medium` and `high`; the default sends nothing. The wire form follows the
+`medium` and `high`; the default sends nothing — **except** (amended
+2026-09-26) for a model whose declared support names a `defaultLevel` because it
+was measured to reason **without a bound** when nothing is sent. There the
+default sends that level, and the control says so ("Default (Low)"). Rationale:
+qwen3.8-flash on OpenCode Go, sent nothing, spent all 16,000 output tokens
+reasoning over 207 s and returned no answer on an ordinary Strengthen; with a
+`low` budget the same request finished in 84 s (`evals/release-blockers/`).
+A stored effort the current model cannot take is not sent and not erased; only
+a request that itself names an unsupported effort is refused. The wire form follows the
 model's protocol: `reasoning_effort` on OpenAI-compatible chat completions,
 `reasoning: {effort}` for OpenRouter, `reasoningEffort` on the Responses API, and
 an extended-thinking budget on Anthropic Messages, whose output cap is raised by
