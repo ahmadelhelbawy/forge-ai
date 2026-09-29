@@ -221,3 +221,18 @@ describe("no hidden retries (MB-R3)", () => {
     expect(hits).toBe(1);
   });
 });
+
+describe("a rejected reasoning setting is not reported as a bad model", () => {
+  it("names the effort setting, not the model", () => {
+    const d = providerDiagnostic(
+      Object.assign(new Error("Bad Request"), {
+        statusCode: 400,
+        responseBody: JSON.stringify({ error: { message: "reasoning_effort is not supported with this model" } }),
+      }),
+      { provider: "OpenAI", stage: "generation", model: "gpt-x" },
+    );
+    const message = classifyFailure(d);
+    expect(message).toMatch(/reasoning setting/);
+    expect(message).not.toMatch(/was rejected by this endpoint/);
+  });
+});

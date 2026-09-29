@@ -198,6 +198,13 @@ export function classifyFailure(d: ProviderDiagnostic): string {
     return "Authentication failed — the API key was rejected.";
   }
   if (d.httpStatus === 429) return `${d.provider} is rate-limiting this key.`;
+  // A 400 about the reasoning parameter is not a bad model: the model works,
+  // the effort setting does not. Naming the model sent users to switch it.
+  if (d.httpStatus === 400 && /reasoning|thinking|budget_tokens|effort/.test(text)) {
+    return `${d.provider} rejected the reasoning setting for this model — set Effort to Default (or another level) and retry.${
+      d.providerMessage ? ` (${d.providerMessage})` : ""
+    }`;
+  }
   if (d.httpStatus === 404 || /not supported|does not exist|unknown model/.test(text)) {
     return `Model "${d.model ?? "unknown"}" was rejected by this endpoint.`;
   }

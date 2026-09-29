@@ -372,6 +372,31 @@ export async function* runTurn(
     ...over,
   });
 
+  /**
+   * WS-R12: a failed or cancelled turn leaves the conversation as it was,
+   * apart from the user's message. Everything the turn may change before its
+   * model call returns is captured here and put back in the catch below —
+   * before the 2026-09-29 audit a failed CLARIFY lost its question, and a
+   * failed regenerate deleted the answer it was meant to replace.
+   */
+  const before = {
+    messages: [...convo.messages],
+    pendingClarification: convo.pendingClarification,
+    discovery: convo.discovery,
+    target: convo.target,
+    versions: convo.promptVersions.length,
+    currentV: convo.currentV,
+  };
+  const rollback = (): void => {
+    const kept = regenerated ? before.messages : [...before.messages, ...convo.messages.slice(before.messages.length, before.messages.length + 1)];
+    convo.messages.splice(0, convo.messages.length, ...kept);
+    convo.pendingClarification = before.pendingClarification;
+    convo.discovery = before.discovery;
+    convo.target = before.target;
+    convo.promptVersions.splice(before.versions);
+    convo.currentV = before.currentV;
+  };
+
   if (regenerated) {
     // Drop only the answer being replaced. The user's message stays where it
     // was, so the retry reads as one exchange; versions are never removed.
@@ -939,12 +964,13 @@ export async function* runTurn(
   } catch (error) {
     // WS-R12: a cancelled turn and a failed turn end in the same place. The
     // user's message stays; no assistant message and no version are written.
+    rollback();
     if (error instanceof TurnCancelled || options.signal?.aborted) {
       yield push({ kind: "turn_cancelled" });
-      return result({ cancelled: true });
+      return result({ cancelled: true, discovery: convo.discovery });
     }
     yield push({ kind: "turn_failed", reason: error instanceof Error ? error.message : String(error) });
-    return result({ failed: true, error });
+    return result({ failed: true, error, discovery: convo.discovery });
   }
 }
 

@@ -65,6 +65,7 @@ import type { DerivedOverlay, StrategyArchetype } from "forge/dist/strategy/sche
 import { diffLines, type DiffHunk } from "./diff";
 import { generate } from "./ai-provider";
 import { resolveCall, transportFor } from "./forge";
+import { reasoningFor } from "./reasoning-resolve";
 import { irForVersion } from "./preservation";
 import {
   addCandidate,
@@ -429,6 +430,20 @@ export async function generateCandidates(
           resolveCall(options.provider ?? convo.provider, options.model ?? convo.model ?? undefined),
           convo.id,
         );
+  // WS-R43: the same reasoning bound a turn gets. Without it a model that
+  // reasons unbounded by default spent the whole budget thinking and the
+  // candidate came back empty, reported as an unreadable envelope.
+  const reasoning =
+    resolved === null
+      ? undefined
+      : await reasoningFor(
+          {
+            ...convo,
+            provider: options.provider ?? convo.provider,
+            model: options.model ?? convo.model,
+          },
+          { strict: false },
+        );
 
   /**
    * The first transport failure, kept so a request in which *every* archetype
@@ -485,13 +500,20 @@ export async function generateCandidates(
           latencyMs: 0,
         };
       }
-      const spec = resolved as NonNullable<typeof resolved>;
+      const spec = { ...(resolved as NonNullable<typeof resolved>), ...(reasoning ? { reasoning } : {}) };
       const completion = await generate(spec, {
         system: rendered.system,
         prompt: rendered.user,
         maxTokens: CANDIDATE_MAX_TOKENS,
         temperature: CANDIDATE_TEMPERATURE,
       });
+      if (completion.finishReason === "length") {
+        throw new Error(
+          `the model (${completion.modelId}) reached its output limit before finishing this alternative${
+            completion.text.trim() ? "" : " — it spent the whole budget reasoning"
+          }; lower the reasoning effort or choose a model with a larger output limit`,
+        );
+      }
       return { text: completion.text, model: completion.modelId, latencyMs: completion.latencyMs };
     }),
   );

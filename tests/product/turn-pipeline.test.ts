@@ -739,3 +739,66 @@ describe("a turn can be regenerated (WS-R13)", () => {
     expect(convo.messages.map((m) => m.role)).toEqual(["user", "assistant"]);
   });
 });
+
+describe("a failed or cancelled turn changes nothing but the user's message (WS-R12, audit 2026-09-29)", () => {
+  beforeEach(isolatedDataDir);
+
+  it("a failed CLARIFY answer keeps the question pending, so the retry is still an answer", async () => {
+    const convo = conversationWithPrompt();
+    setPendingClarification(convo, { question: "Which database?", options: ["Postgres", "SQLite"], turnId: "t0" });
+    const pending = convo.pendingClarification;
+    expect(pending).not.toBeNull();
+
+    const result = await executeTurn(
+      convo,
+      "Postgres",
+      deps({ classification: classification("CLARIFY"), generateThrows: new Error("upstream 503") }).deps,
+    );
+    expect(result.failed).toBe(true);
+    expect(convo.pendingClarification).toEqual(pending);
+    expect(convo.messages.at(-1)).toMatchObject({ role: "user", content: "Postgres" });
+  });
+
+  it("a failed regenerate keeps the answer it was meant to replace", async () => {
+    const convo = conversationWithPrompt();
+    convo.messages.push({ role: "user", content: "explain it", at: "2026-09-29T00:00:00.000Z" });
+    convo.messages.push({ role: "assistant", content: "THE GOOD ANSWER", at: "2026-09-29T00:00:01.000Z" });
+    saveConversation(convo);
+    const messagesBefore = [...convo.messages];
+
+    const result = await executeTurn(
+      convo,
+      "explain it",
+      deps({ classification: classification("DISCUSS"), generateThrows: new Error("timeout") }).deps,
+      { regenerate: true },
+    );
+    expect(result.failed).toBe(true);
+    expect(convo.messages).toEqual(messagesBefore);
+    saveConversation(convo);
+    expect(convo.turnEvents.some((e) => e.kind === "turn_failed")).toBe(true);
+  });
+
+  it("a cancelled turn leaves target, discovery and versions as they were", async () => {
+    const convo = conversationWithPrompt();
+    const snapshot = { target: convo.target, discovery: convo.discovery, versions: convo.promptVersions.length, currentV: convo.currentV };
+    const controller = new AbortController();
+    const recorder = deps({ classification: classification("REVISE"), generation: envelope("A NEW PROMPT") });
+    const original = recorder.deps.complete.bind(recorder.deps);
+    const result = await executeTurn(
+      convo,
+      "tighten it",
+      {
+        ...recorder.deps,
+        async complete(request) {
+          const response = await original(request);
+          if (!request.user.includes("Classify the user's message")) controller.abort();
+          return response;
+        },
+      },
+      { signal: controller.signal },
+    );
+    expect(result.cancelled).toBe(true);
+    expect({ target: convo.target, discovery: convo.discovery, versions: convo.promptVersions.length, currentV: convo.currentV }).toEqual(snapshot);
+    expect(convo.messages.at(-1)).toMatchObject({ role: "user", content: "tighten it" });
+  });
+});
