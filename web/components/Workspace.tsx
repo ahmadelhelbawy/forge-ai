@@ -109,6 +109,7 @@ export function Workspace(): React.JSX.Element {
   const [preservation, setPreservation] = useState<PreservationReport | null>(null);
   const [proposals, setProposals] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const starting = useRef(false);
   const [advanced, setAdvanced] = useState(false);
   const [catalogReady, setCatalogReady] = useState(false);
 
@@ -371,6 +372,11 @@ export function Workspace(): React.JSX.Element {
 
   const runTurn = useCallback(
     async (input: { content?: string; regenerate?: boolean; generate?: boolean; mode?: TransformationModeWire }) => {
+      // A double click on the first message (or an example) must not create
+      // two conversations and run two turns: the create is awaited before
+      // `sending` is set, so this ref closes that window.
+      if (starting.current) return;
+      starting.current = true;
       let id = activeId;
       if (!id) {
         try {
@@ -383,6 +389,7 @@ export function Workspace(): React.JSX.Element {
           }
         } catch (e) {
           setError(e instanceof Error ? e.message : String(e));
+          starting.current = false;
           return;
         }
       }
@@ -462,6 +469,7 @@ export function Workspace(): React.JSX.Element {
           // Keep the banner; the conversation may still be intact server-side.
         }
       } finally {
+        starting.current = false;
         abortRef.current = null;
         setTurnConversation(null);
         setSending(false);
@@ -555,15 +563,22 @@ export function Workspace(): React.JSX.Element {
 
   const attach = useCallback(
     async (files: File[]) => {
-      if (!activeId) return;
       try {
-        await api.uploadAttachments(activeId, files);
-        await reload(activeId);
+        // Attaching first is a fine way to start: the conversation is created
+        // for the files instead of the click silently doing nothing.
+        let id = activeId;
+        if (!id) {
+          id = (await api.createConversation({ target, provider, model })).id;
+          setActiveId(id);
+          rememberConversation(id);
+        }
+        await api.uploadAttachments(id, files);
+        await reload(id);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [activeId, reload],
+    [activeId, reload, target, provider, model, setActiveId],
   );
 
   const saveEdit = useCallback(

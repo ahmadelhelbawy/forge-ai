@@ -167,10 +167,14 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     if (!selected) return;
     const label = selected.custom ? `Delete custom provider "${selected.displayName}"?` : `Reset "${selected.displayName}" to defaults (clears the saved key)?`;
     if (!window.confirm(label)) return;
-    await api.deleteProvider(selected.id);
-    setSelectedId(null);
-    await refresh(false);
-    onChanged();
+    try {
+      await api.deleteProvider(selected.id);
+      setSelectedId(null);
+      await refresh(false);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const addCustom = async (): Promise<void> => {
@@ -193,8 +197,9 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     try {
       const result = await api.providerModels(selected.id);
       setDiscovered(result.discovered);
-    } catch {
+    } catch (e) {
       setDiscovered(null);
+      setError(`Could not list models: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -203,8 +208,12 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     const [provider, ...rest] = value.split("|||");
     const model = rest.join("|||");
     if (!provider || !model) return;
-    await api.setDefaultModel(provider, model);
-    onChanged();
+    try {
+      await api.setDefaultModel(provider, model);
+      onChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
   };
 
   const backdropDown = useRef(false);
