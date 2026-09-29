@@ -71,7 +71,8 @@ export function railSteps(input: RailInput): Step[] {
     {
       key: "compile",
       label: "Evidence",
-      state: last ? "done" : hasPrompt ? "available" : "idle",
+      // A run with failures is not "done": the accent dot read as success.
+      state: last ? (failed > 0 ? "active" : "done") : hasPrompt ? "available" : "idle",
       detail: last
         ? `Last verification: ${verified} verified, ${failed} failed`
         : "Paste an external run's evidence to verify — FORGE never runs it",

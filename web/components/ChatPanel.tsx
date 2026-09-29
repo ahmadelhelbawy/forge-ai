@@ -23,6 +23,8 @@ interface Props {
   attachments: AttachmentMeta[];
   sending: boolean;
   ready: boolean;
+  /** Title of another conversation whose turn is running; this one waits. */
+  waitingOn?: string | null;
   providerAvailable: boolean;
   /** The reply as it streams in, before the turn is saved (WS-R10). */
   streamingReply: string;
@@ -103,6 +105,7 @@ export function ChatPanel({
   attachments,
   sending,
   ready,
+  waitingOn = null,
   providerAvailable,
   streamingReply,
   pendingUserMessage,
@@ -251,7 +254,7 @@ export function ChatPanel({
                 <button
                   onClick={onStop}
                   data-testid="turn-stop"
-                  title="Stop this turn. Nothing is saved."
+                  title="Stop this turn. Your message is kept; no reply or prompt version is written."
                   className="flex items-center gap-1.5 rounded-md border border-white/[0.08] px-2 py-1 text-[12px] text-slate-300 transition-colors hover:border-rose-800 hover:text-rose-200"
                 >
                   <Square size={11} /> Stop
@@ -320,7 +323,8 @@ export function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+              // An IME confirms a composition with Enter; that Enter is not "send".
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
                 send();
               }
@@ -328,7 +332,9 @@ export function ChatPanel({
             rows={3}
             aria-label="Message"
             placeholder={
-              discovery?.status === "open"
+              waitingOn !== null
+                ? `Waiting for the turn in "${waitingOn}" to finish…`
+                : discovery?.status === "open"
                 ? "Answer in your own words, or ask something…"
                 : hasPrompt
                   ? "Ask for a change, a critique or an explanation…"

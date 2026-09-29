@@ -155,7 +155,7 @@ export function DiscoveryPanel({
               disabled={disabled}
               onChange={(e) => setTyped((t) => ({ ...t, [i]: e.target.value }))}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && answers.length > 0 && !disabled) onAnswer(answers.join("\n\n"));
+                if (e.key === "Enter" && !e.nativeEvent.isComposing && answers.length > 0 && !disabled) onAnswer(answers.join("\n\n"));
               }}
               aria-label={`Answer: ${q.question}`}
               placeholder={q.options.length > 0 ? "Or say it in your own words…" : "Your answer…"}

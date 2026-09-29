@@ -47,9 +47,14 @@ export function Sidebar({ conversations, activeId, onSelect, onNew, onDelete }: 
               key={c.id}
               role="button"
               tabIndex={0}
+              data-testid={`conversation-${c.id}`}
               onClick={() => onSelect(c.id)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") onSelect(c.id);
+                if (e.target !== e.currentTarget) return;
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(c.id);
+                }
               }}
               aria-current={c.id === activeId ? "true" : undefined}
               className={`group relative mb-0.5 cursor-pointer rounded-lg px-3 py-2 transition-colors ${

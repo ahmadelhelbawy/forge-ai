@@ -49,7 +49,24 @@ export function Workspace(): React.JSX.Element {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"providers" | "models" | "general">("providers");
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const conversationsRef = useRef<ConversationSummary[]>([]);
+  conversationsRef.current = conversations;
+  const [activeIdState, setActiveIdState] = useState<string | null>(null);
+  /**
+   * The open conversation, readable from async code. Every response is applied
+   * only if it still belongs to the open conversation: without this, a turn or
+   * a load that finished after the user switched wrote conversation A's state
+   * onto B's screen (audit 2026-09-29).
+   */
+  const activeIdRef = useRef<string | null>(null);
+  const activeId = activeIdState;
+  const setActiveId = useCallback((id: string | null) => {
+    activeIdRef.current = id;
+    setActiveIdState(id);
+  }, []);
+  const isOpen = (id: string): boolean => activeIdRef.current === id;
+  /** The conversation the running turn belongs to (one turn at a time). */
+  const [turnConversation, setTurnConversation] = useState<string | null>(null);
   // While "New conversation" is still being created, sending is disabled: a
   // message sent in that window created a second conversation, and the
   // pending create then selected the empty one — so Generate wrote into a
@@ -219,6 +236,7 @@ export function Workspace(): React.JSX.Element {
   const refreshLedger = useCallback(async (id: string) => {
     try {
       const result = await api.listLedger(id);
+      if (activeIdRef.current !== id) return;
       setLedger(result.entries);
       setPreservation(result.check);
       setProposals(result.proposals);
@@ -237,9 +255,13 @@ export function Workspace(): React.JSX.Element {
     setDiagnostics([]);
     try {
       const convo = await api.getConversation(id);
+      if (!isOpen(id)) return;
+      const listed = await api.listVersions(id).then((r) => r.versions).catch(() => convo.promptVersions);
+      if (!isOpen(id)) return;
       setDetail(convo);
-      setVersions(await api.listVersions(id).then((r) => r.versions).catch(() => convo.promptVersions));
+      setVersions(listed);
       await refreshLedger(id);
+      if (!isOpen(id)) return;
       setCanRetry(convo.messages.some((m) => m.role === "user"));
       setTarget(convo.target || "generic");
       // A conversation remembers the model it last used, which may since have
@@ -254,7 +276,7 @@ export function Workspace(): React.JSX.Element {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [refreshLedger, applySelection]);
+  }, [refreshLedger, applySelection, setActiveId]);
 
   // A reload returns to the conversation that was open: the URL names it
   // (`#c=<id>`, so it can be bookmarked), with the last one opened as the
@@ -318,15 +340,18 @@ export function Workspace(): React.JSX.Element {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [activeId, refreshList],
+    [activeId, refreshList, setActiveId],
   );
 
   const reload = useCallback(
     async (id: string) => {
       const convo = await api.getConversation(id);
-      setDetail(convo);
-      setVersions(await api.listVersions(id).then((r) => r.versions).catch(() => convo.promptVersions));
-      await refreshLedger(id);
+      const listed = await api.listVersions(id).then((r) => r.versions).catch(() => convo.promptVersions);
+      if (isOpen(id)) {
+        setDetail(convo);
+        setVersions(listed);
+        await refreshLedger(id);
+      }
       await refreshList();
     },
     [refreshList, refreshLedger],
@@ -363,6 +388,7 @@ export function Workspace(): React.JSX.Element {
       }
       const controller = new AbortController();
       abortRef.current = controller;
+      setTurnConversation(id);
       setSending(true);
       setError(null);
       setCanRetry(false);
@@ -408,14 +434,20 @@ export function Workspace(): React.JSX.Element {
         // A cancelled turn is not an error and gets no banner: the server kept
         // the message and wrote nothing, and the reload above shows exactly
         // that. Retry stays offered because the message is still there.
-        setCanRetry(true);
-        // INV-012: the pipeline has been producing these all along and the
-        // routes have been serialising them; until V2-R this line was
-        // `void outcome`, which is where every FORGE-W001–W004 went.
-        setDiagnostics(outcome.diagnostics ?? []);
+        if (isOpen(id)) {
+          setCanRetry(true);
+          // INV-012: the pipeline has been producing these all along and the
+          // routes have been serialising them; until V2-R this line was
+          // `void outcome`, which is where every FORGE-W001–W004 went.
+          setDiagnostics(outcome.diagnostics ?? []);
+        }
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setCanRetry(true);
+        const message = e instanceof Error ? e.message : String(e);
+        // A failure of a turn in another conversation is still reported, and
+        // says which conversation it belongs to.
+        const title = conversationsRef.current.find((c) => c.id === id)?.title;
+        setError(isOpen(id) ? message : `In "${title ?? "another conversation"}": ${message}`);
+        if (isOpen(id)) setCanRetry(true);
         try {
           await reload(id);
           // A configuration failure (no key, unknown model) is refused before
@@ -424,13 +456,14 @@ export function Workspace(): React.JSX.Element {
           if (!input.regenerate && input.content) {
             const saved = await api.getConversation(id);
             const last = [...saved.messages].reverse().find((m) => m.role === "user");
-            if (last?.content !== input.content) setReturnedDraft({ text: input.content, at: Date.now() });
+            if (last?.content !== input.content && isOpen(id)) setReturnedDraft({ text: input.content, at: Date.now() });
           }
         } catch {
           // Keep the banner; the conversation may still be intact server-side.
         }
       } finally {
         abortRef.current = null;
+        setTurnConversation(null);
         setSending(false);
         setPendingUserMessage(null);
         setStageLabel(null);
@@ -439,7 +472,7 @@ export function Workspace(): React.JSX.Element {
         setStreamingPrompt("");
       }
     },
-    [activeId, target, provider, model, reload, draftKind, draftShape, reasoning, effort],
+    [activeId, target, provider, model, reload, draftKind, draftShape, reasoning, effort, setActiveId],
   );
 
   const send = useCallback((text: string) => runTurn({ content: text }), [runTurn]);
@@ -639,6 +672,8 @@ export function Workspace(): React.JSX.Element {
   const iconToggle =
     "flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-100";
 
+  const turnHere = sending && (turnConversation === null || turnConversation === activeId);
+  const turnElsewhere = sending && !turnHere;
   const showLeft = narrow ? leftDrawer : leftOpen;
   const showRight = narrow ? rightDrawer : rightOpen;
 
@@ -647,6 +682,10 @@ export function Workspace(): React.JSX.Element {
   );
   const studio = (
     <PromptStudio
+      // Everything the Studio holds (candidates, drift, the traceability
+      // matrix, a package and its verdicts) belongs to one conversation, and
+      // a request still in flight must not land on the next one.
+      key={activeId ?? "none"}
       conversationId={activeId}
       prompt={detail?.prompt ?? null}
       discovery={detail?.discovery ?? null}
@@ -655,7 +694,7 @@ export function Workspace(): React.JSX.Element {
       versions={versions}
       candidates={detail?.candidates ?? []}
       currentV={detail?.currentV ?? 0}
-      streamingPrompt={sending ? streamingPrompt : ""}
+      streamingPrompt={turnHere ? streamingPrompt : ""}
       provider={provider}
       model={model}
       advanced={advanced}
@@ -706,7 +745,7 @@ export function Workspace(): React.JSX.Element {
               versions: versions.length,
               pinned: ledger.length,
               verifications: detail?.verifications ?? [],
-              busy: sending,
+              busy: turnHere,
             }}
             onOpen={openStudio}
           />
@@ -929,13 +968,16 @@ export function Workspace(): React.JSX.Element {
               <ChatPanel
                 messages={detail?.messages ?? []}
                 attachments={detail?.attachments ?? []}
-                sending={sending}
-                ready={catalogReady && !creating && Boolean(provider) && Boolean(model.trim())}
+                sending={turnHere}
+                // One turn at a time: while another conversation's turn runs,
+                // this composer waits rather than starting a second one.
+                ready={catalogReady && !creating && !turnElsewhere && Boolean(provider) && Boolean(model.trim())}
+                waitingOn={turnElsewhere ? (conversations.find((c) => c.id === turnConversation)?.title ?? "another conversation") : null}
                 providerAvailable={providerAvailable || !catalogReady}
-                streamingReply={streamingReply}
-                pendingUserMessage={pendingUserMessage}
-                stageLabel={stageLabel}
-                startedAt={startedAt}
+                streamingReply={turnHere ? streamingReply : ""}
+                pendingUserMessage={turnHere ? pendingUserMessage : null}
+                stageLabel={turnHere ? stageLabel : null}
+                startedAt={turnHere ? startedAt : null}
                 returnedDraft={returnedDraft}
                 diagnostics={diagnostics}
                 onSend={send}

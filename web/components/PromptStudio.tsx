@@ -141,6 +141,8 @@ function Editor({
       <textarea
         ref={areaRef}
         data-testid="studio-editor"
+        aria-label="Prompt editor"
+        title="Tab indents · Esc leaves the editor · Ctrl+S saves"
         value={value}
         readOnly={readOnly}
         spellCheck={false}
@@ -154,7 +156,13 @@ function Editor({
             onSave();
             return;
           }
-          if (e.key === "Tab") {
+          // Escape leaves the editor, so Tab-to-indent never traps keyboard
+          // focus (WCAG 2.1.2); the editor's title says so.
+          if (e.key === "Escape") {
+            e.currentTarget.blur();
+            return;
+          }
+          if (e.key === "Tab" && !e.shiftKey) {
             e.preventDefault();
             const area = e.currentTarget;
             const { selectionStart: start, selectionEnd: end } = area;
@@ -258,8 +266,13 @@ export function PromptStudio({
   const [driftError, setDriftError] = useState<string | null>(null);
   const [driftChecking, setDriftChecking] = useState(false);
 
+  // Keyed on the newest version number, not on the array: every reload makes
+  // a new array, and resetting on identity threw away an edit in progress
+  // whenever anything else was saved (a target change, an attachment, a
+  // chat turn). An open edit is never ended here — only Save or Discard ends
+  // it. A different conversation remounts this component (Workspace keys it).
+  const newestV = versions.at(-1)?.v ?? 0;
   useEffect(() => {
-    setEditing(false);
     setHunks(null);
     setAnalysis(null);
     setAnalysisError(null);
@@ -276,7 +289,8 @@ export function PromptStudio({
       setDiffA(null);
       setDiffB(null);
     }
-  }, [conversationId, versions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `versions` is read for its newest two only
+  }, [conversationId, newestV, versions.length]);
 
   const dirty = editing && draft !== (prompt ?? "");
   const drafting = !editing && streamingPrompt.length > 0;
@@ -802,7 +816,7 @@ export function PromptStudio({
             <div className="mb-2 flex items-start gap-2 rounded-lg border border-ink-700 bg-ink-950 px-2.5 py-2">
               <Lock size={13} className="mt-0.5 shrink-0 text-accent-400" />
               <div className="text-[11.5px] leading-relaxed text-slate-400">
-                <span className="font-semibold text-slate-200">Deterministic — guaranteed.</span> Pinned text
+                <span className="font-semibold text-slate-200">Deterministic — always checked.</span> Pinned text
                 is yours, stored verbatim, and checked against every version with no model involved. A match
                 ignores case, punctuation and line breaks; a reworded requirement counts as missing.
               </div>
@@ -814,7 +828,7 @@ export function PromptStudio({
                 value={pinDraft}
                 onChange={(e) => setPinDraft(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void pin(pinDraft);
+                  if (e.key === "Enter" && !e.nativeEvent.isComposing) void pin(pinDraft);
                 }}
                 placeholder="Pin a requirement, verbatim…"
                 disabled={!conversationId || pinning}
@@ -981,7 +995,7 @@ export function PromptStudio({
                           disabled={pinning}
                           className="mt-1.5 flex items-center gap-1 rounded px-1.5 py-0.5 text-[11.5px] text-accent-400 hover:bg-ink-700 disabled:opacity-40"
                         >
-                          <Pin size={11} /> Pin this so it is guaranteed
+                          <Pin size={11} /> Pin this so every version is checked for it
                         </button>
                       </div>
                     ))}

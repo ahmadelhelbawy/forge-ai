@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Loader2, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { api, type ModelOption, type ProviderSummary } from "@/lib/api";
 
@@ -207,15 +207,46 @@ export function SettingsModal({ open, initialTab, onClose, onChanged }: Props): 
     onChanged();
   };
 
+  const backdropDown = useRef(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  // Focus moves into the dialog on open and back to where it was on close.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => previous?.focus?.();
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      // Close only on a click that started AND ended on the backdrop: selecting
+      // text in the key field and releasing outside the panel closed the dialog
+      // and lost the key being typed.
+      onMouseDown={(e) => {
+        backdropDown.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (backdropDown.current && e.target === e.currentTarget) onClose();
+        backdropDown.current = false;
+      }}
+    >
       <div
-        className="flex max-h-[85vh] w-[880px] max-w-full flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        ref={dialogRef}
+        tabIndex={-1}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+        className="flex max-h-[85vh] w-[880px] max-w-full flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-900 shadow-2xl focus:outline-none"
       >
         <div className="flex items-center justify-between border-b border-ink-800 px-5 py-3">
           <div className="text-[15px] font-semibold text-slate-100">Settings</div>
-          <button onClick={onClose} className="rounded p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-100" title="Close">
+          <button onClick={onClose} className="rounded p-1.5 text-slate-400 hover:bg-ink-700 hover:text-slate-100" title="Close" aria-label="Close settings">
             <X size={16} />
           </button>
         </div>

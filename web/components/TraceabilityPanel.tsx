@@ -151,6 +151,15 @@ export function TraceabilityPanel({
                   key={r.id}
                   data-testid={`matrix-row-${r.id}`}
                   onClick={() => setOpenRow(openRow === r.id ? null : r.id)}
+                  // Keyboard users must reach Accept / Supersede / Conflict too.
+                  tabIndex={0}
+                  aria-expanded={openRow === r.id}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setOpenRow(openRow === r.id ? null : r.id);
+                    }
+                  }}
                   className={`cursor-pointer align-top hover:bg-ink-800 ${r.active ? "text-slate-300" : "text-slate-500"}`}
                 >
                   <td className="truncate">{r.id}</td>

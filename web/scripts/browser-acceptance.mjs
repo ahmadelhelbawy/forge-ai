@@ -12,6 +12,8 @@
 //      cancel restores; a permission denial is explained.
 //   4. A provider failure keeps the message and says why.
 //   5. A phone-width viewport has no horizontal scroll.
+//   6. A turn still running in one conversation never lands on another.
+//   7. An unsaved Studio edit survives an unrelated save (a target change).
 import { chromium } from "playwright-core";
 
 const BASE = process.env.BASE ?? "http://localhost:3210";
@@ -207,6 +209,63 @@ try {
     assert(!(await limited.getByText("I wrote the full prompt.").count()), "the cut-off reply is shown as if a prompt was written");
     assert(await exportButton.isDisabled(), "Export became enabled although nothing was saved");
     await limited.close();
+  });
+
+  const idOf = (url) => new URL(url).hash.replace(/^#c=/, "");
+  const firstId = idOf(page.url());
+
+  await check("6. A turn in one conversation never lands on another", async () => {
+    // Conversation B, with an answered turn of its own.
+    await page.getByTestId("new-conversation").click();
+    await page.waitForFunction((prev) => location.hash && location.hash !== `#c=${prev}`, firstId);
+    const bId = idOf(page.url());
+    await composer.fill("Beta conversation: summarise a changelog.");
+    await composer.press("Enter");
+    await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message"]')?.disabled, null, { timeout: 30_000 });
+
+    // Hold A's next turn open long enough to switch away mid-turn.
+    await page.getByTestId(`conversation-${firstId}`).click();
+    await page.waitForFunction((id) => location.hash === `#c=${id}`, firstId);
+    await page.route(`**/api/conversations/${firstId}/messages/stream`, async (route) => {
+      await new Promise((r) => setTimeout(r, 3000));
+      await route.continue();
+    });
+    const marker = "ALPHA-ONLY follow-up message";
+    await composer.fill(marker);
+    await composer.press("Enter");
+    await page.getByTestId(`conversation-${bId}`).click();
+    await page.waitForFunction((id) => location.hash === `#c=${id}`, bId);
+
+    // While A's turn runs, B says it is waiting and shows none of A.
+    const waiting = await composer.getAttribute("placeholder");
+    assert(waiting?.startsWith("Waiting for the turn in"), `B's composer does not explain the wait: ${waiting}`);
+    assert((await page.getByText(marker).count()) === 0, "A's message is shown in B while A's turn runs");
+    // After A's turn ends, B is still B.
+    await page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message"]')?.disabled, null, { timeout: 30_000 });
+    await page.waitForTimeout(500);
+    assert((await page.getByText(marker).count()) === 0, "A's finished turn was written onto B's screen");
+    assert(await page.getByText("Beta conversation", { exact: false }).first().isVisible(), "B's own messages are gone");
+    assert((await page.getByTestId(`conversation-${bId}`).getAttribute("aria-current")) === "true", "the sidebar no longer marks B");
+    await page.unroute(`**/api/conversations/${firstId}/messages/stream`);
+    // And A has its turn.
+    await page.getByTestId(`conversation-${firstId}`).click();
+    await page.getByText(marker).first().waitFor({ timeout: 10_000 });
+  });
+
+  await check("7. An unsaved Studio edit survives an unrelated save", async () => {
+    await page.getByTestId("studio-tab-prompt").click();
+    await page.getByTestId("studio-edit").click();
+    const editor = page.getByTestId("studio-editor");
+    await editor.fill("MY UNSAVED EDIT — must survive a target change");
+    const select = page.getByRole("combobox", { name: "Target agent" });
+    const options = await select.locator("option").evaluateAll((els) => els.map((e) => e.value));
+    const current = await select.inputValue();
+    await select.selectOption(options.find((v) => v !== current));
+    await page.waitForResponse((r) => r.url().includes(`/api/conversations/${firstId}`) && r.request().method() === "GET", { timeout: 10_000 });
+    await page.waitForTimeout(500);
+    assert(await editor.isVisible(), "the editor closed after an unrelated save");
+    assert((await editor.inputValue()).startsWith("MY UNSAVED EDIT"), "the unsaved edit was discarded");
+    await page.getByTitle("Discard edits").click();
   });
 
   await check("5. Phone width: no horizontal scroll", async () => {

@@ -112,7 +112,9 @@ export function CompilePanel({
     setVerifying(true);
     setError(null);
     try {
-      setVerdicts(await api.verifyVersion(conversationId, { target, evidence }));
+      // Verify against the package on screen, not whatever the target menu
+      // says now: the evidence was produced for that package.
+      setVerdicts(await api.verifyVersion(conversationId, { target: pkg?.profileId ?? target, evidence }));
       await onVerified();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
