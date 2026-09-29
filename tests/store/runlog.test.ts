@@ -130,9 +130,41 @@ describe("reads are incremental and indistinguishable from a full read (hardenin
     expect(cached.readAll()).toEqual(fresh());
     expect(cached.readAll().map((e) => e.kind)).toEqual(["a", "b", "c", "d", "e"]);
 
-    // A corrupt line ends the file for every reader, cached or not.
+    // A corrupt line is skipped and reported by every reader, cached or not —
+    // it never hides the lines after it (audit 2026-09-29; it used to).
     appendFileSync(join(dir, "runs", day), 'not json\n{"kind":"f","seq":6,"at":"y"}\n');
     expect(cached.readAll()).toEqual(fresh());
-    expect(cached.readAll()).toHaveLength(5);
+    expect(cached.readAll().map((e) => e.kind)).toEqual(["a", "b", "c", "d", "e", "f"]);
+    expect(cached.damaged()).toHaveLength(1);
+    expect(openRunLog(dir).damaged()).toEqual(cached.damaged());
+  });
+});
+
+describe("a torn write costs only itself (audit 2026-09-29, INV-012)", () => {
+  it("keeps every later event after a crash left a torn tail", () => {
+    const dir = root();
+    const log = openRunLog(dir);
+    log.append({ kind: "a" });
+    const file = join(dir, "runs", readdirSync(join(dir, "runs"))[0]!);
+    // A process killed mid-append.
+    writeFileSync(file, `${readFileSync(file, "utf8")}{"seq":2,"kind":"hal`, "utf8");
+
+    // The restarted server keeps working: new versions, new conversations.
+    const restarted = openRunLog(dir);
+    restarted.append({ kind: "b" });
+    restarted.append({ kind: "c" });
+
+    // Before the fix, "b" was glued onto the fragment and both it and "c"
+    // vanished from every later read, with no report.
+    const reread = openRunLog(dir);
+    expect(reread.readAll().map((e) => e.kind)).toEqual(["a", "b", "c"]);
+    expect(reread.damaged()).toHaveLength(1);
+    expect(reread.readAll().map((e) => e.seq)).toEqual([1, 2, 3]);
+  });
+
+  it("reports nothing for a healthy log", () => {
+    const log = openRunLog(root());
+    log.append({ kind: "a" });
+    expect(log.damaged()).toEqual([]);
   });
 });

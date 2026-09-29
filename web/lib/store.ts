@@ -90,16 +90,23 @@ export function dataDir(): string {
  * read it, and doing that lazily here means no separate migration step for
  * the user to forget (PS-R4 — the process holds no state the store does not).
  */
-const migrated = new Set<string>();
+const opened = new Map<string, Store>();
 
+/**
+ * One store per root for the life of the process. The run log reads
+ * incrementally and re-checks every file on each read, so a kept instance
+ * sees other writers; a fresh one per call re-parsed the whole log on every
+ * request (measured 170 ms at 40k events).
+ */
 export function store(): Store {
   const root = dataDir();
-  const opened = openStore(root);
-  if (!migrated.has(root)) {
-    migrateFlatFiles(opened);
-    migrated.add(root);
+  let current = opened.get(root);
+  if (current === undefined) {
+    current = openStore(root);
+    migrateFlatFiles(current);
+    opened.set(root, current);
   }
-  return opened;
+  return current;
 }
 
 function isValidId(id: string): boolean {
