@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "pnpm --filter forge run build && next dev --hostname ${FORGE_HOST:-127.0.0.1} --port ${PORT:-3000}",

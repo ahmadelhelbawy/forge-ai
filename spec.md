@@ -274,7 +274,7 @@ change requiring an update to this document, not a bug fix.
 | **NFR-007** | **Testability without credentials.** The entire suite except explicitly-marked live evaluations passes with no API key and no network. | AC-019 |
 | **NFR-008** | **Performance.** On a repository of ≤50k files, non-model stages complete in ≤3s wall-clock; context resolution in ≤5s. Budgets are asserted, and regressions fail CI. | AC-022 |
 | **NFR-009** | **Reproducibility.** Compilation is reproducible across machines and operating systems given the same pinned inputs. Path separators, locale collation, and line endings must be normalized. | AC-005 |
-| **NFR-010** | **Minimal dependencies, per package.** The `forge` **core** package is capped at **eight** runtime dependencies (6 today); it is the portable, embeddable artifact and the cap is what keeps it so. The `web` package has its own declared budget of **fourteen** (11 today) and must justify each addition in `docs/architecture.md` §21. Exceeding either cap requires an ADR. A dependency may not be added to the core to serve the web package. | AC-023 |
+| **NFR-010** | **Minimal dependencies, per package.** The `forge` **core** package is capped at **eight** runtime dependencies (6 today); it is the portable, embeddable artifact and the cap is what keeps it so. The `web` package has its own declared budget of **fourteen** (13 today) and must justify each addition in `docs/architecture.md` §21. Exceeding either cap requires an ADR. A dependency may not be added to the core to serve the web package. | AC-023 |
 | **NFR-011** | **Observability.** Every stage emits a structured run event. `--json` produces machine-readable output for every command. | AC-024 |
 | **NFR-012** | **Versioning.** Three independent axes — `forge_version`, `ir_version`, `profile.version` — are pinned in every package. Unknown IR majors are refused. | AC-008 |
 
@@ -1054,7 +1054,7 @@ Each is falsifiable and mapped to a test suite.
 | **AC-020** | A static test asserts no code path executes a command derived from an IR or package. | INV-004 |
 | **AC-021** | With no `--allow-net`, no outbound socket is opened. Asserted by test. | NFR-002 |
 | **AC-022** | Stage timing budgets asserted on a synthetic large-repository fixture. | NFR-008 |
-| **AC-023** | Core runtime dependency count ≤ 8 **and** web runtime dependency count ≤ 14, each asserted from its own `package.json` by a test. *(The assertion did not exist before V2; adding it is V2-0 work.)* | NFR-010 |
+| **AC-023** | Core runtime dependency count ≤ 8 **and** web runtime dependency count ≤ 14, each asserted from its own `package.json` by a test (`tests/contract/dependency-budget.test.ts`, added in the pre-release audit). | NFR-010 |
 | **AC-024** | Every command supports `--json` and every stage emits a structured run event. | NFR-011 |
 | **AC-025** | **Thesis gate.** On a benchmark of ≥12 real tasks, blind comparison of raw task versus FORGE package handed to the same agent shows FORGE winning on ambiguous and multi-constraint tasks, measured by constraint violations, scope overruns, and correction cycles. | intent.md Success Signals |
 | | **Result (recorded, not reinterpreted).** P1.5: RECONSIDER — 6 execution pairs, no measurable difference. P1.6 validation (frozen discriminative design, 8 pairs): FAIL — 0 FORGE wins, one genuine over-blocking loss, zero FORGE-caused defects anywhere. The structure-alone execution claim is retired (`intent.md`); this criterion stays green-as-run precisely because a negative result was its valid, publishable outcome. | |

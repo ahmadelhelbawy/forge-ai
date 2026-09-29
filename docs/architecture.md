@@ -1545,6 +1545,18 @@ runtime dependencies) and `web` (the workspace, its own budget). The boundary is
 enforced by direction: `web` may depend on `forge`; `forge` may never depend on
 `web`, and no dependency may be added to the core to serve the workspace.
 
+**Web runtime dependencies (NFR-010, 13 of 14; asserted by
+`tests/contract/dependency-budget.test.ts`):**
+
+| Dependency | Why it is here |
+|---|---|
+| `forge` | the core, by workspace link |
+| `next`, `react`, `react-dom` | the application framework (15.5 since the pre-release audit: 14.2 carried unpatched critical advisories) |
+| `ai`, `@ai-sdk/anthropic`, `@ai-sdk/openai`, `@ai-sdk/openai-compatible` | transport and streaming for the three wire protocols (AD-19) |
+| `@fontsource/ibm-plex-sans`, `@fontsource/jetbrains-mono` | self-hosted fonts: no request to a font CDN |
+| `lucide-react` | icons |
+| `clsx`, `tailwind-merge` | class composition |
+
 ### AD-22 · Classification is a judgment boundary *(new — revision 4)*
 **Problem:** `conversation.classify` cannot be post-validated the way
 `intent.extract` can. There is no deterministic check that a label is *correct* —

@@ -22,9 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The pnpm version comes from package.json `packageManager`, so CI and a
+      # contributor resolve the lockfile with the same pnpm.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -37,8 +37,11 @@ jobs:
       - name: Build core
         run: pnpm --filter forge build
 
-      - name: Typecheck
+      - name: Typecheck (core and tests)
         run: pnpm typecheck
+
+      - name: Typecheck (web)
+        run: pnpm --dir web exec tsc --noEmit
 
       - name: Schema is generated, not hand-edited
         run: pnpm schema:check
@@ -46,9 +49,14 @@ jobs:
       - name: Test suite
         run: pnpm test
 
-      # package.json promises `import "forge"` resolves. It did not, for a while.
-      - name: Package entrypoint resolves
-        run: node -e "import('forge').then(m => { if (typeof m.compile !== 'function') { throw new Error('forge root export is broken'); } console.log('import \"forge\" OK'); })"
+      # The npm tarball, installed outside the repository, runs the CLI. Every
+      # other test runs from the source tree, where profiles/ and strategies/
+      # always exist; the tarball once shipped without strategies/.
+      - name: Packed package works when installed
+        run: ./scripts/pack-smoke.sh
+
+      - name: No known vulnerabilities in production dependencies
+        run: pnpm audit --prod --audit-level=moderate
 
   frozen-benchmark:
     name: frozen benchmark is untouched
@@ -60,15 +68,32 @@ jobs:
       - name: Verify evals/p16 manifest
         run: sha256sum -c evals/p16/MANIFEST.sha256
 
+  secrets:
+    name: no committed secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # The whole history, with the synthetic test corpus allowlisted in
+      # .gitleaks.toml. The pinned binary is verified against its checksum.
+      - name: gitleaks
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSLO "${base}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSL "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt" | grep "linux_x64.tar.gz" | sha256sum -c -
+          tar xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          ./gitleaks git --no-banner --redact --config .gitleaks.toml .
+
   product:
-    name: product HTTP suite
+    name: product HTTP suite + browser acceptance
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
@@ -77,7 +102,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # playwright-core never downloads a browser on its own; without this the
+      # browser acceptance fails on a fresh runner ("Executable doesn't exist").
+      - name: Install Chromium for the browser acceptance
+        run: pnpm --dir web exec playwright-core install --with-deps chromium
+
       # Builds the core and the web app, starts stub-backed servers, runs the
-      # suite over real HTTP. Still no credentials.
-      - name: HTTP product suite
+      # HTTP suite (every test must run — none skipped) and the browser
+      # acceptance. Still no credentials.
+      - name: HTTP product suite + browser acceptance
         run: ./web/scripts/e2e.sh

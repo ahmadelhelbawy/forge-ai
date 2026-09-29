@@ -1,0 +1,16 @@
+# Secret scanning (CI job `secrets`). The default rules, plus an allowlist for
+# SYNTHETIC values that exist on purpose:
+# - fixtures/secrets and fixtures/repos/small/.env are the secret-detection
+#   corpus the security tests scan (SC-R5, AC-014);
+# - tests use obviously fake key literals ("sk-test-…", "xai-test-key-…").
+# Anything else that looks like a credential fails the build.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "synthetic secrets used by tests"
+paths = [
+  '''^fixtures/secrets/''',
+  '''^fixtures/repos/small/\.env$''',
+  '''^tests/''',
+]
