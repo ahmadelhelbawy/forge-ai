@@ -521,3 +521,4 @@ export function semanticSnapshot(convo: Conversation): string {
     attachments: convo.attachments.map((a) => ({ name: a.name, size: a.size, truncated: a.truncated })),
   });
 }
+export { ConversationConflictError } from "./store/repository";

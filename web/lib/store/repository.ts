@@ -62,6 +62,7 @@ interface Baseline {
   readonly candidates: number;
   readonly candidatePromotions: number;
   readonly attachments: number;
+  readonly attachmentRefs: readonly AttachmentMeta[];
   readonly turnEvents: number;
   readonly modelCalls: number;
   /**
@@ -105,6 +106,7 @@ function emptyBaseline(convo: Conversation): Baseline {
     candidates: 0,
     candidatePromotions: 0,
     attachments: 0,
+    attachmentRefs: [],
     turnEvents: 0,
     modelCalls: 0,
     ledgerIds: [],
@@ -134,6 +136,7 @@ function baselineOf(convo: Conversation, existed: boolean): Baseline {
     candidates: convo.candidates.length,
     candidatePromotions: convo.candidatePromotions.length,
     attachments: convo.attachments.length,
+    attachmentRefs: [...convo.attachments],
     turnEvents: convo.turnEvents.length,
     modelCalls: convo.modelCalls.length,
     ledgerIds: convo.ledger.map((e) => e.id),
@@ -302,7 +305,10 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
           }),
         );
         break;
-      case "attachment_added":
+      case "attachment_added": {
+        // A re-upload under the same name replaces the earlier file.
+        const previous = convo.attachments.findIndex((a) => a.name === body.name);
+        if (previous !== -1) convo.attachments.splice(previous, 1);
         convo.attachments.push({
           name: body.name,
           size: body.size,
@@ -316,6 +322,7 @@ function foldOne(store: Store, id: string, events: readonly RunEvent[]): Convers
         });
         convo.attachmentContents[body.name] = text(store, body.contentHash);
         break;
+      }
       case "clarification_set":
         convo.pendingClarification = Object.freeze({
           id: body.clarificationId,
@@ -429,8 +436,49 @@ export function trackNew(convo: Conversation): Conversation {
  * There is no "write the record" path, by design: the only way to change
  * stored state is to append an event describing the change.
  */
+/**
+ * Another writer extended a numbered, append-only sequence of this
+ * conversation after this copy was loaded (a second tab, a double submit).
+ * Writing anyway would fork history: two versions numbered alike, or a
+ * governance decision checked against a log that no longer exists.
+ */
+export class ConversationConflictError extends Error {
+  constructor(readonly conversationId: string) {
+    super("This conversation was changed elsewhere (another tab or request) while this one was in progress. Reload it and try again — nothing from this request was saved.");
+    this.name = "ConversationConflictError";
+  }
+}
+
+function persistedCounts(store: Store, id: string): { versions: number; governance: number } {
+  let versions = 0;
+  let governance = 0;
+  for (const event of store.log.readAll()) {
+    if (event["id"] !== id) continue;
+    if (event["kind"] === "prompt_version_written") versions += 1;
+    else if (event["kind"] === "requirement_decided") governance += 1;
+    else if (event["kind"] === "conversation_created") {
+      versions = 0;
+      governance = 0;
+    }
+  }
+  return { versions, governance };
+}
+
 export function saveConversation(store: Store, convo: Conversation): void {
   const base = baselines.get(convo) ?? emptyBaseline(convo);
+  const extendsVersions = convo.promptVersions.length > base.versions;
+  const extendsGovernance = convo.governance.length > base.governance;
+  if (base.existed && (extendsVersions || extendsGovernance)) {
+    // Checked and written with no await between: in this process nothing can
+    // interleave, so the check and the append are one step.
+    const persisted = persistedCounts(store, convo.id);
+    if (
+      (extendsVersions && persisted.versions !== base.versions) ||
+      (extendsGovernance && persisted.governance !== base.governance)
+    ) {
+      throw new ConversationConflictError(convo.id);
+    }
+  }
   const emit = (body: ConversationEventBody): void => {
     store.log.append(body as unknown as Record<string, unknown>);
   };
@@ -540,7 +588,10 @@ export function saveConversation(store: Store, convo: Conversation): void {
     });
   }
 
-  for (const attachment of convo.attachments.slice(base.attachments)) {
+  // Compared by identity, not as a tail: a re-upload under the same name
+  // replaces an entry in place, and a tail comparison never wrote it.
+  const baseAttachments = new Set(base.attachmentRefs);
+  for (const attachment of convo.attachments.filter((a) => !baseAttachments.has(a))) {
     emit({
       kind: "attachment_added",
       id: convo.id,

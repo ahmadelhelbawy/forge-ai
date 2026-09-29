@@ -15,7 +15,7 @@ import {
   logProviderFailure,
   providerDiagnostic,
 } from "@/lib/diagnostics";
-import { currentPrompt, saveConversation, type Conversation } from "@/lib/store";
+import { ConversationConflictError, currentPrompt, saveConversation, type Conversation } from "@/lib/store";
 import { isReasoningEffort } from "@/lib/store-types";
 import { buildDeps, stubDeps } from "@/lib/turn/deps";
 import type { TurnDeps } from "@/lib/turn/pipeline";
@@ -145,6 +145,12 @@ export function failureReport(
   logProviderFailure(finding);
   const message = classifyFailure(finding);
   return { message, diagnostic: `${message}\n\n${formatDiagnostic(finding)}`, detail: finding };
+}
+
+/** HTTP 409 for a save that lost a race with another writer; null otherwise. */
+export function conflictResponse(error: unknown): NextResponse | null {
+  if (!(error instanceof ConversationConflictError)) return null;
+  return NextResponse.json({ error: error.message, conflict: true }, { status: 409 });
 }
 
 /**

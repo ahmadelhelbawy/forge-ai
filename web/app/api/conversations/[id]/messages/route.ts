@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { loadConversation, saveConversation, currentPrompt } from "@/lib/store";
-import { depsFor, settingsRefusal, failure, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
+import { conflictResponse, depsFor, settingsRefusal, failure, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
 import { executeTurn, type TurnDeps } from "@/lib/turn/pipeline";
 
 interface Params {
@@ -48,7 +48,13 @@ export async function POST(request: Request, context: Params): Promise<NextRespo
     generate: prepared.generate,
     ...(prepared.mode ? { mode: prepared.mode } : {}),
   });
-  saveConversation(convo);
+  try {
+    saveConversation(convo);
+  } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
+    throw error;
+  }
 
   if (result.failed) {
     // The original error is passed through, so the structured provider detail

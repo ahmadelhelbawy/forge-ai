@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { conflictResponse } from "@/lib/turn/http";
+
 import { addPromptVersion, checkLedger, currentPrompt, loadConversation, saveConversation } from "@/lib/store";
 
 interface Params {
@@ -34,7 +36,13 @@ export async function PUT(request: Request, context: Params): Promise<NextRespon
     return NextResponse.json({ version: null, promptChanged: false, prompt: text });
   }
   const version = addPromptVersion(convo, text, "manual");
-  saveConversation(convo);
+  try {
+    saveConversation(convo);
+  } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
+    throw error;
+  }
   // WS-R29: Layer 1 runs on every version with a non-empty ledger, including
   // one the user typed. A hand edit can drop a pinned requirement as easily as
   // a model can, and the guarantee is about versions, not about authors.

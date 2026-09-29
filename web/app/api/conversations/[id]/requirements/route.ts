@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { conflictResponse } from "@/lib/turn/http";
+
 import { decideRequirement, requirementRegistry, RequirementActionError } from "@/lib/requirements";
 import { loadConversation, saveConversation } from "@/lib/store";
 
@@ -38,6 +40,8 @@ export async function POST(request: Request, context: Params): Promise<NextRespo
     saveConversation(convo);
     return NextResponse.json({ record, ...requirementRegistry(convo) }, { status: 201 });
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     if (error instanceof RequirementActionError) {
       return NextResponse.json({ error: error.message, reason: error.reason ?? null }, { status: error.status });
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { currentPrompt, loadConversation, saveConversation, type Conversation } from "@/lib/store";
+import { ConversationConflictError, currentPrompt, loadConversation, saveConversation, type Conversation } from "@/lib/store";
 import { isTurnDelta } from "@/lib/turn/events";
 import { depsFor, settingsRefusal, failureReport, prepareTurn, type TurnRequestBody } from "@/lib/turn/http";
 import { runTurn, type TurnDeps, type TurnResult } from "@/lib/turn/pipeline";
@@ -143,9 +143,14 @@ export async function POST(request: Request, context: Params): Promise<Response>
       } catch (error) {
         // The pipeline itself does not throw, so reaching here means the
         // transport or the store did. It is still reported, never swallowed.
-        saveConversation(convo);
-        const report = failureReport(convo, error);
-        send({ type: "failed", error: report.message, diagnostic: report.diagnostic, detail: report.detail, conversationIntact: true });
+        if (error instanceof ConversationConflictError) {
+          // Another writer won the race: nothing of this turn was written.
+          send({ type: "failed", error: error.message, diagnostic: error.message, detail: null, conflict: true, conversationIntact: true });
+        } else {
+          saveConversation(convo);
+          const report = failureReport(convo, error);
+          send({ type: "failed", error: report.message, diagnostic: report.diagnostic, detail: report.detail, conversationIntact: true });
+        }
       } finally {
         try {
           controller.close();

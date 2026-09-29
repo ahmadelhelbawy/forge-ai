@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { conflictResponse } from "@/lib/turn/http";
+
 import { CandidateStateError, promoteCandidate } from "@/lib/candidates";
 import { loadConversation, saveConversation } from "@/lib/store";
 
@@ -35,6 +37,8 @@ export async function POST(_request: Request, context: Params): Promise<NextResp
       { status: 201 },
     );
   } catch (error) {
+    const conflict = conflictResponse(error);
+    if (conflict) return conflict;
     if (error instanceof CandidateStateError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
