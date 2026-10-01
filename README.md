@@ -1,4 +1,11 @@
-# FORGE
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/wordmark-dark.svg">
+    <img src="docs/brand/wordmark-light.svg" alt="FORGE" width="280">
+  </picture>
+</h1>
+
+<p align="center"><strong>Turn intent into auditable instructions for AI agents.</strong></p>
 
 **An auditable intent, requirement, compilation and verification layer between
 people and AI coding agents.** You describe a task — a vague idea or a prompt you
@@ -232,16 +239,7 @@ tasks that need to write files.
 
 ## Architecture in one pass
 
-```
-Human intent
-  → Intent analysis        extract structure; never invent; record uncertainty
-  → Context resolution     retrieve by justification, not by volume
-  → Canonical Task IR      provider-independent; content-addressed; reviewable
-  → Target compilation     legalize against real capability; render to topology
-  → Strategy               structured overlays, not prose variants
-  → Evaluation             coded diagnostics with evidence, not scores
-  → Artifact               FORGE stops here
-```
+![FORGE architecture: the workspace over a deterministic core (intent analysis, context resolution, Task IR, target compilation, strategy overlays, Execution Package, Verify); language models only at four registered boundaries; persistence as content-addressed objects and an append-only log; the agent runs outside FORGE and its evidence comes back to Verify](docs/images/architecture.svg)
 
 The deterministic core is the source of truth. Language models sit at four explicitly
 registered, schema-constrained, replayable boundaries — they parse; they do not

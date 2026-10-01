@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 700" width="1240" height="700" role="img" aria-label="FORGE architecture: a local workspace over a deterministic core; language models only at four registered boundaries; the agent runs outside FORGE and its evidence comes back to Verify">
+  <title>FORGE architecture</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#9aa3af"/>
+    </marker>
+    <marker id="h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#f5a55b"/>
+    </marker>
+    <style>
+      text { font-family: ui-sans-serif, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; fill: #e4e7ec; }
+      .t { font-size: 17px; font-weight: 600; }
+      .s { font-size: 13px; fill: #9aa3af; }
+      .c { font-size: 14px; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+      .box { fill: #161a20; stroke: #39414d; }
+      .chip { fill: #1d232b; stroke: #2c333d; }
+      .line { stroke: #9aa3af; stroke-width: 1.6; fill: none; }
+      .hot { stroke: #f5a55b; stroke-width: 1.8; fill: none; }
+    </style>
+  </defs>
+
+  <rect width="1240" height="700" fill="#0f1216"/>
+
+  <!-- The FORGE boundary -->
+  <rect x="220" y="20" width="740" height="660" rx="14" fill="none" stroke="#39414d" stroke-dasharray="6 6"/>
+  <text x="240" y="44" class="s">FORGE — runs on your machine, executes nothing</text>
+
+  <!-- Workspace -->
+  <rect x="245" y="60" width="690" height="74" rx="10" class="box"/>
+  <text x="265" y="90" class="t">Workspace · web/</text>
+  <text x="265" y="114" class="s">Chat · Studio · Compile · Package · Verify · Traceability — turn runtime, TurnEvent log</text>
+
+  <!-- Model boundaries -->
+  <rect x="245" y="170" width="230" height="220" rx="10" class="box"/>
+  <text x="263" y="198" class="t">Model boundaries</text>
+  <text x="263" y="220" class="s">registered, schema-checked</text>
+  <text x="263" y="252" class="m">intent.extract</text>
+  <text x="263" y="278" class="m">conversation.classify</text>
+  <text x="263" y="304" class="m">conversation.generate</text>
+  <text x="263" y="330" class="m">conversation.candidate</text>
+  <text x="263" y="366" class="s">they parse; they do not decide</text>
+
+  <!-- Invariants -->
+  <rect x="245" y="410" width="230" height="100" rx="10" class="box"/>
+  <text x="263" y="436" class="s">Every drop, demotion and refusal</text>
+  <text x="263" y="456" class="s">emits a coded diagnostic.</text>
+  <text x="263" y="476" class="s">Untrusted content never becomes</text>
+  <text x="263" y="496" class="s">an instruction. No quality score.</text>
+
+  <!-- Deterministic core -->
+  <rect x="500" y="170" width="435" height="340" rx="10" class="box"/>
+  <text x="520" y="198" class="t">Deterministic core · src/</text>
+  <g>
+    <rect x="520" y="215" width="395" height="30" rx="6" class="chip"/>
+    <text x="534" y="235" class="c">Intent analysis <tspan class="s">— structure, never invented</tspan></text>
+    <rect x="520" y="251" width="395" height="30" rx="6" class="chip"/>
+    <text x="534" y="271" class="c">Context resolution <tspan class="s">— through WorkspaceGuard</tspan></text>
+    <rect x="520" y="287" width="395" height="30" rx="6" class="chip"/>
+    <text x="534" y="307" class="c">Task IR <tspan class="s">— provider-free, content-addressed</tspan></text>
+    <rect x="520" y="323" width="395" height="30" rx="6" class="chip"/>
+    <text x="534" y="343" class="c">Target compilation <tspan class="s">— 7 profiles, YAML</tspan></text>
+    <rect x="520" y="359" width="395" height="30" rx="6" class="chip"/>
+    <text x="534" y="379" class="c">Strategy overlays <tspan class="s">— structured, not prose</tspan></text>
+    <rect x="520" y="395" width="395" height="30" rx="6" class="chip" stroke="#f5a55b"/>
+    <text x="534" y="415" class="c">Execution Package <tspan class="s">— one id, one contract</tspan></text>
+    <rect x="520" y="431" width="395" height="30" rx="6" class="chip" stroke="#f5a55b"/>
+    <text x="534" y="451" class="c">Verify <tspan class="s">— evidence → verdict per obligation</tspan></text>
+  </g>
+  <text x="520" y="492" class="s">same bytes from the CLI and the workspace</text>
+
+  <!-- Persistence -->
+  <rect x="245" y="545" width="690" height="110" rx="10" class="box"/>
+  <text x="265" y="575" class="t">Persistence · data/</text>
+  <text x="265" y="600" class="s">Content-addressed objects + an append-only run log are the truth.</text>
+  <text x="265" y="622" class="s">The SQLite index is derived and always rebuilt in full. Saved keys are encrypted per install.</text>
+
+  <!-- Outside: provider -->
+  <rect x="20" y="230" width="170" height="110" rx="10" class="box"/>
+  <text x="38" y="260" class="t">LLM provider</text>
+  <text x="38" y="284" class="s">your key, your</text>
+  <text x="38" y="302" class="s">endpoint: Anthropic</text>
+  <text x="38" y="320" class="s">or OpenAI-compatible</text>
+
+  <!-- Outside: agent -->
+  <rect x="1010" y="350" width="210" height="140" rx="10" class="box"/>
+  <text x="1028" y="380" class="t">Your agent or CI</text>
+  <text x="1028" y="406" class="s">Claude Code, Codex,</text>
+  <text x="1028" y="424" class="s">Kiro, OpenCode …</text>
+  <text x="1028" y="456" class="s">runs the contract;</text>
+  <text x="1028" y="474" class="s">FORGE never does</text>
+
+  <!-- Arrows -->
+  <path d="M190 285H243" class="line" marker-start="url(#a)" marker-end="url(#a)"/>
+  <path d="M360 134V168" class="line" marker-end="url(#a)"/>
+  <path d="M717 134V168" class="line" marker-end="url(#a)"/>
+  <path d="M475 280H498" class="line" marker-end="url(#a)"/>
+  <path d="M717 510V543" class="line" marker-start="url(#a)" marker-end="url(#a)"/>
+  <path d="M915 410H1008" class="hot" marker-end="url(#h)"/>
+  <text x="935" y="402" class="s">contract</text>
+  <path d="M1008 470H930V448H917" class="hot" marker-end="url(#h)"/>
+  <text x="935" y="488" class="s">evidence</text>
+</svg>
