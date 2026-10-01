@@ -1704,10 +1704,13 @@ describe.skipIf(!WEB_E2E || REPO_ROOTS === "")("requirement governance and trace
 
   beforeAll(async () => {
     await checkHealth(BASE);
-    const { mkdirSync, mkdtempSync, writeFileSync, realpathSync } = await import("node:fs");
+    const { chmodSync, mkdirSync, mkdtempSync, writeFileSync, realpathSync } = await import("node:fs");
     const { join } = await import("node:path");
     const { tmpdir } = await import("node:os");
     repo = realpathSync(mkdtempSync(join(REPO_ROOTS, "repo-")));
+    // mkdtemp makes it 0700; a real checkout is 0755. Against the Docker image
+    // the server runs as uid 1000, which on a CI runner is not this user.
+    chmodSync(repo, 0o755);
     outside = realpathSync(mkdtempSync(join(tmpdir(), "forge-e2e-outside-")));
     mkdirSync(join(repo, "src"), { recursive: true });
     mkdirSync(join(repo, "tests"), { recursive: true });

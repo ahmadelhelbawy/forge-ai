@@ -89,6 +89,10 @@ In `.env`:
 FORGE_REPO_ROOTS=/repos
 ```
 
+The container runs as uid 1000, so the mounted repositories must be readable by
+it: a normal checkout (directories `0755`, files `0644`) is. A `0700` directory
+owned by another uid is not, and linkage over it fails with `EACCES`.
+
 In the workspace, bind a conversation to a **container** path such as
 `/repos/my-app`. Paths outside `/repos`, or escaping it through `..` or a
 symlink, are refused.
