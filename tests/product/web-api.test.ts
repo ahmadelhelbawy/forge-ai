@@ -204,6 +204,8 @@ interface StreamRun {
   readonly deltas: Array<{ kind: string; text: string }>;
   readonly result: Record<string, unknown> | null;
   readonly failure: Record<string, unknown> | null;
+  /** The body when the response was not a stream — what a refusal said. */
+  readonly refusal?: string;
 }
 
 async function streamTurn(
@@ -233,7 +235,7 @@ async function streamTurn(
     failure,
   });
   if (!response.body || !(response.headers.get("content-type") ?? "").includes("text/event-stream")) {
-    return snapshot();
+    return { ...snapshot(), refusal: await response.text() };
   }
 
   const reader = response.body.getReader();
@@ -275,7 +277,7 @@ describe.skipIf(!WEB_E2E)("streaming turns over SSE (V2-B)", () => {
     const id = created.body["id"] as string;
     const run = await streamTurn(BASE, id, { content: "Build me an agent that reviews pull requests." });
 
-    expect(run.contentType).toContain("text/event-stream");
+    expect(run.contentType, `HTTP ${run.status}: ${run.refusal ?? ""}`).toContain("text/event-stream");
     const kinds = run.events.map((e) => e["kind"]);
     expect(kinds[0]).toBe("turn_started");
     expect(kinds).toContain("stage");
