@@ -54,7 +54,7 @@ jobs:
       - id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          images: ghcr.io/${{ github.repository_owner }}/forge
+          images: ghcr.io/${{ github.repository }}
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
@@ -81,7 +81,7 @@ jobs:
 
       - name: The published image starts and answers
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/forge@${{ steps.push.outputs.digest }}
+          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}
         run: |
           image="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
           docker run -d --name smoke -p 127.0.0.1:3000:3000 "$image"

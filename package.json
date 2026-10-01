@@ -3,6 +3,14 @@
   "version": "0.1.0-alpha.0",
   "description": "AI Intent & Context Compiler — lowers human intent into a provider-independent Task IR and compiles it into agent-specific Execution Packages.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmadelhelbawy/forge-ai.git"
+  },
+  "homepage": "https://github.com/ahmadelhelbawy/forge-ai#readme",
+  "bugs": {
+    "url": "https://github.com/ahmadelhelbawy/forge-ai/issues"
+  },
   "type": "module",
   "engines": {
     "node": ">=22.13.0"

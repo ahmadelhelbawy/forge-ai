@@ -6,10 +6,20 @@ the CLI; everything FORGE knows lives in one volume.
 ## Quickstart
 
 ```bash
-git clone https://github.com/<owner>/forge.git && cd forge
+git clone https://github.com/ahmadelhelbawy/forge-ai.git && cd forge-ai
 cp .env.example .env          # optional — every variable in it is optional
 docker compose up --build     # first build takes a few minutes
 ```
+
+Or run the published image (linux/amd64 and linux/arm64) without cloning:
+
+```bash
+docker run -d --name forge -p 127.0.0.1:3000:3000 -v forge-data:/data \
+  ghcr.io/ahmadelhelbawy/forge-ai:alpha
+```
+
+Tags: the exact version (`0.1.0-alpha.0`, never moved) and `alpha` (the newest
+alpha). There is no `latest` during the alpha.
 
 Open **http://localhost:3000**, then:
 

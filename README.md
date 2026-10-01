@@ -86,10 +86,22 @@ These are the properties that are mechanically verified, not aspirations:
 
 ## Quickstart — the workspace
 
-Requires Node ≥ 22.13 and `pnpm` (the version pinned in `package.json`; `corepack enable` gets it).
+**With Docker** (nothing else to install):
 
 ```bash
-git clone <this repository> forge && cd forge
+git clone https://github.com/ahmadelhelbawy/forge-ai.git && cd forge-ai
+cp .env.example .env      # optional: provider keys, FORGE_APP_SECRET
+docker compose up --build # http://localhost:3000, published on 127.0.0.1 only
+```
+
+or `docker run -p 127.0.0.1:3000:3000 -v forge-data:/data ghcr.io/ahmadelhelbawy/forge-ai:alpha`.
+Volumes, secrets, repository binding and exposure: [`docs/DOCKER.md`](docs/DOCKER.md).
+
+**From source** — requires Node ≥ 22.13 and `pnpm` (the version pinned in
+`package.json`; `corepack enable` gets it).
+
+```bash
+git clone https://github.com/ahmadelhelbawy/forge-ai.git && cd forge-ai
 pnpm install
 pnpm --dir web dev        # builds the core, then serves http://127.0.0.1:3000
 ```

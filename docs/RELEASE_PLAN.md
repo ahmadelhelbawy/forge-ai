@@ -103,7 +103,7 @@ Goal: `git clone … && cd forge && docker compose up` → FORGE on
 
 ## 4. Container registry — GHCR
 
-- Image: `ghcr.io/<owner>/forge`.
+- Image: `ghcr.io/ahmadelhelbawy/forge-ai`.
 - Tags per release: `0.1.0-alpha.0` (immutable) and `alpha` (moves to the newest
   pre-release). **`latest` is not published until `0.1.0`** — nobody should get an
   alpha by default.
@@ -207,7 +207,7 @@ On a clean machine (or a fresh VM), in order; stop at the first failure.
 - `docker image inspect` / `docker history`: no key, no `.env` in any layer
 
 **After publishing**
-- `docker pull ghcr.io/<owner>/forge:0.1.0-alpha.0` on a second machine (and an
+- `docker pull ghcr.io/ahmadelhelbawy/forge-ai:0.1.0-alpha.0` on a second machine (and an
   arm64 one if published) → health ok, one compile works.
 
 ---
@@ -216,7 +216,7 @@ On a clean machine (or a fresh VM), in order; stop at the first failure.
 
 - **Image defect:** tags are immutable, so nothing is overwritten. Move `alpha`
   back to the previous good digest (`docker buildx imagetools create -t
-  ghcr.io/<owner>/forge:alpha ghcr.io/<owner>/forge@sha256:<good>`), mark the
+  ghcr.io/ahmadelhelbawy/forge-ai:alpha ghcr.io/ahmadelhelbawy/forge-ai@sha256:<good>`), mark the
   GitHub release as pre-release/"withdrawn" in its notes, fix forward as
   `0.1.0-alpha.1`. Delete a published version only if it leaks a secret.
 - **Data:** a release never rewrites existing history (append-only log; the index

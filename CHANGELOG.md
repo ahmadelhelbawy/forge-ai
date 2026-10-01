@@ -4,7 +4,7 @@ All notable changes to FORGE. Versions follow [SemVer](https://semver.org/);
 while the version is `0.x`, anything may change between minor versions.
 Requirement ids (`FR-`, `WS-R`, `INV-`, …) refer to [`spec.md`](spec.md).
 
-## [0.1.0-alpha.0] — unreleased
+## [0.1.0-alpha.0] — 2026-10-01
 
 The first public release. FORGE is an auditable intent, requirement,
 compilation and verification layer between a person and an AI coding agent. It
@@ -36,8 +36,12 @@ never executes anything.
   deterministic links to files and tests in a bound repository; the matrix as a
   pure join (§22.10).
 - **`forge explain`** — where every byte of an artifact or package came from.
-- Markdown export, voice-to-text into the editable composer, reasoning-effort
-  control where the model declares one, and a local workspace with resizable panels.
+- **Providers:** Anthropic, OpenAI, Google, xAI, OpenRouter and OpenCode Go presets,
+  plus any OpenAI-compatible endpoint you add; your key, sent only to the endpoint
+  it was saved with. The model is chosen per conversation.
+- Markdown export, voice-to-text into the editable composer (where the browser
+  supports speech recognition), reasoning-effort control where the model declares
+  one, and a local workspace with resizable panels.
 
 ### Hardened before release (pre-release audit, 2026-09-29)
 
@@ -83,7 +87,7 @@ Release engineering
   product suite runs against the image (`scripts/docker-e2e.sh`). See
   `docs/DOCKER.md`.
 - **CI and release:** actions pinned to commit SHAs; the image is built and
-  tested on every push; a `v*` tag publishes `ghcr.io/<owner>/forge` for amd64
+  tested on every push; a `v*` tag publishes `ghcr.io/ahmadelhelbawy/forge-ai` for amd64
   and arm64 with SBOM and provenance (never `latest` during the alpha) and
   opens a draft GitHub release.
 - **Identity:** mark, font-free wordmarks, avatar and social preview
