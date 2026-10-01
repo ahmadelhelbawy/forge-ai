@@ -589,7 +589,8 @@ describe("forge explain (V2-R)", () => {
         }
       }
     }
-  });
+    // Eight CLI processes through tsx at ~0.6 s each: ~5 s, the default limit.
+  }, 60_000);
 
   it("shows which sections each constraint reached", async () => {
     const result = await runCli(["explain", "--ir", IR, "--target", "claude-code"]);
