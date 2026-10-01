@@ -981,6 +981,7 @@ export function Workspace(): React.JSX.Element {
 
             {!(studioMax && showRight && !narrow) ? (
               <ChatPanel
+                conversationId={activeId}
                 messages={detail?.messages ?? []}
                 attachments={detail?.attachments ?? []}
                 sending={turnHere}

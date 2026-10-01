@@ -15,6 +15,8 @@
 //   6. A turn still running in one conversation never lands on another.
 //   7. An unsaved Studio edit survives an unrelated save (a target change).
 //   8. Settings opens from the UI as an accessible dialog (desktop and phone).
+//  10. Long prompts: the composer grows, then scrolls inside, never sideways;
+//      the draft survives a reload; the expanded editor edits and sends it.
 // Any uncaught client-side exception, in any check, fails the run.
 import { chromium } from "playwright-core";
 
@@ -290,6 +292,87 @@ try {
       await page.keyboard.press("Escape");
       await dialog.waitFor({ state: "detached", timeout: 5_000 });
     }
+    await page.setViewportSize({ width: 1440, height: 900 });
+  });
+
+  await check("10. Long prompts: auto-grow, internal scroll, saved draft, expanded editor", async () => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const words = (n) =>
+      Array.from({ length: n }, (_, i) => (i % 40 === 39 ? "end.\n" : `word${i % 97}`)).join(" ");
+    const box = async () =>
+      composer.evaluate((el) => ({
+        height: el.getBoundingClientRect().height,
+        scrollHeight: el.scrollHeight,
+        clientWidth: el.clientWidth,
+        scrollWidth: el.scrollWidth,
+        overflowY: getComputedStyle(el).overflowY,
+      }));
+    const pageOverflow = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    const send = page.getByRole("button", { name: "Send", exact: true });
+
+    await composer.fill("A short request.");
+    const short = await box();
+    assert(short.height < 120, `a one-line draft is ${short.height}px tall`);
+
+    await composer.fill(words(1200));
+    const long = await box();
+    assert(long.height > 300 && long.height <= 0.46 * 900, `a 1,200-word draft is ${long.height}px tall (want 300–414)`);
+    assert(long.overflowY === "auto" && long.scrollHeight > long.height, "a long draft does not scroll inside the composer");
+    assert(long.scrollWidth <= long.clientWidth, "the composer scrolls sideways");
+    await page.getByTestId("composer-words").getByText("1,200 words").waitFor();
+    assert(await send.isEnabled(), "Send is disabled with a long draft");
+    for (const control of [send, page.getByRole("button", { name: "Attach files" }), page.getByTestId("composer-expand")]) {
+      const r = await control.boundingBox();
+      assert(r && r.y >= 0 && r.y + r.height <= 900, "a composer control is pushed off screen by a long draft");
+    }
+
+    // Multi-thousand words with an unbroken 400-character token.
+    const huge = `${words(5000)} ${"x".repeat(400)}`;
+    await composer.fill(huge);
+    const big = await box();
+    assert(big.height <= 0.46 * 900, `a 5,000-word draft is ${big.height}px tall`);
+    assert(big.scrollWidth <= big.clientWidth, "an unbroken token scrolls the composer sideways");
+    assert((await pageOverflow()) <= 0, "a long draft scrolls the page sideways");
+
+    // The draft is kept across a reload.
+    await page.waitForTimeout(400);
+    await page.reload();
+    await composer.waitFor();
+    await page.waitForFunction((len) => document.querySelector("[data-testid=composer]")?.value.length === len, huge.length, { timeout: 10_000 });
+
+    // Expanded editor: same text, real room, edits flow back, Esc collapses.
+    await page.getByTestId("composer-expand").click();
+    const expanded = page.getByTestId("composer-expanded-input");
+    await expanded.waitFor();
+    assert((await expanded.inputValue()) === huge, "the expanded editor does not hold the draft");
+    const roomy = await expanded.evaluate((el) => el.getBoundingClientRect().height);
+    assert(roomy > 600, `the expanded editor is only ${roomy}px tall`);
+    await expanded.press("End");
+    await expanded.press("Enter");
+    await expanded.pressSequentially("Added in the expanded editor.");
+    await page.keyboard.press("Escape");
+    await page.getByTestId("composer-expanded").waitFor({ state: "detached" });
+    assert((await composer.inputValue()).endsWith("\nAdded in the expanded editor."), "an expanded edit did not reach the composer");
+
+    // Ctrl+Enter sends from the expanded editor; the sent draft is not restored.
+    await composer.fill(words(1100));
+    await page.getByTestId("composer-expand").click();
+    await expanded.press("Control+Enter");
+    await page.getByTestId("composer-expanded").waitFor({ state: "detached" });
+    await page.getByTestId("turn-status").waitFor({ state: "detached", timeout: 30_000 });
+    assert((await composer.inputValue()) === "", "the composer kept a sent message");
+    await page.reload();
+    await composer.waitFor();
+    await page.waitForTimeout(500);
+    assert((await composer.inputValue()) === "", "a sent message came back after a reload");
+
+    // Phone width with a long draft.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await composer.fill(words(1500));
+    const phone = await box();
+    assert(phone.scrollWidth <= phone.clientWidth && (await pageOverflow()) <= 0, "a long draft scrolls sideways at phone width");
+    assert(phone.height <= 0.46 * 844, `the composer is ${phone.height}px tall at phone width`);
+    await composer.fill("");
     await page.setViewportSize({ width: 1440, height: 900 });
   });
 

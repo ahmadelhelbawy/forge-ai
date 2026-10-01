@@ -1,7 +1,7 @@
 "use client";
 
-import { Layers, Paperclip, RotateCcw, SendHorizonal, Square, Target } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Layers, Maximize2, Minimize2, Paperclip, RotateCcw, SendHorizonal, Square, Target } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type {
   ArtifactKindWire,
@@ -12,6 +12,7 @@ import type {
   OutputShapeWire,
   TransformationModeWire,
 } from "@/lib/api";
+import { useDraft } from "@/lib/draft";
 import { Markdown } from "@/lib/markdown";
 
 import { DiagnosticList } from "./DiagnosticList";
@@ -19,6 +20,8 @@ import { DiscoveryPanel } from "./DiscoveryPanel";
 import { MicButton } from "./MicButton";
 
 interface Props {
+  /** The open conversation; null before the first one exists. Keys the saved draft. */
+  conversationId: string | null;
   messages: ChatMessage[];
   attachments: AttachmentMeta[];
   sending: boolean;
@@ -94,6 +97,21 @@ const EXAMPLES: ReadonlyArray<{ label: string; text: string }> = [
   },
 ];
 
+/** Words in the draft, for the count shown once a message is long. */
+function countWords(text: string): number {
+  const matches = text.match(/\S+/g);
+  return matches ? matches.length : 0;
+}
+
+/**
+ * The composer grows with its text up to this height, then scrolls inside.
+ * A share of the viewport, so a long prompt gets real room on a tall screen
+ * and the conversation stays visible on a short one.
+ */
+function composerMaxHeight(): number {
+  return Math.round(Math.min(Math.max(window.innerHeight * 0.45, 160), 560));
+}
+
 const KIND_LABEL: Record<ArtifactKindWire, string> = {
   unspecified: "Auto",
   agent: "Agent prompt",
@@ -101,6 +119,7 @@ const KIND_LABEL: Record<ArtifactKindWire, string> = {
 };
 
 export function ChatPanel({
+  conversationId,
   messages,
   attachments,
   sending,
@@ -127,15 +146,50 @@ export function ChatPanel({
   onRetry,
   canRetry,
 }: Props): React.JSX.Element {
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useDraft(conversationId);
   const [dictating, setDictating] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const draftNow = useRef(draft);
+  draftNow.current = draft;
   useEffect(() => {
-    if (returnedDraft) setDraft((current) => (current.trim() ? current : returnedDraft.text));
-  }, [returnedDraft]);
+    // Never over a draft the user has started since.
+    if (returnedDraft && !draftNow.current.trim()) setDraft(returnedDraft.text);
+  }, [returnedDraft, setDraft]);
   const [elapsed, setElapsed] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const expandedRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow: the textarea is as tall as its text, up to a viewport-relative
+  // cap; past the cap it scrolls inside, never sideways.
+  const fit = useCallback(() => {
+    const area = areaRef.current;
+    if (!area) return;
+    const max = composerMaxHeight();
+    // Measuring collapses the box for a moment; keep the reader's place.
+    const scrollTop = area.scrollTop;
+    area.style.height = "auto";
+    const wanted = area.scrollHeight;
+    area.style.height = `${Math.min(wanted, max)}px`;
+    area.style.overflowY = wanted > max ? "auto" : "hidden";
+    area.scrollTop = scrollTop;
+  }, []);
+  useLayoutEffect(fit, [draft, expanded, fit]);
+  useEffect(() => {
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [fit]);
+
+  // Moving between the inline and the expanded editor keeps focus and caret.
+  useEffect(() => {
+    const target = expanded ? expandedRef.current : areaRef.current;
+    if (!target || target.disabled) return;
+    target.focus();
+    const end = target.value.length;
+    target.setSelectionRange(end, end);
+    if (expanded) target.scrollTop = target.scrollHeight;
+  }, [expanded]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -156,8 +210,18 @@ export function ChatPanel({
     const text = draft.trim();
     if (!text || sending || !ready) return;
     setDraft("");
+    setExpanded(false);
     onSend(text);
   };
+  const words = countWords(draft);
+  const placeholder =
+    waitingOn !== null
+      ? `Waiting for the turn in "${waitingOn}" to finish…`
+      : discovery?.status === "open"
+        ? "Answer in your own words, or ask something…"
+        : hasPrompt
+          ? "Ask for a change, a critique or an explanation…"
+          : "Describe your idea, or paste a prompt of any size…";
 
   const mark = (
     <div aria-hidden className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-ink-800">
@@ -331,19 +395,12 @@ export function ChatPanel({
             }}
             rows={3}
             aria-label="Message"
-            placeholder={
-              waitingOn !== null
-                ? `Waiting for the turn in "${waitingOn}" to finish…`
-                : discovery?.status === "open"
-                ? "Answer in your own words, or ask something…"
-                : hasPrompt
-                  ? "Ask for a change, a critique or an explanation…"
-                  : "Describe your idea, or paste a prompt of any size…"
-            }
+            data-testid="composer"
+            placeholder={placeholder}
             disabled={!ready || sending}
             // While dictating, the recognizer owns the text; it is editable again the moment it stops.
             readOnly={dictating}
-            className="block max-h-60 min-h-[72px] w-full resize-y rounded-t-xl bg-transparent px-3.5 pb-1 pt-3 text-[14px] leading-relaxed text-slate-100 placeholder:text-slate-600 focus:outline-none disabled:opacity-50"
+            className="block min-h-[76px] w-full resize-none overflow-x-hidden whitespace-pre-wrap break-words rounded-t-xl bg-transparent px-3.5 pb-1 pt-3 text-[14px] leading-relaxed text-slate-100 [overflow-wrap:anywhere] placeholder:text-slate-600 focus:outline-none disabled:opacity-50"
           />
           <div className="flex items-center gap-1.5 px-2 pb-2">
             <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto">
@@ -411,7 +468,23 @@ export function ChatPanel({
               ))}
             </div>
             </div>
-            <span className="hidden text-[11px] text-slate-600 2xl:inline">Enter to send · Shift+Enter for a new line</span>
+            {words >= 150 ? (
+              <span data-testid="composer-words" className="shrink-0 font-mono text-[11px] text-slate-500">
+                {words.toLocaleString()} words
+              </span>
+            ) : (
+              <span className="hidden text-[11px] text-slate-600 2xl:inline">Enter to send · Shift+Enter for a new line</span>
+            )}
+            <button
+              onClick={() => setExpanded(true)}
+              disabled={!ready || sending}
+              data-testid="composer-expand"
+              aria-label="Expand editor"
+              title="Expand the editor for a long prompt"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200 disabled:opacity-40"
+            >
+              <Maximize2 size={14} />
+            </button>
             <button
               onClick={send}
               disabled={!draft.trim() || sending || !ready || dictating}
@@ -424,6 +497,75 @@ export function ChatPanel({
           </div>
         </div>
       </div>
+      {expanded ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Expanded editor"
+          data-testid="composer-expanded"
+          className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/60 p-0 backdrop-blur-sm animate-fade-in sm:p-6"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setExpanded(false);
+          }}
+        >
+          <div className="flex w-full max-w-5xl flex-col overflow-hidden border-white/[0.09] bg-ink-900 shadow-2xl sm:rounded-xl sm:border">
+            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-2.5">
+              <span className="text-[13px] font-medium text-slate-200">Message</span>
+              <span className="font-mono text-[11px] text-slate-500">
+                {words.toLocaleString()} {words === 1 ? "word" : "words"} · {draft.length.toLocaleString()} characters
+              </span>
+              <div className="flex-1" />
+              <span className="hidden text-[11px] text-slate-600 sm:inline">Ctrl+Enter to send · Esc to collapse</span>
+              <button
+                onClick={() => setExpanded(false)}
+                data-testid="composer-collapse"
+                aria-label="Collapse editor"
+                title="Collapse (Esc) — the text stays in the composer"
+                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200"
+              >
+                <Minimize2 size={14} />
+              </button>
+            </div>
+            <textarea
+              ref={expandedRef}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                // Long-form editing: Enter is a new line here; Ctrl/Cmd+Enter sends.
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setExpanded(false);
+                } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              aria-label="Message (expanded)"
+              data-testid="composer-expanded-input"
+              placeholder={placeholder}
+              disabled={!ready || sending}
+              readOnly={dictating}
+              className="min-h-0 w-full flex-1 resize-none overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words bg-transparent px-5 py-4 font-[inherit] text-[14.5px] leading-relaxed text-slate-100 [overflow-wrap:anywhere] placeholder:text-slate-600 focus:outline-none"
+            />
+            <div className="flex items-center justify-end gap-2 border-t border-white/[0.06] px-4 py-2.5">
+              <button
+                onClick={() => setExpanded(false)}
+                className="rounded-md px-3 py-1.5 text-[12.5px] text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-slate-200"
+              >
+                Collapse
+              </button>
+              <button
+                onClick={send}
+                disabled={!draft.trim() || sending || !ready || dictating}
+                data-testid="composer-expanded-send"
+                className="flex items-center gap-1.5 rounded-md bg-accent-500 px-3 py-1.5 text-[12.5px] font-medium text-white transition-colors hover:bg-accent-600 disabled:bg-ink-700 disabled:text-slate-500"
+              >
+                <SendHorizonal size={13} /> Send
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
