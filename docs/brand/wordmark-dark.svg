@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 186 48" width="372" height="96" role="img" aria-label="FORGE">
+  <title>FORGE</title>
+  <g transform="scale(1.5)">
+  <rect width="32" height="32" rx="7" fill="#161a20"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#39414d"/>
+  <path d="M10 8h13v3.2h-9.4v3.6h8v3.2h-8V24H10z" fill="#e4e7ec"/>
+  <circle cx="23.5" cy="22.5" r="2.5" fill="#f5a55b"/>
+  </g>
+  <g transform="translate(68 12)">
+  <path d="M2 24V2H17M2 12.5H14 M32 2H36Q41 2 41 7V17Q41 22 36 22H32Q27 22 27 17V7Q27 2 32 2Z M52 24V2H61Q66 2 66 7V8Q66 13 61 13H52M60 13L67 24 M91.5 2H82Q77 2 77 7V17Q77 22 82 22H91V12.5H85 M117 2H102V22H117M102 12H114" fill="none" stroke="#e4e7ec" stroke-width="4" stroke-linejoin="miter" stroke-linecap="butt"/>
+  </g>
+</svg>
