@@ -73,6 +73,22 @@ Release engineering
 - CI: web typecheck, package smoke, dependency audit, secret scan over the full
   history, and the browser acceptance with Chromium installed.
 
+### Release packaging (2026-10-01)
+
+- **Composer for long prompts:** grows with its text, then scrolls inside;
+  an expanded editor with word and character counts; the unsent draft is kept
+  per conversation in the browser.
+- **Docker:** a multi-stage, non-root image with a healthcheck; `compose.yaml`
+  publishes on `127.0.0.1` only and keeps data in a named volume. The full
+  product suite runs against the image (`scripts/docker-e2e.sh`). See
+  `docs/DOCKER.md`.
+- **CI and release:** actions pinned to commit SHAs; the image is built and
+  tested on every push; a `v*` tag publishes `ghcr.io/<owner>/forge` for amd64
+  and arm64 with SBOM and provenance (never `latest` during the alpha) and
+  opens a draft GitHub release.
+- **Identity:** mark, font-free wordmarks, avatar and social preview
+  (`docs/brand/`); an architecture diagram in the README.
+
 ### Known limitations
 
 See the README's *Known limitations*. In short: no login; a long `REVISE` is

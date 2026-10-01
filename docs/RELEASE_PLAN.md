@@ -1,7 +1,7 @@
 # Release plan — `v0.1.0-alpha.0`
 
-**Status: proposed, not executed.** Nothing here has been deployed, pushed,
-tagged or published. Each phase ends at a gate; do not start the next phase
+**Status: prepared, not published.** Docker, CI and the GHCR release workflow
+are built (§3, §4); nothing has been pushed, tagged or published. Each phase ends at a gate; do not start the next phase
 until the gate passes. Release blockers: **none** (audit of 2026-09-29,
 `evals/release-audit/`).
 
@@ -26,12 +26,16 @@ until the gate passes. Release blockers: **none** (audit of 2026-09-29,
 ### Release checklist (in order)
 
 1. `CHANGELOG.md`: replace "unreleased" with the date.
-2. Remote created; `main` pushed; **CI green on GitHub** (first run ever — see §2).
-3. Dockerfile + compose added in a PR (§3); CI builds the image; acceptance §8 passes.
-4. Tag `v0.1.0-alpha.0`; the release workflow publishes the image (§4).
-5. GitHub release created from the tag with the changelog section; demo video
-   uploaded as an attachment and its URL put in the README (§7).
-6. Post-publish smoke (§8, last block) against the published image.
+2. Demo re-recorded with `SHOTS=docs/images`; `forge-demo.mp4` and
+   `forge-compare.mp4` regenerated (`docs/media/README.md`).
+3. Decide on `evals/release-blockers/*.png` (§2) before the first push.
+4. Private remote created; `main` pushed; **CI green on GitHub** (first run ever —
+   it includes the `docker` job); acceptance §8 passes.
+5. Tag `v0.1.0-alpha.0`; `release.yml` publishes the image (§4) and opens a
+   **draft** GitHub release.
+6. Draft release reviewed and published by hand; demo video uploaded as an
+   attachment and its URL put in the README (§7).
+7. Post-publish smoke (§8, last block) against the published image.
 
 ---
 
@@ -85,100 +89,17 @@ Goal: `git clone … && cd forge && docker compose up` → FORGE on
 - The standalone server binds `HOSTNAME` (default `0.0.0.0`). Inside a container
   that is required; **loopback-only is enforced by the host port mapping.**
 
-### Proposed `Dockerfile` (multi-stage)
+### Built (release sprint, 2026-10-01)
 
-```dockerfile
-# syntax=docker/dockerfile:1
-FROM node:22-bookworm-slim AS build
-RUN corepack enable
-WORKDIR /app
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY web/package.json web/
-RUN pnpm install --frozen-lockfile
-COPY . .
-RUN pnpm --filter forge build && pnpm --dir web build \
- && pnpm install --frozen-lockfile --prod --ignore-scripts=false
-
-FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
- && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 FORGE_DATA_DIR=/data
-COPY --from=build /app/package.json ./
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/profiles ./profiles
-COPY --from=build /app/strategies ./strategies
-COPY --from=build /app/schema ./schema
-COPY --from=build /app/web/.next/standalone ./
-COPY --from=build /app/web/.next/static ./web/.next/static
-RUN mkdir -p /data && chown node:node /data
-USER node
-VOLUME ["/data"]
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
-  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>r.json()).then(j=>process.exit(j.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["node", "web/server.js"]
-```
-
-The exact `node_modules` layout the standalone server needs (standalone ships
-its own traced `node_modules`; the core's deps must resolve from `/app`) is the
-first thing to verify when this is built — adjust the COPY lines, not the
-approach.
-
-`.dockerignore` (required — the build context otherwise contains real keys):
-
-```
-**/node_modules
-**/.next
-dist
-.git
-.env
-.env.*
-*.env.local
-web/data
-data
-demo-output
-docs/media/raw
-evals
-```
-
-### Proposed `docker-compose.yml`
-
-```yaml
-services:
-  forge:
-    build: .
-    image: ghcr.io/<owner>/forge:0.1.0-alpha.0
-    ports:
-      - "127.0.0.1:3000:3000"      # loopback on the host: FORGE has no login
-    volumes:
-      - forge-data:/data            # conversations, versions, evidence, settings, app.secret
-      # - ${HOME}/src:/repos:ro     # optional: repositories FORGE may bind (read-only)
-    environment:
-      FORGE_ALLOWED_HOSTS: "localhost:3000,127.0.0.1:3000"
-      # FORGE_REPO_ROOTS: /repos
-    env_file:
-      - path: .env                  # provider keys, FORGE_APP_SECRET — never in the image
-        required: false
-    restart: unless-stopped
-volumes:
-  forge-data:
-```
-
-- **Secrets:** keys via Settings (stored encrypted in the volume) or `.env`
-  (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, …). Set `FORGE_APP_SECRET` in `.env`
-  to keep the encryption key out of the volume (and its backups). Nothing is
-  baked into the image; `.dockerignore` excludes every `.env*`.
-- **Existing store:** mount an existing data directory instead of the named
-  volume (`- ./web/data:/data`). It is migrated in place on first start (flat
-  JSON → objects + log; old-key secrets re-encrypted; `app.secret` created) —
-  **back it up first**. The container runs as uid 1000 (`node`); the directory
-  must be writable by it.
-- **Repository binding:** FORGE only reads repositories under
-  `FORGE_REPO_ROOTS`, and inside a container only what is mounted. Mount
-  read-only; paths the user types are container paths (`/repos/my-app`).
-- **Restart policy:** `unless-stopped`. **Port:** 3000, host-loopback only.
+- `Dockerfile` (multi-stage; core deployed with production dependencies to
+  `/opt/forge`; ripgrep, `profiles/`, `strategies/`, `schema/` asserted at build
+  time; non-root, tini, `/data` volume, healthcheck), `compose.yaml` (port on
+  `127.0.0.1` only, named volume, optional `.env`), `.dockerignore` (no `.env*`,
+  data directory, `app.secret` or `providers.secrets` in the context), `.env.example`.
+- `scripts/docker-e2e.sh` runs the full HTTP suite and browser acceptance
+  against containers on fresh volumes; CI runs it on every push.
+- Usage, secrets, repository binding, existing data, upgrades and exposure:
+  [`docs/DOCKER.md`](DOCKER.md).
 
 **Gate:** §8 "Docker" block passes on a clean machine.
 
@@ -194,7 +115,7 @@ volumes:
   are common for a local tool; `@vscode/ripgrep` fetches the right binary per
   platform when installed inside each platform's build). Build with Buildx +
   QEMU; if arm64 builds prove slow or flaky, ship amd64 first — not a blocker.
-- Workflow `.github/workflows/release.yml`, on `push: tags: ['v*']`:
+- Built: `.github/workflows/release.yml`, on `push: tags: ['v*']`:
   1. run the same jobs as CI (reuse via `workflow_call`) — no image from a red build;
   2. `docker/setup-qemu-action`, `docker/setup-buildx-action`;
   3. `docker/login-action` to `ghcr.io` with `GITHUB_TOKEN`
@@ -249,6 +170,12 @@ Already produced (real sessions, live provider):
 - `docs/media/forge-demo.mp4` — 44 s, 1.2 MB; only model waits shortened and
   labelled (`docs/media/README.md` explains the edit and how to regenerate).
 - `docs/images/{discovery,requirements,verify,traceability}.png` in the README.
+- `docs/images/architecture.svg` and the brand wordmark header (2026-10-01).
+
+Still to do before publishing: re-record once (the composer changed since the
+Sep 29 recording) with `SHOTS=docs/images`, which also writes the screenshots,
+then cut both `forge-demo.mp4` and the real-speed `forge-compare.mp4` and link
+the second under the first in the README.
 
 At publish time: upload the MP4 as a GitHub attachment (drag into the release
 body), put the `user-attachments` URL on its own line in the README where the
