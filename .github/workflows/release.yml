@@ -1,0 +1,122 @@
+name: Release
+
+# Runs only when a maintainer pushes a version tag (v0.1.0-alpha.0, …).
+# Publishes the container image to GHCR and opens a DRAFT GitHub release with
+# the CHANGELOG section as its body; publishing the draft is a manual step.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI (the full pipeline, on the tagged commit)
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    name: Publish image to GHCR
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: The tag matches the package version
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json $version"; exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tags: the exact version (immutable) and, for pre-releases, `alpha` /
+      # `beta` / `rc`. `latest` is never set here: nobody should get an alpha
+      # by default. Add it when 0.1.0 is released.
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/forge
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=alpha,enable=${{ contains(github.ref_name, '-alpha') }}
+            type=raw,value=beta,enable=${{ contains(github.ref_name, '-beta') }}
+            type=raw,value=rc,enable=${{ contains(github.ref_name, '-rc') }}
+          labels: |
+            org.opencontainers.image.title=FORGE
+            org.opencontainers.image.description=Turn intent into auditable instructions for AI agents.
+            org.opencontainers.image.licenses=Apache-2.0
+
+      - id: push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The published image starts and answers
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/forge@${{ steps.push.outputs.digest }}
+        run: |
+          image="$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 "$image"
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/api/health | grep -q '"ok":true' && break
+            sleep 2
+            [ "$i" = 30 ] && { docker logs smoke; exit 1; }
+          done
+          docker exec smoke forge agents
+          docker rm -f smoke
+
+  draft-release:
+    name: Draft the GitHub release
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "CHANGELOG.md has no section for $version"; exit 1; }
+
+      - name: Create the draft (publishing it is a manual step)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=""
+          case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --draft $prerelease \
+            --title "FORGE $GITHUB_REF_NAME" --notes-file notes.md

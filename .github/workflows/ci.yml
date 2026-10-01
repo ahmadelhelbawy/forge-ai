@@ -4,6 +4,8 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  # The release workflow runs this whole pipeline first: no image from a red build.
+  workflow_call:
 
 # The whole point of this pipeline is that it proves the deterministic core works
 # with NO credentials. No secrets are made available to any job here, deliberately
@@ -11,8 +13,10 @@ on:
 permissions:
   contents: read
 
+# A fixed prefix, not github.workflow: when called from the release workflow,
+# github.workflow names the caller and the two would share (and cancel) a group.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -20,13 +24,13 @@ jobs:
     name: core (no key, no network)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The pnpm version comes from package.json `packageManager`, so CI and a
       # contributor resolve the lockfile with the same pnpm.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -62,7 +66,7 @@ jobs:
     name: frozen benchmark is untouched
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # evals/p16 is a pre-registered, hash-pinned experiment. A post-freeze edit
       # invalidates the recorded run, so the freeze is checked rather than trusted.
       - name: Verify evals/p16 manifest
@@ -72,7 +76,7 @@ jobs:
     name: no committed secrets
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       # The whole history, with the synthetic test corpus allowlisted in
@@ -91,11 +95,11 @@ jobs:
     name: product HTTP suite + browser acceptance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: pnpm
@@ -112,3 +116,35 @@ jobs:
       # acceptance. Still no credentials.
       - name: HTTP product suite + browser acceptance
         run: ./web/scripts/e2e.sh
+
+  docker:
+    name: Docker image — product suite against the container
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The host side runs only the test clients (vitest, Chromium); the
+      # servers under test are the image, on fresh named volumes.
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for the browser acceptance
+        run: pnpm --dir web exec playwright-core install --with-deps chromium
+
+      - name: Build the image
+        run: docker build -t forge:ci .
+
+      - name: No credential or data directory in any layer
+        run: |
+          docker history --no-trunc forge:ci | grep -E '(API_KEY|APP_SECRET)=|[ /]\.env([. ]|$)' && exit 1 || true
+          docker run --rm --entrypoint sh forge:ci -c \
+            'find / -xdev \( -name ".env" -o -name ".env.*" -o -name "providers.secrets" -o -name "app.secret" \) -not -path "/proc/*" 2>/dev/null | grep . && exit 1 || exit 0'
+
+      - name: HTTP product suite + browser acceptance against the image
+        run: IMAGE=forge:ci ./scripts/docker-e2e.sh
