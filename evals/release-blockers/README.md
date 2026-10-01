@@ -31,7 +31,7 @@ tokens × decode rate (≈ 75–100 tok/s):
 User's store, same day: refine-discovery turn 118 s + 30 s repair; Generate 212 s,
 `length`, no version.
 
-**Browser, final build, same 10 kB prompt** (`01-refine-discovery.png`):
+**Browser, final build, same 10 kB prompt** (screenshots not published: they showed a personal conversation list):
 
 | step | before | after |
 |---|---|---|

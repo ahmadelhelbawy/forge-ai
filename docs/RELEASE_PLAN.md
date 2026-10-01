@@ -26,9 +26,8 @@ until the gate passes. Release blockers: **none** (audit of 2026-09-29,
 ### Release checklist (in order)
 
 1. `CHANGELOG.md`: replace "unreleased" with the date.
-2. Demo re-recorded with `SHOTS=docs/images`; `forge-demo.mp4` and
-   `forge-compare.mp4` regenerated (`docs/media/README.md`).
-3. Decide on `evals/release-blockers/*.png` (§2) before the first push.
+2. ~~Demo re-recorded; `forge-demo.mp4` and `forge-compare.mp4` cut~~ — done 2026-10-01.
+3. ~~`evals/release-blockers/*.png`~~ — removed from history before the first push.
 4. Private remote created; `main` pushed; **CI green on GitHub** (first run ever —
    it includes the `docker` job); acceptance §8 passes.
 5. Tag `v0.1.0-alpha.0`; `release.yml` publishes the image (§4) and opens a
@@ -48,12 +47,9 @@ providers, trust model, limitations, screenshots, demo), `LICENSE`
 
 Before pushing:
 
-- **Decide on committed screenshots with your conversation titles.**
-  `evals/release-blockers/*.png` (committed 2026-09-26) show a sidebar of your
-  real conversation titles (benign — "hello", "Write a prompt for an ag…" — but
-  yours). Keep, or replace/redact before the first public push; after the push
-  they are in history for good. `evals/release-audit/` images come from a clean
-  store.
+- **Screenshots with personal conversation titles:** the four
+  `evals/release-blockers/*.png` were removed from the whole history (2026-10-01)
+  before the first push. Every other committed image is from a clean or test store.
 - **Repository settings:** private vulnerability reporting ON (SECURITY.md
   points to it); branch protection on `main` requiring the four CI jobs; Actions
   permission read-only by default (the release job asks for `packages: write`).
@@ -172,10 +168,8 @@ Already produced (real sessions, live provider):
 - `docs/images/{discovery,requirements,verify,traceability}.png` in the README.
 - `docs/images/architecture.svg` and the brand wordmark header (2026-10-01).
 
-Still to do before publishing: re-record once (the composer changed since the
-Sep 29 recording) with `SHOTS=docs/images`, which also writes the screenshots,
-then cut both `forge-demo.mp4` and the real-speed `forge-compare.mp4` and link
-the second under the first in the README.
+Re-recorded 2026-10-01 on the final UI: `forge-demo.mp4` (47 s),
+`forge-compare.mp4` (25 s, real speed) and six screenshots, all from one session.
 
 At publish time: upload the MP4 as a GitHub attachment (drag into the release
 body), put the `user-attachments` URL on its own line in the README where the
