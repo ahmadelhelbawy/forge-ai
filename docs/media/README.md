@@ -1,6 +1,6 @@
 # Demo media
 
-`forge-demo.mp4` — 44 s, 1280×800, H.264, 1.2 MB. One real session against a
+`forge-demo.mp4` — 47 s, 1280×800, H.264, 1.2 MB (2026-10-01). One real session against a
 real provider (OpenCode Go, `qwen3.8-flash`, reasoning effort Default = low),
 recorded by `web/scripts/demo-record.mjs` against a fresh data directory:
 
@@ -13,13 +13,18 @@ compile for Claude Code → **Package** the Execution Contract → paste evidenc
 `web/scripts/demo-edit.mjs` shortens **only** the spans where FORGE was waiting
 on the model (logged by the recorder in `raw/segments.json`) to about 1.6 s each,
 and labels each with its real duration and speed-up, e.g. *"Extracting the Task IR:
-125 s of real model time, shown 78× faster"*. Every click and every screen plays at
+209 s of real model time, shown 131× faster"*. Every click and every screen plays at
 1×, in order; nothing is cut, reordered or retouched. Real wall-clock time for this
-session: 201 s, of which 163 s was the model.
+session: 297 s, of which 257 s was waiting on the model.
 
-In this recording the model's IR produced only review/manual obligations, so
-Verify shows `REVIEW_REQUIRED` for each; `docs/images/verify.png` (a different
-real session) shows all four verdicts.
+The evidence pasted in this session passes one test obligation and fails another,
+so Verify shows `VERIFIED`, `FAILED` (with `FORGE-V002`) and `REVIEW_REQUIRED` for
+the obligations only a person can check. The README screenshots
+(`docs/images/{discovery,prompt,requirements,compiled,verify,traceability}.png`)
+are from the same session.
+
+Both cuts encode one short segment at a time (two threads, niced) and join them
+without re-encoding; each takes seconds.
 
 ## Putting it in the README
 
@@ -35,7 +40,7 @@ Until then the README links the file and shows `forge-demo-poster.png`.
 
 ## The comparison cut
 
-`forge-compare.mp4` comes from the **same** raw recording, cut by
+`forge-compare.mp4` (25 s; poster `forge-compare-poster.png`) comes from the **same** raw recording, cut by
 `web/scripts/demo-compare.mjs`: the sentence that was typed next to the prompt FORGE
 produced from it, then a few seconds of each later stage (pin, compile, package,
 verify, traceability). Nothing in it is sped up, and every excerpt is captioned with

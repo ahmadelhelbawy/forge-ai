@@ -25,14 +25,26 @@ Idea ─▶ Discovery ─▶ Requirements ─▶ Generate ─▶ Compile for a t
 
 <!-- demo: replace the poster link below with the GitHub user-attachment URL of
      docs/media/forge-demo.mp4 when publishing (docs/media/README.md). -->
-[![A 44-second real FORGE session: idea → Discovery → Generate → pin → compile → package → verify → traceability](docs/media/forge-demo-poster.png)](docs/media/forge-demo.mp4)
+[![A 47-second real FORGE session: idea → Discovery → Generate → pin → compile → package → verify → traceability](docs/media/forge-demo-poster.png)](docs/media/forge-demo.mp4)
 
-*A real session against a live model; only the model's waiting time is shortened, and
-labelled ([how](docs/media/README.md)).*
+*A real session against a live model (OpenCode Go, `qwen3.8-flash`). Only the model's
+waiting time is shortened, and each wait is labelled with its real duration
+([how](docs/media/README.md)). The whole session took 4 min 57 s, 4 min 17 s of it waiting on the model.*
 
-| Discovery asks before it writes | Pinned requirements, checked without a model |
+**The same session at real speed** — the sentence that was typed next to the prompt
+FORGE produced from it, then each later stage
+([25 s](docs/media/forge-compare.mp4)):
+
+[![Without FORGE the sentence is the whole instruction; with FORGE, after one Discovery answer, a structured prompt, pinned requirements, a compiled Execution Contract, verdicts and traceability](docs/media/forge-compare-poster.png)](docs/media/forge-compare.mp4)
+
+This shows what FORGE adds to the artifact, not that an agent does better with it — see
+[What FORGE does not claim](#what-forge-does-not-claim).
+
+| Discovery asks before it writes | The current prompt, versioned |
 |---|---|
-| ![Discovery](docs/images/discovery.png) | ![Requirements](docs/images/requirements.png) |
+| ![Discovery](docs/images/discovery.png) | ![Prompt](docs/images/prompt.png) |
+| **Pinned requirements, checked without a model** | **Compiled for a target, with coded diagnostics** |
+| ![Requirements](docs/images/requirements.png) | ![Compiled](docs/images/compiled.png) |
 | **Evidence → a verdict per obligation** | **Traceability: origin, decisions, verdicts** |
 | ![Verify](docs/images/verify.png) | ![Traceability](docs/images/traceability.png) |
 
