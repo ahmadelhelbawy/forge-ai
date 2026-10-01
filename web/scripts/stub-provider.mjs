@@ -9,6 +9,8 @@
 import http from "node:http";
 
 const PORT = Number(process.argv[2] ?? 3220);
+// Loopback unless told otherwise (scripts/docker-e2e.sh runs it in a container).
+const HOST = process.argv[3] ?? "127.0.0.1";
 const GOOD_KEY = "test-key-123";
 
 const server = http.createServer((req, res) => {
@@ -52,6 +54,6 @@ const server = http.createServer((req, res) => {
   json(404, { error: { message: "not found" } });
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+server.listen(PORT, HOST, () => {
   console.log(`stub provider on ${PORT}`);
 });

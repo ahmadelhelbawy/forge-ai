@@ -1,0 +1,31 @@
+# FORGE on your machine.
+#
+#   cp .env.example .env      # optional: provider keys, FORGE_APP_SECRET
+#   docker compose up --build
+#   open http://localhost:3000
+#
+# FORGE has no login. The port is published on the host's loopback interface
+# only; see docs/DOCKER.md before exposing it anywhere else.
+services:
+  forge:
+    build: .
+    image: forge:local
+    ports:
+      - "127.0.0.1:${FORGE_PORT:-3000}:3000"
+    volumes:
+      # Conversations, versions, evidence, settings, encrypted keys, app.secret.
+      - forge-data:/data
+      # Optional repository binding — mount read-only, then list the container
+      # path in FORGE_REPO_ROOTS (in .env), e.g. FORGE_REPO_ROOTS=/repos
+      # - ${HOME}/src:/repos:ro
+    env_file:
+      # Provider keys and FORGE_APP_SECRET come from here or from Settings —
+      # never from the image.
+      - path: .env
+        required: false
+    environment:
+      FORGE_DATA_DIR: /data
+    restart: unless-stopped
+
+volumes:
+  forge-data:

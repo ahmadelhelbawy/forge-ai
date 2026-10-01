@@ -1,0 +1,42 @@
+# The build context is everything Docker can copy into a layer. Keep it to
+# what the image is built from — and never a credential.
+
+# Credentials: every .env variant, wherever it is. The templates are not secrets.
+**/.env
+**/.env.*
+**/*.env.local
+!**/.env.example
+
+# Local state: conversation stores, saved keys, the per-install secret.
+**/data
+web/data
+**/app.secret
+**/providers.secrets
+
+# Built or installed on the host — rebuilt inside the image for its platform.
+**/node_modules
+**/.next
+dist
+**/*.tsbuildinfo
+
+# Not needed to build or run the app.
+.git
+.github
+.vitest
+.omo
+.impeccable
+.playwright-mcp
+.claude
+.codegraph
+.ruff_cache
+coverage
+demo-output
+docs
+evals
+tests
+fixtures
+web/scripts/*.mjs
+!web/scripts/postbuild.mjs
+*.log
+Dockerfile
+compose.yaml

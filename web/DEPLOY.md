@@ -49,36 +49,12 @@ unknown `Host` names, which closes drive-by attacks from a browser, but anyone
 who can reach the port can use FORGE and its stored keys. Bind it to
 localhost, or put it behind an authenticating proxy.
 
-## Docker (sketch — not yet verified; see the release plan)
+## Docker
 
-```dockerfile
-FROM node:22-slim
-WORKDIR /app
-# Copy the repo subset the server resolves live through the workspace link:
-# built core + profiles + strategies + production deps.
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
-COPY dist/ ./dist/
-COPY profiles/ ./profiles/
-COPY strategies/ ./strategies/
-COPY web/.next/standalone ./
-# Standalone output NEVER contains .next/static (CSS, client JS) — without
-# these two lines the server answers asset requests with the app HTML and
-# the browser renders a completely unstyled page with zero errors.
-COPY web/.next/static ./web/.next/static/
-VOLUME /data
-ENV PORT=3000 FORGE_DATA_DIR=/data
-EXPOSE 3000
-CMD ["node", "web/server.js"]
-```
-
-Notes:
-- `outputFileTracingExcludes` keeps the self-referential `forge`
-  workspace link OUT of the standalone trace (tracing it recurses
-  forever). The server resolves `forge` live through the symlink, so the
-  image must contain the repo root pieces above — verify `/api/health`
-  after deploy.
-- Simpler alternative: skip standalone and deploy `next start` with full
-  `node_modules` (larger image, zero trace subtleties).
+The supported image is the repository's `Dockerfile` with `compose.yaml`; see
+[`docs/DOCKER.md`](../docs/DOCKER.md) for setup, volumes, repository mounts,
+upgrades and reverse proxies. `scripts/docker-e2e.sh` runs this document's
+HTTP suite and browser acceptance against the image itself.
 
 ## Persistence
 
@@ -110,6 +86,7 @@ conversation's version history at once get HTTP 409 instead of a forked history.
 pnpm test                    # offline, no key
 web/scripts/e2e.sh           # build + stub servers + HTTP suite + browser acceptance
 scripts/pack-smoke.sh        # the npm tarball, installed and run outside the repo
+scripts/docker-e2e.sh        # the same HTTP suite + browser acceptance against the Docker image
 ```
 
 Live model checks are never in CI. `FORGE_LIVE_EVAL=1` covers the core
