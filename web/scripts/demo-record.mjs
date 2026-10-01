@@ -7,7 +7,9 @@
 //
 // Writes the raw WebM and `segments.json`: the wall-clock span of every wait on
 // the model, so the edit can shorten ONLY those spans and label them with their
-// real duration (docs/media/README.md describes the edit).
+// real duration (docs/media/README.md describes the edit), and named `marks` —
+// moments the comparison cut (demo-compare.mjs) takes its 1× excerpts from.
+// With SHOTS=<dir>, the README screenshots are taken from the same session.
 import { mkdirSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
@@ -27,6 +29,15 @@ const t0 = Date.now();
 const page = await context.newPage();
 const now = () => (Date.now() - t0) / 1000;
 const waits = [];
+const marks = {};
+const SHOTS = process.env.SHOTS ?? null;
+if (SHOTS) mkdirSync(SHOTS, { recursive: true });
+const mark = (label) => {
+  marks[label] = now();
+};
+const shot = async (name) => {
+  if (SHOTS) await page.screenshot({ path: join(SHOTS, `${name}.png`) });
+};
 const hold = (ms) => page.waitForTimeout(ms);
 const idle = () =>
   page.waitForFunction(() => !document.querySelector('textarea[aria-label="Message"]')?.disabled, null, { timeout: 8 * 60_000 });
@@ -51,12 +62,15 @@ try {
     { delay: 18 },
   );
   await hold(600);
+  mark("idea-typed");
   await composer.press("Enter");
   await modelWait("Discovery", async () => {
     await page.getByTestId("discovery-panel").waitFor({ timeout: 8 * 60_000 });
     await idle();
   });
+  mark("discovery-shown");
   await hold(3500);
+  await shot("discovery");
 
   // 2. Answer one question, then Generate.
   const option = page.getByTestId("discovery-option").first();
@@ -73,7 +87,9 @@ try {
     await idle();
   });
   await page.getByTestId("studio-tab-prompt").click();
+  mark("prompt-shown");
   await hold(4000);
+  await shot("prompt");
 
   // 3. Pin a requirement.
   await page.getByTestId("studio-tab-requirements").click();
@@ -92,7 +108,9 @@ try {
   await page.getByTestId("pin-input").click();
   await page.getByTestId("pin-input").pressSequentially(line, { delay: 22 });
   await page.getByTestId("pin-submit").click();
+  mark("pinned");
   await hold(2500);
+  await shot("requirements");
 
   // 4. Compile for Claude Code, then package the Execution Contract.
   await page.getByTestId("studio-tab-compile").click();
@@ -101,11 +119,15 @@ try {
   await modelWait("Extracting the Task IR", () =>
     page.getByTestId("compile-artifact").first().or(page.getByTestId("compile-refused")).waitFor({ timeout: 8 * 60_000 }),
   );
+  mark("compiled");
   await hold(2500);
+  await shot("compiled");
   await page.getByTestId("package-run").click();
   await page.getByTestId("package-result").waitFor({ timeout: 60_000 });
   await page.getByTestId("package-result").scrollIntoViewIfNeeded();
+  mark("packaged");
   await hold(3000);
+  await shot("contract");
 
   // 5. Evidence from an external run → verdicts.
   const conversationId = new URL(page.url()).hash.replace(/^#c=/, "");
@@ -130,19 +152,23 @@ try {
   await page.getByTestId("verify-run").click();
   await page.getByTestId("verify-result").waitFor({ timeout: 60_000 });
   await page.getByTestId("verify-result").scrollIntoViewIfNeeded();
+  mark("verified");
   await hold(4000);
+  await shot("verify");
 
   // 6. The traceability matrix.
   await page.getByTestId("matrix-build").click();
   await page.getByTestId("matrix").waitFor({ timeout: 60_000 });
   await page.getByTestId("matrix").scrollIntoViewIfNeeded();
+  mark("matrix");
   await hold(4500);
+  await shot("traceability");
 } finally {
   const duration = now();
   await context.close();
   await browser.close();
   const video = readdirSync(RAW).find((f) => f.endsWith(".webm"));
   if (video) renameSync(join(RAW, video), join(RAW, "forge-demo-raw.webm"));
-  writeFileSync(join(RAW, "segments.json"), JSON.stringify({ model: MODEL, duration, waits }, null, 2));
-  console.log(JSON.stringify({ duration, waits }, null, 2));
+  writeFileSync(join(RAW, "segments.json"), JSON.stringify({ model: MODEL, duration, waits, marks }, null, 2));
+  console.log(JSON.stringify({ duration, waits, marks }, null, 2));
 }

@@ -33,10 +33,26 @@ When publishing:
 
 Until then the README links the file and shows `forge-demo-poster.png`.
 
-To regenerate: start the workspace on an empty `FORGE_DATA_DIR` with one provider
-configured, then
+## The comparison cut
+
+`forge-compare.mp4` comes from the **same** raw recording, cut by
+`web/scripts/demo-compare.mjs`: the sentence that was typed next to the prompt FORGE
+produced from it, then a few seconds of each later stage (pin, compile, package,
+verify, traceability). Nothing in it is sped up, and every excerpt is captioned with
+its real elapsed time in the session, so the gaps where the model worked stay
+visible. The cut points are the `marks` the recorder writes to `raw/segments.json`.
+
+## Regenerating
+
+Start the workspace on an empty `FORGE_DATA_DIR` with one provider configured (in
+Settings), then
 
 ```bash
-BASE=http://127.0.0.1:3000 MODEL="opencode-go|||qwen3.8-flash" node web/scripts/demo-record.mjs
+BASE=http://127.0.0.1:3000 MODEL="opencode-go|||qwen3.8-flash" SHOTS=docs/images \
+  node web/scripts/demo-record.mjs
 node web/scripts/demo-edit.mjs docs/media/raw docs/media/forge-demo.mp4
+node web/scripts/demo-compare.mjs docs/media/raw docs/media/forge-compare.mp4
 ```
+
+`SHOTS` writes the README screenshots (`discovery`, `prompt`, `requirements`,
+`compiled`, `contract`, `verify`, `traceability`) from the same session.
