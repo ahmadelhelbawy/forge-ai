@@ -1,7 +1,3 @@
-
-
-https://github.com/user-attachments/assets/e253ebbc-b33b-461b-8617-43ae8c47dec5
-
 <h1 align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/brand/wordmark-dark.svg">
@@ -27,9 +23,9 @@ Idea ─▶ Discovery ─▶ Requirements ─▶ Generate ─▶ Compile for a t
              Explain ◀── Verify ◀── Evidence ◀── (your agent / CI runs it) ◀──┘
 ```
 
-<!-- demo: replace the poster link below with the GitHub user-attachment URL of
-     docs/media/forge-demo.mp4 when publishing (docs/media/README.md). -->
-[![A 47-second real FORGE session: idea → Discovery → Generate → pin → compile → package → verify → traceability](docs/media/forge-demo-poster.png)](docs/media/forge-demo.mp4)
+## Demo
+
+https://github.com/user-attachments/assets/e253ebbc-b33b-461b-8617-43ae8c47dec5
 
 *A real session against a live model (OpenCode Go, `qwen3.8-flash`). Only the model's
 waiting time is shortened, and each wait is labelled with its real duration
@@ -43,6 +39,8 @@ FORGE produced from it, then each later stage
 
 This shows what FORGE adds to the artifact, not that an agent does better with it — see
 [What FORGE does not claim](#what-forge-does-not-claim).
+
+## Screenshots
 
 | Discovery asks before it writes | The current prompt, versioned |
 |---|---|
